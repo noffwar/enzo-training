@@ -11,6 +11,8 @@ Panel personal de entrenamiento, nutrición y hábitos.
 
 ## Archivos
 
+## Archivos
+
 ```
 index.html          → App completa (Preact + HTM)
 sw.js               → Service Worker (notificaciones + offline)
