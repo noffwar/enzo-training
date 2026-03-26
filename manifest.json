@@ -1,0 +1,21 @@
+{
+  "name": "Enzo Training",
+  "short_name": "Training",
+  "description": "Panel personal de entrenamiento, hábitos y nutrición",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#080D1A",
+  "theme_color": "#080D1A",
+  "lang": "es",
+  "scope": "./",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Hoy",    "short_name": "Hoy",    "description": "Registrar el día actual", "url": "./?view=today" },
+    { "name": "Semana", "short_name": "Semana", "description": "Resumen semanal",         "url": "./?view=week"  }
+  ],
+  "categories": ["health", "fitness", "sports"]
+}

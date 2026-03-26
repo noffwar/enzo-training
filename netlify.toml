@@ -1,0 +1,30 @@
+[build]
+  # Directorio donde están el index.html, sw.js y el manifest
+  publish = "."
+  # Directorio donde Claude y vos guardaron las funciones
+  functions = "netlify/functions"
+
+[build.environment]
+  # Forzamos Node 20 para soporte nativo de fetch y ES Modules
+  NODE_VERSION = "20"
+
+[functions]
+  # Usamos esbuild para una compilación más rápida y moderna
+  node_bundler = "esbuild"
+  # Tiempo de espera máximo (por si Gemini tarda en responder)
+  included_files = ["netlify/functions/**"]
+
+[[redirects]]
+  # Manejo de rutas para Single Page Application (SPA)
+  # Evita errores 404 al recargar la página en Netlify
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  # Cabeceras de seguridad recomendadas
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"

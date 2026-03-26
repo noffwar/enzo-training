@@ -1,0 +1,3318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#080D1A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Enzo Training">
+  <title>ENZO | Training</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; background: #080D1A; color: #E2E8F0; overscroll-behavior: none; }
+    body { font-family: 'Barlow', sans-serif; -webkit-font-smoothing: antialiased; }
+    :root {
+      --green: #10B981; --green-dim: rgba(16,185,129,0.15); --green-glow: rgba(16,185,129,0.35);
+      --indigo: #6366F1; --indigo-dim: rgba(99,102,241,0.15);
+      --amber: #F59E0B;
+      --red: #EF4444;
+      --bg: #080D1A; --surface: #0F1729; --surface2: #162035; --border: #1E2D45;
+    }
+    /* Scrollbar */
+    .hide-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+    .hide-scroll::-webkit-scrollbar { display: none; }
+    /* Inputs */
+    input[type="checkbox"] { accent-color: var(--green); width: 18px; height: 18px; cursor: pointer; flex-shrink:0; }
+    input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.5); cursor: pointer; }
+    input:focus, select:focus { outline: none; border-color: var(--indigo) !important; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+    input, select { font-family: 'Barlow', sans-serif; }
+    /* Layout */
+    .pb-safe { padding-bottom: calc(76px + env(safe-area-inset-bottom, 8px)); }
+    .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    /* Animations */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes urgentPulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    .spin { animation: spin 0.9s linear infinite; }
+    .fade-up { animation: fadeUp 0.2s ease-out forwards; }
+    .timer-urgent { animation: urgentPulse 0.7s ease-in-out infinite; }
+    /* Components */
+    .glass-card { background: rgba(15,23,41,0.85); border: 1px solid #1E2D45; border-radius: 12px; }
+    .set-row-done { border-left: 3px solid var(--green) !important; background: rgba(16,185,129,0.08) !important; }
+    .bottom-nav { background: rgba(8,13,26,0.97); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid #1E2D45; }
+    .section-toggle { width:100%; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; background:rgba(22,32,53,0.4); border:none; cursor:pointer; color:white; }
+    .section-toggle:hover { background:rgba(30,45,69,0.4); }
+    /* Form elements */
+    .inp { width:100%; background:#0F1729; border:1px solid #1E2D45; border-radius:8px; padding:8px 12px; font-size:14px; color:white; }
+    .inp-xs { width:100%; background:#0F1729; border:1px solid #1E2D45; border-radius:6px; padding:4px 6px; font-size:12px; color:white; text-align:center; font-family:'JetBrains Mono',monospace; }
+    .inp-sm { background:#0F1729; border:1px solid #1E2D45; border-radius:6px; padding:5px 8px; font-size:13px; color:white; }
+    select.inp { appearance:none; }
+    /* Table */
+    .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    table { width:100%; border-collapse:collapse; min-width:460px; }
+    th { font-size:9px; text-transform:uppercase; letter-spacing:0.08em; color:#475569; padding:8px 6px; border-bottom:1px solid #1E2D45; font-weight:600; }
+    td { padding:5px 6px; border-bottom:1px solid rgba(30,45,69,0.4); vertical-align:middle; }
+    /* Buttons */
+    .btn-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:none; cursor:pointer; transition:all 0.15s; }
+    .btn-icon:active { transform:scale(0.92); }
+    .check-btn { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:none; cursor:pointer; margin:0 auto; transition:all 0.15s; }
+    .check-btn:active { transform:scale(0.88); }
+    /* Misc */
+    .tag-rir { font-size:10px; font-family:'JetBrains Mono',monospace; font-weight:600; padding:2px 8px; border-radius:4px; background:rgba(10,15,30,0.8); border:1px solid #1E2D45; }
+    .tag-rir.fallo { color:#EF4444; border-color:rgba(239,68,68,0.3); }
+    .badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-family:'JetBrains Mono',monospace; padding:3px 8px; border-radius:6px; }
+    /* Accordion chevron */
+    .chev { transition: transform 0.2s ease; }
+    .chev.open { transform: rotate(180deg); }
+    /* RPE Slider */
+    .rpe-slider { width:100%; height:6px; border-radius:3px; appearance:none; -webkit-appearance:none; cursor:pointer;
+      background: linear-gradient(to right, #6366F1, #10B981, #F59E0B, #EF4444); }
+    .rpe-slider::-webkit-slider-thumb { appearance:none; width:18px; height:18px; background:white; border-radius:50%; border:2px solid #6366F1; }
+    .rpe-slider::-moz-range-thumb { width:18px; height:18px; background:white; border-radius:50%; border:2px solid #6366F1; }
+    /* Recharts overrides */
+    .recharts-tooltip-wrapper { font-family:'JetBrains Mono',monospace !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Splash -->
+  <div id="splash" style="position:fixed;inset:0;background:#080D1A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:20px;transition:opacity 0.3s;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;letter-spacing:0.1em;color:#fff;">
+      ENZO <span style="color:#10B981">TRAINING</span>
+    </div>
+    <div class="spin" style="width:40px;height:40px;border:3px solid #1E2D45;border-top-color:#10B981;border-radius:50%;"></div>
+    <p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#4B5563;margin:0;">Cargando...</p>
+  </div>
+
+  <!-- Error screen -->
+  <div id="error-screen" style="display:none;position:fixed;inset:0;background:#080D1A;padding:28px;z-index:9998;overflow:auto;">
+    <p style="font-family:monospace;color:#EF4444;font-size:15px;font-weight:bold;margin:0 0 12px;">❌ Error al cargar la app</p>
+    <pre id="error-msg" style="font-family:monospace;color:#94A3B8;font-size:11px;white-space:pre-wrap;word-break:break-all;background:#0F1729;padding:12px;border-radius:8px;border:1px solid #1E2D45;margin:0;"></pre>
+    <p style="font-family:monospace;color:#64748B;font-size:11px;margin-top:12px;">Abrí la consola (F12) para más detalles.</p>
+  </div>
+
+  <div id="app"></div>
+
+  <!-- React shim: Recharts usa window.React internamente. Este shim mínimo
+       evita el error "Cannot read properties of undefined (reading 'forwardRef')"
+       cuando Recharts carga antes que cualquier React/Preact compat layer. -->
+  <script>
+    window.React = window.React || {
+      createElement: function(t,p){var a=Array.prototype.slice.call(arguments,2);return{type:t,props:Object.assign({},p,{children:a.length===1?a[0]:a})}; },
+      createContext: function(d){return{_currentValue:d,Provider:function(p){return p.children;},Consumer:function(p){return p.children(d);}};},
+      forwardRef: function(fn){var c=function(p){return fn(p,null);};c.$$typeof=Symbol.for('react.forward_ref');c.render=fn;return c;},
+      memo: function(c){return c;},
+      Fragment: 'fragment',
+      Children: { map: function(c,f){return Array.isArray(c)?c.map(f):[c].map(f);}, forEach:function(c,f){[].concat(c).forEach(f);}, count:function(c){return [].concat(c).length;} },
+      useRef: function(v){return {current:v};},
+      useState: function(v){return [v,function(){}];},
+      useEffect: function(){},
+      useCallback: function(f){return f;},
+      useMemo: function(f){return f();},
+      useContext: function(c){return c._currentValue;},
+      isValidElement: function(e){return e&&typeof e==='object'&&'type' in e;},
+      cloneElement: function(e,p){return Object.assign({},e,{props:Object.assign({},e.props,p)});},
+      version: '18.0.0'
+    };
+  </script>
+
+  <!-- Recharts (UMD) — carga diferida: solo cuando se necesitan los gráficos -->
+  <script>
+    window._rechartsLoaded = false;
+    window._loadRecharts = function() {
+      if(window._rechartsLoaded) return Promise.resolve();
+      // Bug 12 fix: NO marcar como cargado hasta que el script realmente cargue
+      return new Promise(function(res, rej) {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js';
+        s.crossOrigin = 'anonymous';
+        s.onload = function() {
+          window._rechartsLoaded = true; // marcar DESPUÉS del éxito
+          window._RC = window.Recharts || {};
+          res();
+        };
+        s.onerror = function(e) {
+          // No marcar como loaded → permite reintentar
+          document.head.removeChild(s);
+          rej(e);
+        };
+        document.head.appendChild(s);
+      });
+    };
+
+    // html2canvas — carga diferida: solo al presionar exportar
+    window._loadHtml2Canvas = function() {
+      if(window.html2canvas) return Promise.resolve();
+      return new Promise(function(res, rej) {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        s.onload = res;
+        s.onerror = function(e) { document.head.removeChild(s); rej(e); };
+        document.head.appendChild(s);
+      });
+    };
+  </script>
+  <!-- idb helper: wrapper mínimo nativo para la cola de Background Sync -->
+  <script>
+    window.idb = {
+      openDB: function(name, version, callbacks) {
+        return new Promise(function(res, rej) {
+          var req = indexedDB.open(name, version);
+          req.onupgradeneeded = function(e) {
+            if(callbacks && callbacks.upgrade) callbacks.upgrade(e.target.result);
+          };
+          req.onsuccess = function(e) {
+            var db = e.target.result;
+
+            db.add = function(store, val) {
+              return new Promise(function(r, j) {
+                var tx = db.transaction(store, 'readwrite');
+                var req2 = tx.objectStore(store).add(val);
+                req2.onsuccess = function() { r(req2.result); };
+                req2.onerror   = function() { j(req2.error); };
+              });
+            };
+
+            // BUG FIX: estos métodos faltaban — el outbox nunca funcionó sin ellos
+            db.put = function(store, val) {
+              return new Promise(function(r, j) {
+                var tx = db.transaction(store, 'readwrite');
+                var req2 = tx.objectStore(store).put(val);
+                req2.onsuccess = function() { r(req2.result); };
+                req2.onerror   = function() { j(req2.error); };
+              });
+            };
+
+            db.getAll = function(store) {
+              return new Promise(function(r, j) {
+                var tx = db.transaction(store, 'readonly');
+                var req2 = tx.objectStore(store).getAll();
+                req2.onsuccess = function() { r(req2.result || []); };
+                req2.onerror   = function() { j(req2.error); };
+              });
+            };
+
+            db.getAllKeys = function(store) {
+              return new Promise(function(r, j) {
+                var tx = db.transaction(store, 'readonly');
+                var req2 = tx.objectStore(store).getAllKeys();
+                req2.onsuccess = function() { r(req2.result || []); };
+                req2.onerror   = function() { j(req2.error); };
+              });
+            };
+
+            db.delete = function(store, key) {
+              return new Promise(function(r, j) {
+                var tx = db.transaction(store, 'readwrite');
+                var req2 = tx.objectStore(store).delete(key);
+                req2.onsuccess = function() { r(); };
+                req2.onerror   = function() { j(req2.error); };
+              });
+            };
+
+            res(db);
+          };
+          req.onerror = function(e) { rej(e.target.error); };
+        });
+      }
+    };
+  </script>
+
+  <script>
+    window.onerror = function(msg, src, line, col, err) {
+      document.getElementById('splash').style.display = 'none';
+      document.getElementById('error-screen').style.display = 'block';
+      document.getElementById('error-msg').textContent = (err ? err.stack : msg) + '\n\nFuente: ' + src + ':' + line;
+      return true;
+    };
+    window.onunhandledrejection = function(e) {
+      var r = e.reason;
+      window.onerror(r && r.message || String(r), 'promise', 0, 0, r instanceof Error ? r : null);
+    };
+  </script>
+
+  <!-- Preact + HTM — sin Babel, sin compilación, carga en <100ms -->
+  <script type="module">
+    // htm/preact standalone: todo en uno, sin bare specifiers
+    import { html, render, Component, useState, useEffect, useCallback, useRef, useMemo } from 'https://unpkg.com/htm@3.1.1/preact/standalone.module.js';
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+    // Inyectar el Component de Preact al shim de React para que Recharts pueda heredar
+    window.React.Component = window.React.Component || Component;
+    window.React.PureComponent = window.React.PureComponent || Component;
+    
+    // Getter dinámico — se evalúa en cada render, no al cargar el módulo
+    // Necesario porque Recharts carga de forma diferida (lazy)
+    const getRC = () => window._RC || window.Recharts || {};
+
+    // ═══════════════════════════════════════════════════
+    //  CONFIGURACIÓN — SUPABASE (Sincronización PC/Móvil)
+    // ═══════════════════════════════════════════════════
+    const SUPA_URL = 'https://qflajqvveuyoclmtrjtg.supabase.co';
+    const SUPA_KEY = 'sb_publishable_lwzGrcNCL3QuDHiDafwuAQ_jJd82jAa';
+    const supabase = createClient(SUPA_URL, SUPA_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+
+    // ═══════════════════════════════════════════════════
+    //  DATOS BASE
+    // ═══════════════════════════════════════════════════
+    // Rutinas base (se pueden editar desde la app)
+    const defaultRoutines = {
+      "1": { id:"1", name:"Torso A", fullName:"DÍA 1: Torso A", description:"Vector Primario: Empuje y Tensión Mecánica", exercises:[
+        { name:"Press banca plano", sets:[{reps:"10",weight:"65,0",rir:"2",restSecs:180,restStr:"3 min"},{reps:"9",weight:"65,0",rir:"1",restSecs:180,restStr:"3 min"},{reps:"8",weight:"65,0",rir:"1",restSecs:180,restStr:"3 min"}] },
+        { name:"Remo 45° con barra", sets:[{reps:"10",weight:"30,0",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"10",weight:"30,0",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"35,0",rir:"1",restSecs:150,restStr:"2,5 min"}] },
+        { name:"Press militar Smith", sets:[{reps:"12",weight:"30,0",rir:"2",restSecs:120,restStr:"2 min"},{reps:"10",weight:"32,5",rir:"1",restSecs:120,restStr:"2 min"},{reps:"8",weight:"35,0",rir:"1",restSecs:120,restStr:"2 min"}] },
+        { name:"Jalón Dorsal Isolateral", sets:[{reps:"12",weight:"40,0",rir:"2",restSecs:120,restStr:"2 min"},{reps:"10",weight:"45,0",rir:"1",restSecs:120,restStr:"2 min"},{reps:"8",weight:"50,0",rir:"1",restSecs:120,restStr:"2 min"}] },
+        { name:"Vuelo lateral hombro", sets:[{reps:"15",weight:"9,0",rir:"2",restSecs:60,restStr:"1 min"},{reps:"12",weight:"9,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"10",weight:"9,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] },
+        { name:"Encogimientos trapecio", sets:[{reps:"15",weight:"20,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"25,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"25,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Tríceps polea barra", sets:[{reps:"15",weight:"35,0",rir:"2",restSecs:60,restStr:"1 min"},{reps:"12",weight:"40,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"10",weight:"45,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] }
+      ]},
+      "2": { id:"2", name:"Pierna A", fullName:"DÍA 2: Pierna A", description:"Vector Primario: Cuádriceps y Gemelos", exercises:[
+        { name:"Sentadilla Smith", sets:[{reps:"10",weight:"30,0",rir:"2",restSecs:180,restStr:"3 min"},{reps:"8",weight:"40,0",rir:"1",restSecs:180,restStr:"3 min"},{reps:"8",weight:"40,0",rir:"1",restSecs:180,restStr:"3 min"}] },
+        { name:"Peso muerto rumano", sets:[{reps:"10",weight:"20,0",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"25,0",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"25,0",rir:"2",restSecs:150,restStr:"2,5 min"}] },
+        { name:"Extensión cuádriceps", sets:[{reps:"15",weight:"35,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"40,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"45,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Aductores máquina", sets:[{reps:"15",weight:"65,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"12",weight:"70,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] },
+        { name:"Gemelos de pie", sets:[{reps:"15",weight:"40,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"45,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"50,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Soleos banco", sets:[{reps:"20",weight:"20,0",rir:"2",restSecs:60,restStr:"1 min"},{reps:"18",weight:"22,5",rir:"1",restSecs:60,restStr:"1 min"},{reps:"15",weight:"25,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"15",weight:"25,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] }
+      ]},
+      "4": { id:"4", name:"Torso B", fullName:"DÍA 4: Torso B", description:"Vector Primario: Tracción y Postura", exercises:[
+        { name:"Dominadas prono/neutras", sets:[{reps:"Máx.",weight:"Propio",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"Máx.",weight:"Propio",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"Máx.",weight:"Propio",rir:"1",restSecs:150,restStr:"2,5 min"}] },
+        { name:"Press inclinado mancuernas", sets:[{reps:"12",weight:"17,5",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"10",weight:"20,0",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"20,0",rir:"1",restSecs:150,restStr:"2,5 min"}] },
+        { name:"Remo polea bilateral", sets:[{reps:"12",weight:"35,0",rir:"2",restSecs:120,restStr:"2 min"},{reps:"10",weight:"40,0",rir:"1",restSecs:120,restStr:"2 min"},{reps:"8",weight:"45,0",rir:"1",restSecs:120,restStr:"2 min"}] },
+        { name:"Mariposa pectoral", sets:[{reps:"15",weight:"40,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"50,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"55,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Facepull polea alta", sets:[{reps:"15",weight:"15,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"20,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"20,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Curl mancuernas bíceps", sets:[{reps:"15",weight:"10,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"12,5",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"12,5",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Tríceps polea soga", sets:[{reps:"15",weight:"25,0",rir:"2",restSecs:60,restStr:"1 min"},{reps:"12",weight:"30,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"10",weight:"35,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] }
+      ]},
+      "5": { id:"5", name:"Pierna B", fullName:"DÍA 5: Pierna B", description:"Vector Primario: Glúteos y Corrección", exercises:[
+        { name:"Hip Thrust con Barra", sets:[{reps:"12",weight:"60,0",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"10",weight:"70,0",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"80,0",rir:"1",restSecs:150,restStr:"2,5 min"}] },
+        { name:"Sentadilla Búlgara Smith", sets:[{reps:"12 c/u",weight:"20,0",rir:"2",restSecs:120,restStr:"2 min"},{reps:"10 c/u",weight:"25,0",rir:"1",restSecs:120,restStr:"2 min"},{reps:"10 c/u",weight:"25,0",rir:"1",restSecs:120,restStr:"2 min"}] },
+        { name:"Curl femoral", sets:[{reps:"15",weight:"25,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"30,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"35,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Extensión cuádr. unilateral", sets:[{reps:"15 c/u",weight:"20,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12 c/u",weight:"25,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10 c/u",weight:"30,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Extensiones lumbares", sets:[{reps:"15",weight:"0,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"5,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"5,0",rir:"1",restSecs:90,restStr:"1,5 min"}] },
+        { name:"Abductores máquina", sets:[{reps:"15",weight:"50,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"12",weight:"55,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] }
+      ]}
+    };
+
+    const ROUTINES_KEY = 'enzo_routines_v1'; // legado — solo para migración inicial
+    const ROUTINES_SUPA_KEY = 'routines_v1'; // clave legacy en weekly_configs (ya no se usa para writes)
+    const DEFAULT_ROUTINES = defaultRoutines;
+
+    const loadRoutines = () => {
+      // Prioridad: v3 namespace → legacy enzo_routines_v1 → defaults
+      const v3Keys = lsAllRoutineKeys();
+      if(v3Keys.length > 0) {
+        const r = {};
+        v3Keys.forEach(id => { const d = lsRoutineLoad(id); if(d) r[id] = d; });
+        if(Object.keys(r).length > 0) return r;
+      }
+      try {
+        const saved = localStorage.getItem(ROUTINES_KEY);
+        return saved ? JSON.parse(saved) : DEFAULT_ROUTINES;
+      } catch(e) { return DEFAULT_ROUTINES; }
+    };
+
+    const saveRoutines = async (r) => {
+      // Guardar en v3 namespace por rutina
+      Object.entries(r).forEach(([id, data]) => lsRoutineSave(id, data));
+      // Legado: mantener enzo_routines_v1 para compatibilidad con fallback
+      try { localStorage.setItem(ROUTINES_KEY, JSON.stringify(r)); } catch(e) {}
+      // Sincronizar cada rutina vía RPC save_routine
+      Object.entries(r).forEach(([id, data]) => {
+        const cached = lsRoutineLoad(id);
+        saveRoutineRemote(id, data, cached?._revision || null).catch(()=>{});
+      });
+    };
+
+    // loadRoutinesFromCloud ya no se usa — bootstrap lo cubre
+    const loadRoutinesFromCloud = async () => null;
+
+    const muscleMap = {
+      "Press banca plano":{direct:["Pecho"],indirect:["Hombros","Tríceps"]},
+      "Remo 45° con barra":{direct:["Espalda"],indirect:["Bíceps","Lumbares"]},
+      "Press militar Smith":{direct:["Hombros"],indirect:["Tríceps"]},
+      "Jalón Dorsal Isolateral":{direct:["Espalda"],indirect:["Bíceps"]},
+      "Vuelo lateral hombro":{direct:["Hombros"],indirect:[]},
+      "Encogimientos trapecio":{direct:["Trapecio"],indirect:[]},
+      "Tríceps polea barra":{direct:["Tríceps"],indirect:[]},
+      "Sentadilla Smith":{direct:["Cuádriceps"],indirect:["Glúteos","Femorales","Lumbares"]},
+      "Peso muerto rumano":{direct:["Femorales","Glúteos"],indirect:["Lumbares"]},
+      "Extensión cuádriceps":{direct:["Cuádriceps"],indirect:[]},
+      "Aductores máquina":{direct:["Aductores"],indirect:[]},
+      "Gemelos de pie":{direct:["Pantorrillas"],indirect:[]},
+      "Soleos banco":{direct:["Pantorrillas"],indirect:[]},
+      "Dominadas prono/neutras":{direct:["Espalda"],indirect:["Bíceps"]},
+      "Press inclinado mancuernas":{direct:["Pecho"],indirect:["Hombros","Tríceps"]},
+      "Remo polea bilateral":{direct:["Espalda"],indirect:["Bíceps"]},
+      "Mariposa pectoral":{direct:["Pecho"],indirect:[]},
+      "Facepull polea alta":{direct:["Hombros"],indirect:["Trapecio","Espalda"]},
+      "Curl mancuernas bíceps":{direct:["Bíceps"],indirect:[]},
+      "Tríceps polea soga":{direct:["Tríceps"],indirect:[]},
+      "Hip Thrust con Barra":{direct:["Glúteos"],indirect:["Femorales"]},
+      "Sentadilla Búlgara Smith":{direct:["Cuádriceps","Glúteos"],indirect:[]},
+      "Curl femoral":{direct:["Femorales"],indirect:[]},
+      "Extensión cuádr. unilateral":{direct:["Cuádriceps"],indirect:[]},
+      "Extensiones lumbares":{direct:["Lumbares"],indirect:["Glúteos","Femorales"]},
+      "Abductores máquina":{direct:["Glúteos"],indirect:["Aductores"]}
+    };
+
+    const MUSCLES = ["Pecho","Espalda","Hombros","Tríceps","Bíceps","Trapecio","Cuádriceps","Femorales","Glúteos","Pantorrillas","Lumbares","Aductores"];
+    const DAYS = [{key:"1",label:"Lun",abbr:"L"},{key:"2",label:"Mar",abbr:"M"},{key:"3",label:"Mié",abbr:"X"},{key:"4",label:"Jue",abbr:"J"},{key:"5",label:"Vie",abbr:"V"},{key:"6",label:"Sáb",abbr:"S"},{key:"0",label:"Dom",abbr:"D"}];
+
+    // Objetivos nutricionales diarios
+    const TARGETS = { prot: 165, carb: 180, fat: 70, kcal: 2000 };
+
+    // Base de alimentos caseros para el recomendador
+    const HOME_FOODS = [
+      { name:"Pechuga de Pollo (cruda)", p:23, c:0,  f:2,   unit:"100g"   },
+      { name:"Huevo Entero",             p:6,  c:0.5, f:5,   unit:"unidad" },
+      { name:"Carne Vacuna (magra)",     p:21, c:0,   f:6,   unit:"100g"   },
+      { name:"Arroz (seco)",             p:7,  c:77,  f:1,   unit:"100g"   },
+      { name:"Leche Entera",             p:3,  c:5,   f:1.5, unit:"100ml"  }
+    ];
+
+    // ═══════════════════════════════════════════════════
+    //  UTILIDADES
+    // ═══════════════════════════════════════════════════
+    // pn: parsea números en formato ES-AR ("65,0" → 65, "1.250,5" → 1250.5)
+    // Regla: el punto es separador de miles, la coma es decimal
+    const pn = v => {
+      if(!v && v !== 0) return 0;
+      const s = String(v).trim();
+      // Si tiene coma → ES-AR: quitar puntos de miles, reemplazar coma decimal
+      if(s.includes(',')) {
+        const n = parseFloat(s.replace(/\./g, '').replace(',', '.'));
+        return isNaN(n) ? 0 : n;
+      }
+      // Sin coma → puede ser número puro o con punto decimal estándar
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    };
+    const fn = v => { if(!v && v!==0) return "0"; const n=Number(v); return n.toLocaleString('es-AR',{maximumFractionDigits:1}); };
+    const ft = s => { const m=Math.floor(s/60),sec=s%60; return `${m}:${sec<10?'0':''}${sec}`; };
+
+    const getWeekStart = d => { const dt=new Date(d); const day=dt.getDay(); dt.setDate(dt.getDate()+(day===0?-6:1-day)); dt.setHours(0,0,0,0); return dt; };
+    const _wkCache = new Map();
+    const getWeekKey = d => {
+      const key = d instanceof Date ? d.toDateString() : String(d);
+      if(_wkCache.has(key)) return _wkCache.get(key);
+      const result = getWeekStart(d).toISOString().split('T')[0];
+      _wkCache.set(key, result);
+      return result;
+    };
+    const addWeeks = (wk,n) => { const d=new Date(wk+'T00:00:00'); d.setDate(d.getDate()+n*7); return d.toISOString().split('T')[0]; };
+    const isCurrentWeek = wk => getWeekKey(new Date())===wk;
+
+    // Fecha de inicio oficial de la app — no mostrar datos anteriores
+    const START_DATE = '2026-03-16';
+    const START_WEEK = getWeekKey(new Date(START_DATE + 'T12:00:00')); // lunes de esa semana
+    const isBeforeStart = wk => wk < START_WEEK;
+    const formatWeekLabel = wk => {
+      const d=new Date(wk+'T00:00:00'); const e=new Date(d); e.setDate(d.getDate()+6);
+      const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      return d.getMonth()===e.getMonth()?`${d.getDate()}–${e.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`:`${d.getDate()} ${M[d.getMonth()]}–${e.getDate()} ${M[e.getMonth()]}`;
+    };
+
+    // ─── v3 NAMESPACES ───────────────────────────────────────────
+    const V3 = {
+      WEEK:  'enzo_v3_week:',
+      DAY:   'enzo_v3_day:',
+      ROUT:  'enzo_v3_routine:',
+      NOTIF: 'enzo_v3_notif:',
+      META:  'enzo_v3_meta:',
+      OLD:   'enzo_v2_',          // legado — migrar una vez
+    };
+
+    // Meta helpers (device_id, last_sync, last_error, migration_done)
+    const metaGet = (k)    => { try { return JSON.parse(localStorage.getItem(V3.META+k)); } catch(e) { return null; } };
+    const metaSet = (k, v) => { try { localStorage.setItem(V3.META+k, JSON.stringify(v)); } catch(e) {} };
+
+    // Device-ID estable por navegador
+    const getDeviceId = () => {
+      let id = metaGet('device_id');
+      if(!id) { id = 'dev_' + Math.random().toString(36).slice(2,8) + '_' + Date.now().toString(36); metaSet('device_id', id); }
+      return id;
+    };
+    const DEVICE_ID = getDeviceId();
+
+    // ─── localStorage por namespace ───────────────────────────────
+    const lsWeekSave  = (wk, v)  => { try { localStorage.setItem(V3.WEEK+wk, JSON.stringify(v)); } catch(e) {} };
+    const lsWeekLoad  = (wk)     => { try { const v=localStorage.getItem(V3.WEEK+wk); return v?JSON.parse(v):null; } catch(e) { return null; } };
+    const lsAllWeekKeys = ()     => Object.keys(localStorage).filter(k=>k.startsWith(V3.WEEK)).map(k=>k.slice(V3.WEEK.length)).sort().reverse();
+
+    const lsDaySave   = (d, v)   => { try { localStorage.setItem(V3.DAY+d, JSON.stringify(v)); } catch(e) {} };
+    const lsDayLoad   = (d)      => { try { const v=localStorage.getItem(V3.DAY+d); return v?JSON.parse(v):null; } catch(e) { return null; } };
+    const lsAllDayKeys = ()      => Object.keys(localStorage).filter(k=>k.startsWith(V3.DAY)).map(k=>k.slice(V3.DAY.length)).sort().reverse();
+
+    const lsRoutineSave = (id,v) => { try { localStorage.setItem(V3.ROUT+id, JSON.stringify(v)); } catch(e) {} };
+    const lsRoutineLoad = (id)   => { try { const v=localStorage.getItem(V3.ROUT+id); return v?JSON.parse(v):null; } catch(e) { return null; } };
+    const lsAllRoutineKeys = ()  => Object.keys(localStorage).filter(k=>k.startsWith(V3.ROUT)).map(k=>k.slice(V3.ROUT.length));
+
+    const lsNotifSave = (did,v)  => { try { localStorage.setItem(V3.NOTIF+did, JSON.stringify(v)); } catch(e) {} };
+    const lsNotifLoad = (did)    => { try { const v=localStorage.getItem(V3.NOTIF+did); return v?JSON.parse(v):null; } catch(e) { return null; } };
+
+    // Compat aliases para código legacy
+    const lsSave = (k, v) => isDateKey(k) ? lsDaySave(k, v) : lsWeekSave(k, v);
+    const lsLoad = (k)    => isDateKey(k) ? lsDayLoad(k)    : lsWeekLoad(k);
+    const lsAllKeys = () => [...lsAllWeekKeys(), ...lsAllDayKeys()];
+
+    // ─── MIGRACIÓN desde enzo_v2_ ────────────────────────────────
+    const migrateLegacyLocalStorage = () => {
+      if(metaGet('migration_v3_done')) return;
+      const oldKeys = Object.keys(localStorage).filter(k=>k.startsWith(V3.OLD));
+      if(oldKeys.length === 0) { metaSet('migration_v3_done', true); return; }
+
+      let migrated = 0;
+      oldKeys.forEach(fullKey => {
+        const key = fullKey.slice(V3.OLD.length);
+        try {
+          const raw = localStorage.getItem(fullKey);
+          if(!raw) return;
+          const val = JSON.parse(raw);
+          if(!val) return;
+
+          const hasWeekStruct = !!(val.dayMapping || val.sessions);
+          const hasDayStruct  = !!(val.meds || val.meals || val.fasted !== undefined);
+          const hasTracker    = !!(val.tracker);
+          const isDateFmt     = isDateKey(key);
+
+          if(hasTracker) {
+            // Formato muy viejo: toda la semana en daily_logs
+            const wkKey = key;
+            if(!lsWeekLoad(wkKey)) lsWeekSave(wkKey, { dayMapping: val.dayMapping||{}, bodyWeight: val.bodyWeight||'' });
+            Object.entries(val.tracker||{}).forEach(([idx, dayData]) => {
+              const date = getDayDate(wkKey, parseInt(idx));
+              if(!lsDayLoad(date)) lsDaySave(date, { ...dayData, _session: (val.sessions||{})[idx]||null });
+            });
+          } else if(hasWeekStruct && !hasDayStruct) {
+            if(!lsWeekLoad(key)) lsWeekSave(key, val);
+          } else if(hasDayStruct && !hasWeekStruct) {
+            if(!lsDayLoad(key)) lsDaySave(key, val);
+          } else if(isDateFmt) {
+            const dow = new Date(key+'T12:00:00').getDay();
+            if(dow === 1 && hasWeekStruct) {
+              if(!lsWeekLoad(key)) lsWeekSave(key, val);
+              if(!lsDayLoad(key))  lsDaySave(key, val); // preservar ambos
+              console.warn('[Migration] Ambigüedad lunes:', key);
+            } else {
+              if(!lsDayLoad(key)) lsDaySave(key, val);
+            }
+          }
+          migrated++;
+        } catch(e) { console.warn('[Migration] error en', fullKey, e.message); }
+      });
+
+      metaSet('migration_v3_done', true);
+      console.info('[Migration] v2→v3:', migrated, '/', oldKeys.length, 'keys');
+    };
+
+    // ─── HELPERS de fechas ───────────────────────────────────────
+    const isDateKey = k => /^\d{4}-\d{2}-\d{2}$/.test(k);
+    const getTable  = k => isDateKey(k) ? 'daily_logs'    : 'weekly_configs';
+    const getPkCol  = k => isDateKey(k) ? 'date'          : 'week_key';
+    const isWeekKey = k => { const d=new Date(k+'T12:00:00'); return d.getDay()===1; };
+
+    const getDayDate = (wkKey, dayIdx) => {
+      const d = new Date(wkKey+'T12:00:00');
+      const offset = dayIdx===0 ? 6 : dayIdx-1;
+      d.setDate(d.getDate()+offset);
+      return d.toISOString().split('T')[0];
+    };
+
+    // ─── OUTBOX con dedupe por entity_type+entity_id ─────────────
+    const openOutboxDB = () => window.idb?.openDB('enzo-sync-db-v3', 1, {
+      upgrade(db) {
+        if(!db.objectStoreNames.contains('outbox')) {
+          db.createObjectStore('outbox', { keyPath: 'entity_key' });
+        }
+      }
+    });
+
+    const enqueueOutboxOp = async ({ entity_type, entity_id, payload, base_revision }) => {
+      try {
+        const db = await openOutboxDB();
+        await db.put('outbox', {
+          entity_key: `${entity_type}:${entity_id}`,
+          entity_type, entity_id, payload, base_revision,
+          queued_at: Date.now(), retries: 0, device_id: DEVICE_ID
+        });
+      } catch(e) { console.warn('[Outbox] enqueue error:', e.message); }
+    };
+
+    const flushOutbox = async () => {
+      if(!navigator.onLine || !window.idb) return;
+      try {
+        const db    = await openOutboxDB();
+        const items = await db.getAll('outbox');
+        if(!items || items.length === 0) return;
+
+        for(const item of items) {
+          try {
+            let rpcName, rpcArgs;
+            if(item.entity_type === 'daily_log') {
+              rpcName = 'save_daily_log';
+              rpcArgs = { p_date: item.entity_id, p_tracker: item.payload.tracker, p_session: item.payload.session||null, p_base_revision: item.base_revision||null, p_device_id: DEVICE_ID };
+            } else if(item.entity_type === 'weekly_config') {
+              rpcName = 'save_weekly_config';
+              rpcArgs = { p_week_key: item.entity_id, p_body_weight: item.payload.body_weight||null, p_day_mapping: item.payload.day_mapping||{}, p_base_revision: item.base_revision||null, p_device_id: DEVICE_ID };
+            } else if(item.entity_type === 'routine') {
+              rpcName = 'save_routine';
+              rpcArgs = { p_routine_id: item.entity_id, p_data: item.payload, p_base_revision: item.base_revision||null, p_device_id: DEVICE_ID };
+            } else continue;
+
+            const { data, error } = await supabase.rpc(rpcName, rpcArgs);
+            if(error) throw new Error(error.message);
+
+            // BUG FIX: conflictos vienen en data.status, no en error
+            if(data?.status === 'conflict') {
+              metaSet('last_conflict', { entity_key: item.entity_key, server: data.server, at: new Date().toISOString() });
+              await db.delete('outbox', item.entity_key); // no reintentar un conflicto
+            } else {
+              await db.delete('outbox', item.entity_key);
+            }
+          } catch(e) {
+            if(!navigator.onLine) break;
+            item.retries = (item.retries||0) + 1;
+            if(item.retries >= 5) await db.delete('outbox', item.entity_key);
+            else await db.put('outbox', item);
+          }
+        }
+        metaSet('last_sync', new Date().toISOString());
+        console.info('[Outbox] flush ok');
+      } catch(e) {
+        metaSet('last_error', e.message?.slice(0,100));
+        console.warn('[Outbox] flush error:', e.message);
+      }
+    };
+
+    // ─── WRITES REMOTOS vía RPC ───────────────────────────────────
+    // NOTA: las RPCs devuelven conflictos en data.status, NO en error.
+    // error es null cuando la RPC ejecuta correctamente aunque retorne status:'conflict'.
+
+    // Convierte bodyWeight string ES-AR ("75,5") a numeric para Supabase
+    const bodyWeightToNumeric = (bw) => {
+      if(!bw && bw !== 0) return null;
+      const n = parseFloat(String(bw).replace(',', '.'));
+      return isNaN(n) ? null : n;
+    };
+
+    const saveDayRemote = async (date, tracker, session, baseRevision) => {
+      lsDaySave(date, { ...tracker, _session: session||null, _updatedAt: new Date().toISOString(), _dirty: false });
+      try {
+        const { data, error } = await supabase.rpc('save_daily_log', {
+          p_date: date, p_tracker: tracker, p_session: session||null,
+          p_base_revision: baseRevision||null, p_device_id: DEVICE_ID
+        });
+        if(error) throw new Error(error.message);
+        // BUG FIX: conflicto viene en data.status, no en error
+        if(data?.status === 'conflict') {
+          metaSet('last_conflict', { type:'daily_log', entity:date, server:data.server, at:new Date().toISOString() });
+          return { ok: false, queued: false, conflict: true, serverData: data.server };
+        }
+        // Actualizar revision local con la del servidor
+        if(data?.revision) {
+          const local = lsDayLoad(date) || {};
+          lsDaySave(date, { ...local, _revision: data.revision, _updatedAt: data.updated_at || new Date().toISOString() });
+        }
+        metaSet('last_sync', new Date().toISOString());
+        return { ok: true, queued: false };
+      } catch(e) {
+        const isNet = !navigator.onLine || e.name==='TypeError' || e.message?.includes('fetch');
+        if(isNet) {
+          await enqueueOutboxOp({ entity_type:'daily_log', entity_id:date, payload:{tracker,session:session||null}, base_revision:baseRevision });
+          return { ok: true, queued: true };
+        }
+        metaSet('last_error', e.message?.slice(0,100));
+        return { ok: false, queued: false, error: e.message };
+      }
+    };
+
+    const saveWeeklyRemote = async (weekKey, bodyWeight, dayMapping, baseRevision) => {
+      lsWeekSave(weekKey, { bodyWeight: bodyWeight||'', dayMapping: dayMapping||{}, _updatedAt: new Date().toISOString() });
+      try {
+        // BUG FIX: convertir bodyWeight ES-AR string → numeric antes de enviar a Supabase
+        const bwNumeric = bodyWeightToNumeric(bodyWeight);
+        const { data, error } = await supabase.rpc('save_weekly_config', {
+          p_week_key: weekKey, p_body_weight: bwNumeric,
+          p_day_mapping: dayMapping||{}, p_base_revision: baseRevision||null, p_device_id: DEVICE_ID
+        });
+        if(error) throw new Error(error.message);
+        // BUG FIX: conflicto viene en data.status, no en error
+        if(data?.status === 'conflict') {
+          metaSet('last_conflict', { type:'weekly_config', entity:weekKey, server:data.server, at:new Date().toISOString() });
+          return { ok: false, queued: false, conflict: true, serverData: data.server };
+        }
+        // Actualizar revision local con la del servidor
+        if(data?.revision) {
+          const local = lsWeekLoad(weekKey) || {};
+          lsWeekSave(weekKey, { ...local, _revision: data.revision, _updatedAt: data.updated_at || new Date().toISOString() });
+        }
+        metaSet('last_sync', new Date().toISOString());
+        return { ok: true, queued: false };
+      } catch(e) {
+        const isNet = !navigator.onLine || e.name==='TypeError' || e.message?.includes('fetch');
+        if(isNet) {
+          await enqueueOutboxOp({ entity_type:'weekly_config', entity_id:weekKey, payload:{body_weight:bodyWeightToNumeric(bodyWeight),day_mapping:dayMapping||{}}, base_revision:baseRevision });
+          return { ok: true, queued: true };
+        }
+        metaSet('last_error', e.message?.slice(0,100));
+        return { ok: false, queued: false, error: e.message };
+      }
+    };
+
+    const saveRoutineRemote = async (routineId, routineData, baseRevision) => {
+      lsRoutineSave(routineId, { ...routineData, _updatedAt: new Date().toISOString() });
+      try {
+        const { data, error } = await supabase.rpc('save_routine', {
+          p_routine_id: routineId, p_data: routineData, p_base_revision: baseRevision||null, p_device_id: DEVICE_ID
+        });
+        if(error) throw new Error(error.message);
+        // BUG FIX: conflicto viene en data.status, no en error
+        if(data?.status === 'conflict') return { ok: false, queued: false, conflict: true };
+        // Actualizar revision local
+        if(data?.revision) {
+          const local = lsRoutineLoad(routineId) || {};
+          lsRoutineSave(routineId, { ...local, _revision: data.revision });
+        }
+        return { ok: true, queued: false };
+      } catch(e) {
+        const isNet = !navigator.onLine || e.name==='TypeError' || e.message?.includes('fetch');
+        if(isNet) {
+          await enqueueOutboxOp({ entity_type:'routine', entity_id:routineId, payload:routineData, base_revision:baseRevision });
+          return { ok: true, queued: true };
+        }
+        return { ok: false, queued: false, error: e.message };
+      }
+    };
+
+    // ─── BOOTSTRAP vía RPC get_bootstrap_state ───────────────────
+    const bootstrapRemoteState = async () => {
+      const eightWeeksAgo = addWeeks(getWeekKey(new Date()), -8);
+      const { data, error } = await supabase.rpc('get_bootstrap_state', { p_from: eightWeeksAgo });
+      if(error || !data) throw new Error(error?.message || 'Bootstrap vacío');
+      return data;
+    };
+
+    // ─── CARGA LOCAL ─────────────────────────────────────────────
+    const loadLocalCaches = () => {
+      const weeklyCache = {}, dailyCache = {}, routinesCache = {};
+      lsAllWeekKeys().filter(k=>!isBeforeStart(k)&&isDateKey(k)).forEach(wk => {
+        const d=lsWeekLoad(wk); if(d) weeklyCache[wk]=d;
+      });
+      lsAllDayKeys().filter(k=>!isBeforeStart(k)).forEach(dt => {
+        const d=lsDayLoad(dt); if(d) dailyCache[dt]=d;
+      });
+      lsAllRoutineKeys().forEach(id => {
+        const d=lsRoutineLoad(id); if(d) routinesCache[id]=d;
+      });
+      return { weeklyCache, dailyCache, routinesCache };
+    };
+
+    // ─── buildAllWeeks: merges caches for UI (allWeeks compat) ───
+    const buildAllWeeks = (weeklyCache, dailyCache) => {
+      const result = {};
+      Object.entries(weeklyCache).forEach(([wkKey, wkData]) => {
+        if(isBeforeStart(wkKey)||!isDateKey(wkKey)) return;
+        result[wkKey] = hydrate({ dayMapping: wkData.dayMapping||{}, bodyWeight: wkData.bodyWeight||'' });
+      });
+      Object.entries(dailyCache).forEach(([date, dayData]) => {
+        if(isBeforeStart(date)) return;
+        const dateObj = new Date(date+'T12:00:00');
+        const wkKey   = getWeekKey(dateObj);
+        const dayIdx  = dateObj.getDay();
+        if(!result[wkKey]) result[wkKey] = hydrate(newWeek());
+        const { _session, _updatedAt, _revision, _dirty, ...dayClean } = dayData || {};
+        if(_session) result[wkKey].sessions = { ...result[wkKey].sessions, [dayIdx]: _session };
+        result[wkKey].tracker[dayIdx] = { ...newDay(), ...dayClean, meals: Array.isArray(dayClean?.meals)?dayClean.meals:newDay().meals };
+      });
+      return result;
+    };
+
+    // ─── applyBootstrapToState ────────────────────────────────────
+    const applyBootstrapToState = (bootstrapData, prevWeeklyCache, prevDailyCache) => {
+      const weeklyCache = { ...prevWeeklyCache };
+      const dailyCache  = { ...prevDailyCache };
+      const routinesCache = {};
+      const conflicts = [];
+
+      (bootstrapData.routines||[]).forEach(row => {
+        lsRoutineSave(row.routine_id, row.data);
+        routinesCache[row.routine_id] = row.data;
+      });
+
+      (bootstrapData.weekly_configs||[]).forEach(row => {
+        if(isBeforeStart(row.week_key)) return;
+        const localWk = weeklyCache[row.week_key];
+        const localTs = localWk?._updatedAt;
+        if(localTs && row.updated_at && localTs > row.updated_at) return;
+        // BUG FIX: body_weight llega como numeric de Postgres → convertir a string ES-AR
+        const bwStr = (row.body_weight !== undefined && row.body_weight !== null)
+          ? String(row.body_weight).replace('.', ',')
+          : '';
+        weeklyCache[row.week_key] = { dayMapping: row.day_mapping||{}, bodyWeight: bwStr, _revision: row.revision, _updatedAt: row.updated_at };
+        lsWeekSave(row.week_key, weeklyCache[row.week_key]);
+      });
+
+      (bootstrapData.daily_logs||[]).forEach(row => {
+        if(isBeforeStart(row.date)) return;
+        const localDay = dailyCache[row.date];
+        const localTs  = localDay?._updatedAt;
+        if(localTs && row.updated_at && localTs > row.updated_at) {
+          if(localDay?._dirty) conflicts.push({ date: row.date, local: localDay, remote: row });
+          return;
+        }
+        let tracker = row.tracker || {};
+        let sess    = row.session  || null;
+        if(tracker.tracker) { // rescate formato viejo
+          const dayIdx = new Date(row.date+'T12:00:00').getDay();
+          tracker = tracker.tracker?.[dayIdx] || {};
+          sess    = tracker.sessions?.[dayIdx] || null;
+        }
+        dailyCache[row.date] = { ...tracker, _session: sess, _revision: row.revision, _updatedAt: row.updated_at };
+        lsDaySave(row.date, dailyCache[row.date]);
+      });
+
+      return { weeklyCache, dailyCache, routinesCache, conflicts };
+    };
+
+    // ─── COMPAT shims — código de UI aún no migrado a RPCs ───────
+    const persistEntry = async (key, data, isDaily = true) => {
+      if(isDaily) lsDaySave(key, data);
+      else        lsWeekSave(key, data);
+      return { ok: true, queued: false, error: null };
+    };
+    const saveEntry = persistEntry;
+    const save = (k, v) => persistEntry(k, v, !isWeekKey(k));
+
+
+    const playBeep = () => { try{ const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.setValueAtTime(880,c.currentTime);g.gain.setValueAtTime(0.7,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.6);o.start();o.stop(c.currentTime+0.6); }catch(e){} };
+
+    const newDay = () => ({
+      fasted:false, fastHours:'', fastStartTime:'', walked:false, steps:'', walkStartTime:'', walkEndTime:'',
+      gymStartTime:'', gymEndTime:'', mateOrCoffee:false, mateOrCoffeeTime:'',
+      sleepHours:'', sleepQuality:'', wakeups:'', napped:false, napHours:'',
+      water: 0, gymNotes: '',
+      meds:{roacuttan:false, finasteride:false, minoxidil:false, creatine:false, magnesium:false},
+      meals:[
+        { items:[], firstBite:'', lastBite:'' },
+        { items:[], firstBite:'', lastBite:'' },
+        { items:[], firstBite:'', lastBite:'' }
+      ]
+    });
+
+    // Helper: suma macros de los items de una comida
+    const mealTotals = (meal) => (meal?.items || []).reduce(
+      (acc, it) => ({ cals:acc.cals+pn(it.cals), prot:acc.prot+pn(it.prot), carb:acc.carb+pn(it.carb), fat:acc.fat+pn(it.fat) }),
+      { cals:0, prot:0, carb:0, fat:0 }
+    );
+
+    // Helper: suma macros de todas las comidas del día
+    const dayTotals = (meals) => (meals || []).reduce(
+      (acc, m) => { const t=mealTotals(m); return { cals:acc.cals+t.cals, prot:acc.prot+t.prot, carb:acc.carb+t.carb, fat:acc.fat+t.fat }; },
+      { cals:0, prot:0, carb:0, fat:0 }
+    );
+    const newWeek = () => ({
+      dayMapping:{1:'1',2:'2',3:'',4:'4',5:'5',6:'',0:''},
+      sessions:{},
+      bodyWeight: '', // kg del lunes de esa semana
+      tracker:{0:newDay(),1:newDay(),2:newDay(),3:newDay(),4:newDay(),5:newDay(),6:newDay()}
+    });
+
+    // Combina datos de la nube con la estructura base para garantizar que
+    // dayMapping, sessions y tracker siempre existan con los campos correctos
+    const hydrate = (data) => {
+      const base = newWeek();
+      const result = {
+        dayMapping:  { ...base.dayMapping, ...(data?.dayMapping || {}) },
+        sessions:    { ...(data?.sessions  || {}) },
+        bodyWeight:  data?.bodyWeight || '',
+        tracker:     { ...base.tracker }
+      };
+      // Hidratar cada día del tracker fusionando con newDay() base
+      if(data?.tracker) {
+        Object.entries(data.tracker).forEach(([k, d]) => {
+          const dayBase = newDay();
+          const hydratedMeals = Array.isArray(d?.meals) && d.meals.length > 0
+            ? d.meals.map(m => {
+                // Compatibilidad: si el dato viejo tiene cals/prot directos, migrarlo a items
+                if(m && !m.items && (m.cals || m.prot)) {
+                  return { items:[{ name:'Importado', cals:m.cals||'', prot:m.prot||'', carb:m.carb||'', fat:m.fat||'' }], firstBite:m.firstBite||'', lastBite:m.lastBite||'' };
+                }
+                return { ...dayBase.meals[0], ...m, items: Array.isArray(m?.items) ? m.items : [] };
+              })
+            : dayBase.meals;
+          result.tracker[k] = {
+            ...dayBase, ...d,
+            meds:  { ...dayBase.meds,  ...(d?.meds  || {}) },
+            meals: hydratedMeals
+          };
+        });
+      }
+      return result;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  SVG ICONS (inline, sin dependencias)
+    // ═══════════════════════════════════════════════════
+    const Icon = ({d, s=18, c=''}) => html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${c}>${d}</svg>`;
+    const IPlay   = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<polygon points="5 3 19 12 5 21 5 3"/>`}/>`;
+    const IPause  = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>`}/>`;
+    const IReset  = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>`}/>`;
+    const ICheck  = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<polyline points="20 6 9 17 4 12"/>`}/>`;
+    const IClock  = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`}/>`;
+    const IChevD  = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<polyline points="6 9 12 15 18 9"/>`}/>`;
+    const IChevL  = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<polyline points="15 18 9 12 15 6"/>`}/>`;
+    const IChevR  = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<polyline points="9 18 15 12 9 6"/>`}/>`;
+    const ISync   = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>`}/>`;
+    const IHome   = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>`}/>`;
+    const ICal    = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`}/>`;
+    const IBar    = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`}/>`;
+    const ITarget = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>`}/>`;
+    const IBell   = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>`}/>`;
+    const IEdit   = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>`}/>`;
+    const IDumb   = ({s,c}) => html`<${Icon} s=${s} c=${c} d=${html`<path d="M6 5v14M18 5v14"/><path d="M6 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h3M18 8h3a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-3"/><rect x="6" y="11" width="12" height="2" rx="1"/>`}/>`;
+    const IActivity=({s,c})=> html`<${Icon} s=${s} c=${c} d=${html`<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`}/>`;
+
+    // ═══════════════════════════════════════════════════
+    //  COMPONENTES BASE
+    // ═══════════════════════════════════════════════════
+    const Card = ({children,style=''}) => html`<div class="glass-card" style=${`padding:16px;${style}`}>${children}</div>`;
+
+    const SectionAccordion = ({icon, title, isOpen, onToggle, children}) => html`
+      <div class="glass-card" style="overflow:hidden;">
+        <button class="section-toggle" onClick=${onToggle}>
+          <span style="display:flex;align-items:center;gap:8px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.05em;">
+            ${icon}${title}
+          </span>
+          <${IChevD} s=${18} c=${`chev ${isOpen?'open':''}`}/>
+        </button>
+        ${isOpen && html`
+          <div style="padding:16px;border-top:1px solid #1E2D45;">
+            ${children}
+          </div>
+        `}
+      </div>
+    `;
+
+    const Inp = ({label, value, onChange, placeholder, type='text'}) => html`
+      <div>
+        ${label && html`<label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">${label}</label>`}
+        <input type=${type} value=${value} onInput=${e=>onChange(e.target.value)} placeholder=${placeholder||''}
+          class="inp" />
+      </div>
+    `;
+
+    const CheckRow = ({label, checked, onChange, children}) => html`
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px;">
+          <input type="checkbox" checked=${checked} onChange=${e=>onChange(e.target.checked)} />
+          <span style="font-size:14px;color:#cbd5e1;">${label}</span>
+        </label>
+        ${checked && html`<div style="padding-left:28px;display:flex;flex-direction:column;gap:8px;">${children}</div>`}
+      </div>
+    `;
+
+    // ═══════════════════════════════════════════════════
+    //  FASTING STATS
+    // ═══════════════════════════════════════════════════
+    const getFastStats = (t) => {
+      if(!t.fasted || !t.fastStartTime) return {endStr:null, rollover:false, walkStr:null, isFasted:false};
+
+      const [sH, sM] = t.fastStartTime.split(':').map(Number);
+      const dur = pn(t.fastHours);
+
+      if(isNaN(sH) || dur <= 0) return {endStr:null, rollover:false, walkStr:null, isFasted:false};
+
+      const totalMinutos = sH * 60 + sM + (dur * 60);
+      const finH = Math.floor(totalMinutos / 60) % 24;
+      const finM = Math.round(totalMinutos % 60);
+      const rollover = totalMinutos >= 1440;
+      const baseStr = `${String(finH).padStart(2,'0')}:${String(finM).padStart(2,'0')}`;
+      const endStr = rollover ? `${baseStr} (Mañana)` : baseStr;
+
+      // Caminata en ayuno
+      let walkStr = null, isFasted = false;
+      if(t.walked && t.walkStartTime) {
+        const [wH, wM] = t.walkStartTime.split(':').map(Number);
+        if(!isNaN(wH)) {
+          let diff = (wH * 60 + wM) - (sH * 60 + sM);
+          if(diff < 0) diff += 1440;
+          isFasted = diff <= (dur * 60);
+          walkStr = isFasted
+            ? `Caminata en ayuno (${fn(diff/60)} hs)`
+            : `Fuera del ayuno (+${fn((diff - dur*60)/60)} hs)`;
+        }
+      }
+
+      return {endStr, rollover, walkStr, isFasted};
+    };
+
+    // ── Barra de progreso proteico diario
+    const ProteinProgress = ({current}) => {
+      const goal = 160;
+      const pct  = Math.min((current / goal) * 100, 100);
+      const color = current >= 160 ? '#10B981' : current >= 120 ? '#F59E0B' : '#EF4444';
+      return html`
+        <div style="margin-top:12px;padding:12px;background:rgba(16,185,129,0.05);border-radius:8px;border:1px solid rgba(16,185,129,0.1);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Progreso Proteico</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${color};">${fn(current)} / 160g</span>
+          </div>
+          <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${color};transition:width 0.5s ease;box-shadow:0 0 8px ${color}66;"></div>
+          </div>
+          <p style="margin:6px 0 0;font-size:10px;color:#475569;">
+            ${current >= 160 ? '✅ Objetivo alcanzado' : current >= 120 ? '⚠️ Mínimo cubierto' : '🚀 Falta para el ideal'}
+          </p>
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  WATER TRACKER
+    // ═══════════════════════════════════════════════════
+    const WaterTracker = ({val, onChange, roacuttan}) => {
+      const goal  = 3500;
+      const pct   = Math.min((val/goal)*100, 100);
+      // Si Roacuttan no fue marcado, el agua se muestra en rojo como advertencia de toxicidad
+      const color = !roacuttan && val >= 1000
+        ? '#EF4444'
+        : val >= goal ? '#10B981' : val >= 2000 ? '#6366F1' : '#F59E0B';
+      const warn  = !roacuttan;
+
+      return html`
+        <div class="glass-card" style="padding:12px;border:1px solid ${warn?'rgba(239,68,68,0.3)':'var(--border)'};display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+                <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">💧 Hidratación</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${color};">${(val/1000).toFixed(1)}L / 3.5L</span>
+              </div>
+              <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
+                <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s;"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn-icon" style="background:#1E2D45;color:white;border:1px solid #1E2D45;font-size:16px;"
+                onClick=${()=>onChange(Math.max(0, val-250))}>−</button>
+              <button class="btn-icon" style="background:#6366F1;color:white;border:none;font-size:16px;"
+                onClick=${()=>onChange(val+250)}>+</button>
+            </div>
+          </div>
+          ${warn && html`
+            <p style="margin:0;font-size:10px;color:#EF4444;display:flex;align-items:center;gap:4px;">
+              ⚠ Roacuttan no marcado — hidratate bien para reducir toxicidad acumulada
+            </p>
+          `}
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  SMART CENA (Recomendador nutricional)
+    // ═══════════════════════════════════════════════════
+    const SmartCena = ({currentProt}) => {
+      const [rec, setRec] = useState(null);
+      const [open, setOpen] = useState(false);
+
+      const calculate = () => {
+        const missP = TARGETS.prot - currentProt;
+        if(missP <= 0) { setRec('ok'); return; }
+        const list = HOME_FOODS.map(f => {
+          const per100 = f.unit === 'unidad' ? f.p : f.p; // g proteína por unidad/100g
+          const qty    = f.unit === 'unidad'
+            ? Math.ceil(missP / f.p)                       // unidades necesarias
+            : Math.round(missP / (f.p / 100));             // gramos necesarios
+          const kcal   = f.unit === 'unidad'
+            ? qty * (f.p*4 + f.c*4 + f.f*9)
+            : (qty/100) * (f.p*4 + f.c*4 + f.f*9);
+          return { ...f, qty, kcal: Math.round(kcal) };
+        });
+        setRec(list);
+        setOpen(true);
+      };
+
+      return html`
+        <div class="glass-card" style="padding:12px;border-color:rgba(245,158,11,0.3);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:0.06em;">
+              💡 Asistente Nutricional
+            </span>
+            <button onClick=${calculate}
+              style="padding:5px 12px;border-radius:8px;border:none;background:#F59E0B;color:#080D1A;font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">
+              Recomendar
+            </button>
+          </div>
+          ${rec === 'ok' && html`<p style="margin:8px 0 0;font-size:13px;color:#10B981;">✅ Objetivo proteico alcanzado</p>`}
+          ${rec && Array.isArray(rec) && open && html`
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+              <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">Para cubrir ${Math.round(TARGETS.prot - currentProt)}g de proteína faltante:</p>
+              ${rec.map(f => html`
+                <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(10,15,30,0.4);padding:6px 10px;border-radius:6px;border:1px solid #1E2D45;">
+                  <span style="font-size:12px;color:#cbd5e1;">${f.name}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#F59E0B;white-space:nowrap;">
+                    ${f.qty}${f.unit==='unidad'?'u':'g'} · ${f.kcal}kcal
+                  </span>
+                </div>
+              `)}
+            </div>
+          `}
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  NOTIFICACIONES — Panel de recordatorios
+    // ═══════════════════════════════════════════════════
+    const NOTIF_KEY = 'enzo_notifs_v1'; // legado — solo para migración inicial
+    const defaultNotifs = [
+      { id:'meal1',  label:'🍽 Comida 1',         time:'12:00', enabled:false },
+      { id:'meal2',  label:'🍽 Comida 2',         time:'16:00', enabled:false },
+      { id:'meal3',  label:'🍽 Comida 3',         time:'21:00', enabled:false },
+      { id:'gym',    label:'💪 Ir al gym',        time:'18:00', enabled:false },
+      { id:'sleep',  label:'😴 Dormir',           time:'23:30', enabled:false },
+      { id:'meds',   label:'💊 Roacuttan',        time:'14:00', enabled:false },
+      { id:'meds2',  label:'💊 Medicación noche', time:'23:30', enabled:false },
+    ];
+
+    // Carga notifs: v3 namespace → legacy → defaults
+    const loadNotifsLocal = () => {
+      const v3 = lsNotifLoad(DEVICE_ID);
+      if(v3) return Array.isArray(v3) ? v3 : (v3.notifs || defaultNotifs);
+      try { const s = localStorage.getItem(NOTIF_KEY); if(s) return JSON.parse(s); } catch(e) {}
+      return defaultNotifs;
+    };
+
+    const NotifView = () => {
+      const [notifs,    setNotifs]    = useState(() => loadNotifsLocal());
+      const [perm,      setPerm]      = useState(typeof Notification!=='undefined'?Notification.permission:'denied');
+      const [syncMsg,   setSyncMsg]   = useState('');
+      const [swInfo,    setSwInfo]    = useState({ ready: false, controlling: false, authValid: false, schedCount: 0 });
+      const [timers]    = useState({});
+
+      // Obtener estado del SW al montar
+      useEffect(() => {
+        if(!('serviceWorker' in navigator)) return;
+        navigator.serviceWorker.ready.then(reg => {
+          const ctrl = navigator.serviceWorker.controller;
+          if(ctrl) {
+            const onMsg = (e) => {
+              if(e.data?.type === 'SW_DEBUG_RESPONSE') {
+                setSwInfo({
+                  ready:       true,
+                  controlling: true,
+                  authValid:   e.data.authValid || false,
+                  schedCount:  e.data.scheduledCount || 0,
+                });
+                navigator.serviceWorker.removeEventListener('message', onMsg);
+              }
+            };
+            navigator.serviceWorker.addEventListener('message', onMsg);
+            ctrl.postMessage({ type: 'SW_DEBUG_REQUEST' });
+            setTimeout(() => navigator.serviceWorker.removeEventListener('message', onMsg), 3000);
+          } else {
+            setSwInfo({ ready: true, controlling: false, authValid: false, schedCount: 0 });
+          }
+        }).catch(() => {});
+      }, []);
+
+      const persistAndSync = async (n) => {
+        setNotifs(n);
+        // 1. localStorage v3 por device_id
+        lsNotifSave(DEVICE_ID, n);
+        // 2. Sincronizar con Supabase (best-effort)
+        try {
+          const { error } = await supabase.rpc('save_notification_settings', {
+            p_device_id:     DEVICE_ID,
+            p_data:          { notifs: n },
+            p_base_revision: null
+          });
+          if(!error) setSyncMsg('✓ Guardado');
+          else       setSyncMsg('⚠ Sin sync remoto');
+        } catch(e) { setSyncMsg('⚠ Sin red'); }
+        setTimeout(() => setSyncMsg(''), 2500);
+        scheduleAll(n);
+      };
+
+      const requestPerm = async () => {
+        if(typeof Notification === 'undefined') return;
+        const p = await Notification.requestPermission();
+        setPerm(p);
+        if(p === 'granted') scheduleAll(notifs);
+      };
+
+      const scheduleAll = (list) => {
+        if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+
+        // Enviar al Service Worker (persiste aunque se cierre la pestaña)
+        if('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => {
+            if(reg.active) reg.active.postMessage({ type: 'SW_SET_SCHEDULE', notifs: list });
+          }).catch(() => {});
+        }
+
+        // Fallback setTimeout (funciona si la pestaña está abierta)
+        Object.values(timers).forEach(clearTimeout);
+        const now = new Date();
+        list.filter(n => n.enabled).forEach(n => {
+          const [h, m] = n.time.split(':').map(Number);
+          const target = new Date(now); target.setHours(h, m, 0, 0);
+          if(target <= now) target.setDate(target.getDate() + 1);
+          timers[n.id] = setTimeout(() => {
+            if(Notification.permission === 'granted')
+              new Notification('Enzo Training', { body: n.label, icon: './icon-192.png' });
+          }, target - now);
+        });
+      };
+
+      const sendTestNotif = () => {
+        if(Notification.permission !== 'granted') return;
+        if('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(reg => {
+            if(reg.active) reg.active.postMessage({ type: 'SW_TEST_NOTIFICATION' });
+          }).catch(() => {});
+        }
+      };
+
+      const toggle  = (id)   => persistAndSync(notifs.map(n => n.id===id ? { ...n, enabled:!n.enabled } : n));
+      const setTime = (id,t) => persistAndSync(notifs.map(n => n.id===id ? { ...n, time:t } : n));
+
+      const swStatusColor = swInfo.controlling ? '#10B981' : '#F59E0B';
+      const swStatusLabel = !swInfo.ready ? '—' : swInfo.controlling ? '✓ Activo' : '⚠ No controla';
+
+      return html`
+        <div class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
+          <${Card}>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">🔔 Recordatorios Diarios</p>
+              ${syncMsg && html`<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:${syncMsg.startsWith('✓')?'#10B981':'#F59E0B'};">${syncMsg}</span>`}
+            </div>
+
+            <!-- Nota por dispositivo -->
+            <div style="padding:8px 10px;border-radius:6px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);margin-bottom:12px;">
+              <p style="margin:0;font-size:11px;color:#6366F1;">📱 Estas alertas se configuran <strong>por dispositivo</strong>. Los horarios de este dispositivo no afectan a los demás.</p>
+            </div>
+
+            ${perm !== 'granted' && html`
+              <div style="padding:10px;border-radius:8px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);margin-bottom:12px;">
+                <p style="margin:0 0 8px;font-size:12px;color:#F59E0B;">Permisos de notificación requeridos</p>
+                <button onClick=${requestPerm}
+                  style="padding:8px 16px;border-radius:8px;border:none;background:#F59E0B;color:#080D1A;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;font-size:13px;">
+                  Activar notificaciones
+                </button>
+              </div>
+            `}
+
+            ${perm === 'granted' && html`
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <div class="badge" style="background:rgba(16,185,129,0.1);color:#10B981;">✓ Notificaciones activadas</div>
+                <button onClick=${sendTestNotif}
+                  style="padding:5px 10px;border-radius:6px;border:1px solid rgba(99,102,241,0.4);background:rgba(99,102,241,0.1);color:#6366F1;font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;cursor:pointer;">
+                  🔔 Probar ahora
+                </button>
+              </div>
+            `}
+
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${notifs.map(n => html`
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(10,15,30,0.5);border:1px solid ${n.enabled?'rgba(99,102,241,0.4)':'#1E2D45'};">
+                  <input type="checkbox" checked=${n.enabled} onChange=${()=>toggle(n.id)} style="width:18px;height:18px;"/>
+                  <span style="flex:1;font-size:14px;color:${n.enabled?'#e2e8f0':'#64748b'};">${n.label}</span>
+                  <input type="time" value=${n.time} onInput=${e=>setTime(n.id,e.target.value)}
+                    style="background:#0F1729;border:1px solid #1E2D45;border-radius:6px;padding:4px 8px;font-size:13px;color:${n.enabled?'white':'#64748b'};font-family:'JetBrains Mono',monospace;"/>
+                </div>
+              `)}
+            </div>
+          <//>
+
+          <!-- Estado del SW y notificaciones -->
+          <${Card}>
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#475569;">Estado de notificaciones</p>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;font-family:'JetBrains Mono',monospace;">
+              ${[
+                ['Permiso',    perm === 'granted' ? '✓ granted' : perm],
+                ['SW',         swStatusLabel],
+                ['Auth en SW', swInfo.authValid ? '✓ Sí (mark_done funciona offline)' : '✗ No (necesita app abierta)'],
+                ['Programadas', swInfo.schedCount + ' alertas activas'],
+                ['⚠ Sin Web Push', 'Las notificaciones requieren pestaña/app abierta o SW activo. No se garantiza entrega si el navegador suspende el SW.'],
+              ].map(([k,v]) => html`
+                <div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid rgba(30,45,69,0.5);">
+                  <span style="color:#64748b;flex-shrink:0;">${k}</span>
+                  <span style="color:${k==='SW'?swStatusColor:k==='⚠ Sin Web Push'?'#F59E0B':'#94a3b8'};text-align:right;">${v}</span>
+                </div>
+              `)}
+            </div>
+          <//>
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  EDITOR DE RUTINAS
+    // ═══════════════════════════════════════════════════
+    const RoutineEditor = ({routines, onSave}) => {
+      const [rts, setRts] = useState(routines);
+      const [selId, setSelId] = useState(Object.keys(routines)[0]||'1');
+      const [dirty, setDirty] = useState(false);
+
+      const upd = (fn) => { setRts(r=>{ const n=fn(r); setDirty(true); return n; }); };
+
+      const updateExName = (ei, val) => upd(r=>({...r,[selId]:{...r[selId],exercises:r[selId].exercises.map((ex,i)=>i===ei?{...ex,name:val}:ex)}}));
+      // Parsear "3 min", "1,5 min", "90 seg" → segundos
+      const parseRestStr = (str) => {
+        const s = String(str).trim().toLowerCase();
+        const numMatch = s.match(/[\d,\.]+/);
+        if(!numMatch) return null;
+        const num = pn(numMatch[0]);
+        if(s.includes('seg') || s.includes('s)')) return Math.round(num);
+        return Math.round(num * 60); // minutos por defecto
+      };
+
+      const updateSet = (ei,si,field,val) => upd(r=>{
+        const exercises = r[selId].exercises.map((ex,i)=>i===ei ? {
+          ...ex,
+          sets: ex.sets.map((s,j)=>j===si ? (() => {
+            const updated = {...s, [field]: val};
+            // Bug 9 fix: sincronizar restSecs cuando cambia restStr
+            if(field === 'restStr') {
+              const secs = parseRestStr(val);
+              if(secs !== null) updated.restSecs = secs;
+            }
+            // Y si cambia restSecs directamente, actualizar restStr
+            if(field === 'restSecs') {
+              const secs = parseInt(val);
+              if(!isNaN(secs)) updated.restStr = secs >= 60
+                ? `${(secs/60).toFixed(secs%60===0?0:1).replace('.',',')} min`
+                : `${secs} seg`;
+            }
+            return updated;
+          })() : s)
+        } : ex);
+        return {...r, [selId]: {...r[selId], exercises}};
+      });
+      const addSet       = (ei) => upd(r=>({...r,[selId]:{...r[selId],exercises:r[selId].exercises.map((ex,i)=>i===ei?{...ex,sets:[...ex.sets,{reps:'10',weight:'0,0',rir:'2',restSecs:90,restStr:'1,5 min'}]}:ex)}}));
+      const removeSet    = (ei,si) => upd(r=>({...r,[selId]:{...r[selId],exercises:r[selId].exercises.map((ex,i)=>i===ei?{...ex,sets:ex.sets.filter((_,j)=>j!==si)}:ex)}}));
+      const addExercise  = () => upd(r=>({...r,[selId]:{...r[selId],exercises:[...r[selId].exercises,{name:'Nuevo ejercicio',sets:[{reps:'10',weight:'0,0',rir:'2',restSecs:90,restStr:'1,5 min'}]}]}}));
+      const removeExercise=(ei)=> upd(r=>({...r,[selId]:{...r[selId],exercises:r[selId].exercises.filter((_,i)=>i!==ei)}}));
+
+      const handleSave = () => { onSave(rts); setDirty(false); };
+
+      const routine = rts[selId];
+
+      return html`
+        <div class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
+          <${Card}>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">✏️ Editor de Rutinas</p>
+              ${dirty && html`
+                <button onClick=${handleSave}
+                  style="padding:7px 16px;border-radius:8px;border:none;background:#10B981;color:#080D1A;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:13px;cursor:pointer;letter-spacing:0.05em;">
+                  GUARDAR CAMBIOS
+                </button>
+              `}
+            </div>
+
+            <!-- Selector de rutina -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+              ${Object.values(rts).map(r => html`
+                <button onClick=${()=>setSelId(r.id)}
+                  style=${`padding:6px 14px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;cursor:pointer;border:1px solid ${selId===r.id?'#10B981':'#1E2D45'};background:${selId===r.id?'rgba(16,185,129,0.15)':'transparent'};color:${selId===r.id?'#10B981':'#64748b'};`}>
+                  ${r.name}
+                </button>
+              `)}
+            </div>
+
+            <!-- Lista de ejercicios -->
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              ${routine?.exercises.map((ex, ei) => html`
+                <div style="padding:10px;border-radius:8px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#6366F1;flex-shrink:0;">${ei+1}.</span>
+                    <input value=${ex.name} onInput=${e=>updateExName(ei,e.target.value)}
+                      style="flex:1;background:#0F1729;border:1px solid #2A3F5F;border-radius:6px;padding:6px 10px;font-size:13px;color:white;font-family:'Barlow',sans-serif;"/>
+                    <button onClick=${()=>removeExercise(ei)}
+                      style="width:28px;height:28px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#EF4444;font-size:16px;cursor:pointer;flex-shrink:0;">×</button>
+                  </div>
+                  <!-- Sets -->
+                  <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">
+                    <div style="display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 28px;gap:4px;padding:0 2px;">
+                      ${['#','Reps','Kg','RIR','Pausa',''].map(h=>html`<span style="font-size:9px;text-transform:uppercase;color:#475569;text-align:center;">${h}</span>`)}
+                    </div>
+                    ${ex.sets.map((s,si) => html`
+                      <div style="display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 28px;gap:4px;align-items:center;">
+                        <span style="font-size:10px;color:#475569;text-align:center;font-family:'JetBrains Mono',monospace;">${si+1}</span>
+                        ${['reps','weight','rir','restStr'].map(f => html`
+                          <input value=${s[f]} onInput=${e=>updateSet(ei,si,f,e.target.value)}
+                            style="background:#0a0f1e;border:1px solid #1E2D45;border-radius:5px;padding:4px 6px;font-size:11px;color:white;text-align:center;font-family:'JetBrains Mono',monospace;width:100%;"/>
+                        `)}
+                        <button onClick=${()=>removeSet(ei,si)}
+                          style="width:28px;height:24px;border-radius:5px;border:none;background:rgba(239,68,68,0.1);color:#EF4444;font-size:14px;cursor:pointer;">×</button>
+                      </div>
+                    `)}
+                  </div>
+                  <button onClick=${()=>addSet(ei)}
+                    style="width:100%;padding:5px;border-radius:6px;border:1px dashed #1E2D45;background:transparent;color:#475569;font-size:11px;cursor:pointer;">
+                    + Agregar serie
+                  </button>
+                </div>
+              `)}
+            </div>
+            <button onClick=${addExercise}
+              style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px dashed rgba(99,102,241,0.4);background:transparent;color:#6366F1;font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+              + AGREGAR EJERCICIO
+            </button>
+          <//>
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  PANEL HÁBITOS
+    // ═══════════════════════════════════════════════════
+    const getYesterdayFast = (allWeeks, currentWk, activeDay) => {
+      try {
+        const todayStr = getDayDate(currentWk, parseInt(activeDay));
+        const todayDt = new Date(todayStr + 'T12:00:00');
+        const prevDt = new Date(todayDt); prevDt.setDate(todayDt.getDate() - 1);
+
+        const prevWk = getWeekKey(prevDt);
+        const prevDayIdx = prevDt.getDay();
+        const prevTracker = allWeeks[prevWk]?.tracker?.[prevDayIdx];
+
+        if(prevTracker && prevTracker.fasted && prevTracker.fastStartTime && prevTracker.fastHours) {
+          const [sH, sM] = prevTracker.fastStartTime.split(':').map(Number);
+          const dur = pn(prevTracker.fastHours);
+          if(!isNaN(sH) && dur > 0) {
+            const startDateTime = new Date(prevDt);
+            startDateTime.setHours(sH, sM, 0, 0);
+            const endDateTime = new Date(startDateTime.getTime() + (dur * 3600000));
+
+            const todayStart = new Date(todayDt); todayStart.setHours(0,0,0,0);
+            if(endDateTime > todayStart) {
+               const finH = String(endDateTime.getHours()).padStart(2,'0');
+               const finM = String(endDateTime.getMinutes()).padStart(2,'0');
+               return `⏳ Ayuno de ayer en curso: finaliza a las ${finH}:${finM}`;
+            }
+          }
+        }
+      } catch(e) {}
+      return null;
+    };
+
+    const HabitsPanel = ({tracker:t, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem}) => {
+      const [open,setOpen] = useState(true);
+      const [aiText,    setAiText]    = useState(['','','']);
+      const [aiLoading, setAiLoading] = useState([false,false,false]);
+      const [aiError,   setAiError]   = useState(['','','']);
+
+      const fs = getFastStats(t);
+
+      // Totales diarios calculados desde items
+      const macros = dayTotals(t.meals);
+
+      // analyzeMeal: llama a la IA y agrega el resultado como item a la leyenda
+      const analyzeMeal = async (mealIndex) => {
+        const text = aiText[mealIndex].trim();
+        if(!text) return;
+
+        setAiLoading(prev => { const n=[...prev]; n[mealIndex]=true; return n; });
+        setAiError(prev   => { const n=[...prev]; n[mealIndex]='';   return n; });
+
+        try {
+          const res = await fetch('/.netlify/functions/get-macros', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ meal: text })
+          });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+          onAddItem(mealIndex, {
+            name: data.name || text,
+            qty:  data.qty  || '1 porción',
+            cals: Math.round(parseFloat(data.cals)||0),
+            prot: Math.round(parseFloat(data.prot)||0),
+            carb: Math.round(parseFloat(data.carb)||0),
+            fat:  Math.round(parseFloat(data.fat) ||0),
+            nota: data.nota || ''
+          });
+
+          setAiText(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
+        } catch(e) {
+          console.error('[IA]', e);
+          setAiError(prev => { const n=[...prev]; n[mealIndex]=e.message||'Error'; return n; });
+        } finally {
+          setAiLoading(prev => { const n=[...prev]; n[mealIndex]=false; return n; });
+        }
+      };
+
+      return html`
+        <${SectionAccordion} icon=${html`<${IActivity} s=${18} c=""/>`} title="Parámetros Diarios" isOpen=${open} onToggle=${()=>setOpen(!open)}>
+          <div style="display:grid;gap:12px;grid-template-columns:1fr;"> 
+
+            <!-- NUTRICIÓN & CARDIO -->
+            <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
+              <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">Nutrición & Cardio</p>
+
+              ${yesterdayFastMsg && html`
+                <div style="padding:8px 10px;border-radius:6px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);margin-bottom:8px;">
+                  <p style="margin:0;font-size:12px;color:#818CF8;font-family:'JetBrains Mono',monospace;">${yesterdayFastMsg}</p>
+                </div>
+              `}
+              <${CheckRow} label="Ayuno realizado" checked=${t.fasted} onChange=${v=>onChange('fasted',v)}>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <${Inp} label="Inicio (HH:MM)" type="time" value=${t.fastStartTime} onChange=${v=>onChange('fastStartTime',v)}/>
+                  <${Inp} label="Duración (hs)" value=${t.fastHours} onChange=${v=>onChange('fastHours',v)} placeholder="Ej: 16"/>
+                </div>
+                ${fs.endStr && html`<span class="badge" style="background:rgba(16,185,129,0.1);color:#10B981;">⏱ Finaliza: ${fs.endStr}</span>`}
+              <//>
+
+              <${CheckRow} label="☕ Mate / Café" checked=${t.mateOrCoffee} onChange=${v=>onChange('mateOrCoffee',v)}>
+                <${Inp} label="Hora" type="time" value=${t.mateOrCoffeeTime} onChange=${v=>onChange('mateOrCoffeeTime',v)}/>
+              <//>
+
+              <${CheckRow} label="🚶 Caminata" checked=${t.walked} onChange=${v=>onChange('walked',v)}>
+                <${Inp} label="Pasos" value=${t.steps} onChange=${v=>onChange('steps',v)} placeholder="Ej: 10.000"/>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <${Inp} label="Inicio" type="time" value=${t.walkStartTime} onChange=${v=>onChange('walkStartTime',v)}/>
+                  <${Inp} label="Fin" type="time" value=${t.walkEndTime} onChange=${v=>onChange('walkEndTime',v)}/>
+                </div>
+                ${fs.walkStr && html`<span class="badge" style=${`background:${fs.isFasted?'rgba(16,185,129,0.1)':'rgba(245,158,11,0.1)'};color:${fs.isFasted?'#10B981':'#F59E0B'};`}>${fs.walkStr}</span>`}
+              <//>
+            </div>
+
+            <!-- ALIMENTACIÓN -->
+            <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
+              <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">Alimentación</p>
+
+              ${[0,1,2].map(i => {
+                const m        = t.meals[i] || { items:[], firstBite:'', lastBite:'' };
+                const items    = m.items || [];
+                const mTotals  = mealTotals(m);
+                const loading  = aiLoading[i];
+                const errMsg   = aiError[i];
+
+                return html`
+                  <div style="padding:10px;border-radius:8px;background:rgba(22,32,53,0.6);border:1px solid #1E2D45;">
+                    <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#6366F1;">Comida ${i+1}</p>
+
+                    <!-- Input IA -->
+                    <div style="display:flex;gap:6px;margin-bottom:8px;">
+                      <input
+                        type="text"
+                        value=${aiText[i]}
+                        onInput=${e=>{ const n=[...aiText]; n[i]=e.target.value; setAiText(n); }}
+                        onKeyDown=${e=>{ if(e.key==='Enter'&&!loading) analyzeMeal(i); }}
+                        placeholder="Sumar alimento a la leyenda..."
+                        style="flex:1;background:#0a0f1e;border:1px solid #2A3F5F;border-radius:8px;padding:7px 10px;font-size:12px;color:#e2e8f0;font-family:'Barlow',sans-serif;"
+                        disabled=${loading}
+                      />
+                      <button
+                        onClick=${()=>analyzeMeal(i)}
+                        disabled=${loading||!aiText[i].trim()}
+                        title="Analizar con IA y sumar"
+                        style=${`display:flex;align-items:center;gap:4px;padding:7px 12px;border-radius:8px;border:1px solid ${loading?'rgba(99,102,241,0.4)':aiText[i].trim()?'rgba(99,102,241,0.3)':'#1E2D45'};cursor:${loading||!aiText[i].trim()?'not-allowed':'pointer'};background:${loading?'rgba(99,102,241,0.15)':aiText[i].trim()?'rgba(99,102,241,0.25)':'rgba(30,45,69,0.5)'};color:${loading?'#818CF8':aiText[i].trim()?'#A5B4FC':'#374151'};font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;transition:all 0.15s;`}
+                      >
+                        ${loading
+                          ? html`<span class="spin" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(129,140,248,0.3);border-top-color:#818CF8;border-radius:50%;"></span>`
+                          : html`<span>✨</span>`
+                        }
+                        <span>${loading?'...':'IA'}</span>
+                      </button>
+                    </div>
+
+                    <!-- Error IA -->
+                    ${errMsg && html`<p style="margin:0 0 6px;font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">❌ ${errMsg}</p>`}
+
+                    <!-- LEYENDA de alimentos -->
+                    ${items.length > 0 && html`
+                      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">
+                        ${items.map((item, idx) => html`
+                          <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(10,15,30,0.4);padding:8px 12px;border-radius:8px;border:1px solid #1E2D45;">
+                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                              <span style="font-size:12px;font-weight:700;color:#10B981;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${item.qty||'1 porción'}</span>
+                              <span style="font-size:12px;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:10px;margin-left:8px;">
+                              <span style="font-size:11px;font-weight:700;color:#6366F1;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${fn(item.prot)}g P</span>
+                              <button onClick=${()=>onRemoveItem(i, idx)} style="color:#EF4444;background:none;border:none;font-size:20px;cursor:pointer;padding:0;line-height:1;">×</button>
+                            </div>
+                          </div>
+                          ${item.nota && html`<p style="margin:1px 0 3px 8px;font-size:9px;color:#F59E0B;">⚠ ${item.nota}</p>`}
+                        `)}
+                      </div>
+                    `}
+
+                    <!-- TOTALES ACUMULADOS DE LA COMIDA -->
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px;">
+                      ${[['cals','Kcal',mTotals.cals],['prot','P',mTotals.prot],['carb','C',mTotals.carb],['fat','G',mTotals.fat]].map(([k,l,v]) => html`
+                        <div style="text-align:center;background:#0F1729;padding:5px 4px;border-radius:6px;border:1px solid #1E2D45;">
+                          <p style="margin:0;font-size:8px;text-transform:uppercase;color:#64748b;">${l}</p>
+                          <p style="margin:0;font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;">${fn(v)}${k!=='cals'?'g':''}</p>
+                        </div>
+                      `)}
+                    </div>
+
+                    <!-- Horarios bocados -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                      ${[['firstBite','1er bocado'],['lastBite','Último']].map(([k,l]) => html`
+                        <div style="display:flex;align-items:center;justify-content:space-between;background:#0F1729;border:1px solid #1E2D45;border-radius:6px;padding:4px 8px;">
+                          <span style="font-size:9px;color:#64748b;">${l}</span>
+                          <input type="time" value=${m[k]||''} onInput=${e=>onMeal(i,k,e.target.value)} class="inp-sm" style="border:none;background:transparent;width:62px;padding:0;"/>
+                        </div>
+                      `)}
+                    </div>
+                  </div>
+                `;
+              })}
+
+              <!-- Total diario -->
+              <div style="padding-top:10px;border-top:1px solid #1E2D45;">
+                <p style="margin:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Total del día</p>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;">
+                  ${[['cals','Kcal','#F59E0B'],['prot','Prot','#10B981'],['carb','Carb','#6366F1'],['fat','Grasa','#EF4444']].map(([k,l,c]) => html`
+                    <div style="background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:6px;text-align:center;">
+                      <span style="display:block;font-size:9px;text-transform:uppercase;color:${c};">${l}</span>
+                      <span style="font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;">${fn(macros[k])}${k!=='cals'?'g':''}</span>
+                    </div>
+                  `)}
+                </div>
+                <${ProteinProgress} current=${macros.prot}/>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px;">
+              <!-- Suplementos -->
+              <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:8px;">
+                <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#EF4444;">Suplementación</p>
+                <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">Con almuerzo</p>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                  <input type="checkbox" checked=${t.meds.roacuttan} onChange=${e=>onMed('roacuttan',e.target.checked)}/>
+                  <span style="font-size:14px;color:#cbd5e1;">Roacuttan</span>
+                </label>
+                <p style="margin:4px 0 0;font-size:10px;text-transform:uppercase;color:#64748b;">Con cena</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                  ${[['finasteride','Finasteride'],['minoxidil','Minoxidil'],['creatine','Creatina'],['magnesium','Magnesio']].map(([k,l]) => html`
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                      <input type="checkbox" style="width:15px;height:15px;" checked=${t.meds[k]} onChange=${e=>onMed(k,e.target.checked)}/>
+                      <span style="font-size:13px;color:#cbd5e1;">${l}</span>
+                    </label>
+                  `)}
+                </div>
+              </div>
+              <!-- Sueño -->
+              <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
+                <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#6366F1;">Descanso</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <${Inp} label="Dormí (hs)" value=${t.sleepHours} onChange=${v=>onChange('sleepHours',v)} placeholder="Ej: 7,5"/>
+                  <${Inp} label="Despertares" value=${t.wakeups} onChange=${v=>onChange('wakeups',v)} placeholder="Veces"/>
+                </div>
+                <div>
+                  <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Calidad</label>
+                  <select class="inp" value=${t.sleepQuality} onChange=${e=>onChange('sleepQuality',e.target.value)}>
+                    <option value="">Seleccionar...</option>
+                    ${['Excelente','Bien','Regular','Mal'].map(o => html`<option>${o}</option>`)}
+                  </select>
+                </div>
+                <${CheckRow} label="¿Dormí siesta?" checked=${t.napped} onChange=${v=>onChange('napped',v)}>
+                  <${Inp} label="Horas" value=${t.napHours} onChange=${v=>onChange('napHours',v)} placeholder="Ej: 1,5"/>
+                <//>
+              </div>
+            </div>
+
+          </div>
+        <//>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  PANEL GYM
+    // ═══════════════════════════════════════════════════
+    const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload}) => {
+      const [open,setOpen] = useState(true);
+      if(!session||session.length===0) return null;
+      const safeT = { gymStartTime:'', gymEndTime:'', ...t };
+
+      // Detecta ejercicios donde se superaron las reps objetivo en al menos 1 serie
+      const overloadCandidates = session.filter(ex =>
+        ex.sets.some(s => s.completed && parseInt(s.reps) > parseInt(s.idealReps||s.reps))
+      );
+
+      return html`
+        <${SectionAccordion} icon=${html`<${IDumb} s=${18}/>`} title="Rutina Gimnasio" isOpen=${open} onToggle=${()=>setOpen(!open)}>
+          <!-- Horarios sesión -->
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;margin-bottom:12px;">
+            <${IClock} s=${16} c=""/>
+            <span style="font-size:13px;color:#94a3b8;">Sesión:</span>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              ${[['gymStartTime','Inicio'],['gymEndTime','Fin']].map(([k,l]) => html`
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <label style="font-size:10px;text-transform:uppercase;color:#64748b;">${l}</label>
+                  <input type="time" value=${safeT[k]||''} onInput=${e=>onHabit(k,e.target.value)} class="inp-sm"/>
+                </div>
+              `)}
+            </div>
+          </div>
+
+          <!-- Ejercicios -->
+          ${session.map((ex,ei) => html`
+            <div style="border-radius:10px;overflow:hidden;border:1px solid #1E2D45;margin-bottom:10px;">
+              <div style="padding:8px 12px;background:rgba(22,32,53,0.7);border-left:3px solid var(--green);">
+                <p style="margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:white;letter-spacing:0.04em;">${ei+1}. ${ex.name}</p>
+                ${muscleMap[ex.name] && html`
+                  <p style="margin:2px 0 0;font-size:10px;color:#475569;">
+                    ${muscleMap[ex.name].direct.join(', ')}
+                    ${muscleMap[ex.name].indirect.length>0 ? ' · '+muscleMap[ex.name].indirect.join(', ') : ''}
+                  </p>
+                `}
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="text-align:center;width:28px;">#</th>
+                      <th>Reps</th><th>Peso</th><th>RIR</th><th>Pausa</th>
+                      <th style="text-align:center;">✓</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${ex.sets.map((set,si) => html`
+                      <tr class=${set.completed?'set-row-done':''}>
+                        <td style="text-align:center;font-size:11px;font-family:'JetBrains Mono',monospace;color:#475569;">${si+1}</td>
+                        <td><input class="inp-xs" style="width:52px;" value=${set.reps} onInput=${e=>onInput(ei,si,'reps',e.target.value)}/></td>
+                        <td><input class="inp-xs" style="width:60px;" value=${set.weight} onInput=${e=>onInput(ei,si,'weight',e.target.value)}/></td>
+                        <td><span class=${`tag-rir ${set.rir.includes('Fallo')?'fallo':''}`}>${set.rir}</span></td>
+                        <td><span style="font-size:11px;color:#64748b;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${set.restStr}</span></td>
+                        <td style="text-align:center;">
+                          <button class="check-btn" onClick=${()=>onSetComplete(ei,si,set.restSecs)}
+                            style=${set.completed?'background:#10B981;box-shadow:0 0 10px rgba(16,185,129,0.4);':'background:#162035;border:1px solid #1E2D45;'}>
+                            <${ICheck} s=${14} c=""/>
+                          </button>
+                        </td>
+                      </tr>
+                      ${set.completed && html`
+                        <tr style="background:rgba(10,15,30,0.3);">
+                          <td colspan="6" style="padding:6px 8px;">
+                            <div style="display:flex;justify-content:space-between;font-size:9px;color:#64748b;margin-bottom:3px;">
+                              <span>RPE: ${set.rpe||7}</span><span>Esfuerzo percibido</span>
+                            </div>
+                            <input type="range" min="1" max="10" class="rpe-slider"
+                              value=${set.rpe||7}
+                              onInput=${e=>onInput(ei,si,'rpe',parseInt(e.target.value))}/>
+                            ${(parseInt(set.reps) > parseInt(set.idealReps||set.reps)) && html`
+                              <p style="margin:4px 0 0;font-size:10px;color:#10B981;">🚀 Sugerencia: +2,5kg la próxima semana</p>
+                            `}
+                          </td>
+                        </tr>
+                      `}
+                    `)}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `)}
+
+          <!-- Sobrecarga progresiva -->
+          ${overloadCandidates.length > 0 && html`
+            <div style="padding:10px 12px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);margin-bottom:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div>
+                  <p style="margin:0;font-size:12px;font-weight:700;color:#10B981;">🚀 Sobrecarga Disponible</p>
+                  <p style="margin:2px 0 0;font-size:10px;color:#64748b;">
+                    ${overloadCandidates.map(ex=>ex.name.split(' ')[0]).join(', ')} — superaste las reps objetivo
+                  </p>
+                </div>
+                <button onClick=${()=>onApplyOverload&&onApplyOverload(overloadCandidates)}
+                  style="flex-shrink:0;padding:7px 14px;border-radius:8px;border:none;background:#10B981;color:#080D1A;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:12px;cursor:pointer;letter-spacing:0.05em;white-space:nowrap;">
+                  +2,5kg aplicar
+                </button>
+              </div>
+            </div>
+          `}
+
+          <!-- Notas del entrenamiento -->
+          <textarea
+            placeholder="Notas de la sesión (sensaciones, dolores, PRs...)"
+            value=${t.gymNotes||''}
+            onInput=${e=>onHabit('gymNotes',e.target.value)}
+            style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:70px;margin-top:4px;"></textarea>
+        <//>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  SEMANA RESUMEN
+    // ═══════════════════════════════════════════════════
+    const WeekSummary = ({weekData}) => {
+      const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } = getRC();
+      const sessions = weekData?.sessions || {};
+      const tracker  = weekData?.tracker  || {};
+
+      // ── Métricas base
+      const totalSteps = Object.values(tracker).reduce((a,d)=>a+(d?.walked&&d?.steps?pn(d.steps):0),0);
+      const totalWater = Object.values(tracker).reduce((a,d)=>a+(d?.water||0),0);
+
+      const macByDay = DAYS.map(d=>{
+        const t=tracker[d.key]||newDay();
+        const tot = dayTotals(t.meals);
+        return{name:d.abbr, cals:tot.cals, prot:tot.prot, carb:tot.carb, fat:tot.fat};
+      });
+      const wm = macByDay.reduce((a,d)=>({cals:a.cals+d.cals,prot:a.prot+d.prot,carb:a.carb+d.carb,fat:a.fat+d.fat}),{cals:0,prot:0,carb:0,fat:0});
+
+      // ── Sueño
+      const sleepDays = Object.values(tracker).filter(d=>d?.sleepHours&&pn(d.sleepHours)>0);
+      const sleepAvg  = sleepDays.length ? (sleepDays.reduce((a,d)=>a+pn(d.sleepHours),0)/sleepDays.length) : 0;
+      const sleepColor = sleepAvg>=8?'#10B981':sleepAvg>=7?'#6366F1':sleepAvg>=6?'#F59E0B':'#EF4444';
+
+      // ── Suplementos — % de adherencia (días tomados / 7)
+      const medNames = ['roacuttan','finasteride','minoxidil','creatine','magnesium'];
+      const medAdherence = medNames.map(m=>({
+        name: m==='creatine'?'Creatina':m==='magnesium'?'Magnesio':m.charAt(0).toUpperCase()+m.slice(1),
+        pct: Math.round(Object.values(tracker).filter(d=>d?.meds?.[m]).length / 7 * 100)
+      }));
+
+      // ── Días de entrenamiento
+      const trainingDays = Object.values(weekData?.dayMapping||{}).filter(v=>v!=='').length;
+
+      // ── Volumen muscular
+      const vol = {}; MUSCLES.forEach(m=>vol[m]={direct:0,indirect:0});
+      Object.values(sessions).forEach(s=>s&&s.forEach(ex=>{const done=ex.sets.filter(s=>s.completed).length;if(done>0&&muscleMap[ex.name]){muscleMap[ex.name].direct.forEach(m=>{if(vol[m])vol[m].direct+=done;});muscleMap[ex.name].indirect.forEach(m=>{if(vol[m])vol[m].indirect+=done;});}}));
+
+      const tooltipStyle = {background:'#0F1729',border:'1px solid #1E2D45',borderRadius:'8px',fontFamily:'JetBrains Mono,monospace',fontSize:'11px'};
+
+      // ── Macros Elásticos: carbos objetivo se ajusta según la grasa real consumida
+      // C_objetivo = (2000 - 660 - (G_real × 9)) / 4   |  Proteína fija: 165g = 660 kcal
+      // Bug 10 fix: usar grasa promedio diaria (no el total semanal) en fórmula diaria
+      const fatDailyAvg   = wm.fat / 7;
+      const carbsTarget     = Math.max(0, Math.round((TARGETS.kcal - (TARGETS.prot * 4) - (fatDailyAvg * 9)) / 4));
+      const carbsTargetWeekly = carbsTarget * 7;
+
+      // ── Adherencia a macros con carbos elásticos
+      const macroAdh = {
+        prot: Math.min(100, Math.round(wm.prot  / (TARGETS.prot*7)      * 100)),
+        carb: Math.min(100, Math.round(wm.carb  / (carbsTargetWeekly||1) * 100)),
+        fat:  Math.min(100, Math.round(wm.fat   / (TARGETS.fat*7)        * 100)),
+        kcal: Math.min(100, Math.round(wm.cals  / (TARGETS.kcal*7)       * 100)),
+      };
+
+      return html`
+        <div class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
+
+          <!-- RESUMEN RÁPIDO -->
+          <${Card}>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">📋 Resumen Semanal</p>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              ${[
+                {icon:'💪',label:'Días gym',value:trainingDays,unit:'/7',color:'#6366F1'},
+                {icon:'🚶',label:'Pasos',value:fn(totalSteps),unit:'',color:'#10B981'},
+                {icon:'💧',label:'Agua',value:(totalWater/1000).toFixed(1),unit:'L',color:'#38BDF8'},
+              ].map(({icon,label,value,unit,color})=>html`
+                <div style="background:rgba(10,15,30,0.6);border:1px solid #1E2D45;border-radius:10px;padding:10px;text-align:center;">
+                  <p style="margin:0 0 2px;font-size:16px;">${icon}</p>
+                  <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">${label}</p>
+                  <p style="margin:0;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${color};">${value}${unit}</p>
+                </div>
+              `)}
+            </div>
+          <//>
+
+          <!-- SUEÑO -->
+          <${Card}>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#6366F1;">😴 Calidad de Sueño</p>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+              <div style="flex:1;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                  <span style="font-size:11px;color:#64748b;">Promedio semanal</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${sleepColor};">${sleepAvg.toFixed(1)} hs</span>
+                </div>
+                <div style="width:100%;height:8px;background:#1E2D45;border-radius:4px;overflow:hidden;">
+                  <div style="width:${Math.min(sleepAvg/9*100,100)}%;height:100%;background:${sleepColor};border-radius:4px;transition:width 0.5s;"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+              ${DAYS.map(d=>{
+                const t=tracker[d.key];
+                const h=t?.sleepHours?pn(t.sleepHours):0;
+                const c=h>=8?'#10B981':h>=7?'#6366F1':h>=6?'#F59E0B':h>0?'#EF4444':'#1E2D45';
+                return html`
+                  <div style="text-align:center;">
+                    <div style="height:32px;background:${c};border-radius:4px;opacity:${h>0?1:0.3};display:flex;align-items:center;justify-content:center;">
+                      <span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:${h>0?'#080D1A':'#374151'};">${h>0?h.toFixed(0):''}</span>
+                    </div>
+                    <span style="font-size:9px;color:#475569;">${d.abbr}</span>
+                  </div>
+                `;
+              })}
+            </div>
+          <//>
+
+          <!-- ADHERENCIA MACROS -->
+          <${Card}>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">🎯 Adherencia Nutricional</p>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+              ${[['cals','Kcal','#F59E0B'],['prot','Prot','#10B981'],['carb','Carb','#6366F1'],['fat','Grasa','#EF4444']].map(([k,l,c]) => html`
+                <div style="background:rgba(10,15,30,0.6);border:1px solid ${c}33;border-radius:10px;padding:8px;text-align:center;">
+                  <p style="margin:0 0 2px;font-size:10px;text-transform:uppercase;color:${c};">${l}</p>
+                  <p style="margin:0;font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;">${fn(wm[k])}${k!=='cals'?'g':''}</p>
+                  <p style="margin:1px 0 0;font-size:9px;color:#475569;">
+                    ${k==='carb' ? `obj: ${fn(carbsTarget)}g/día` : k==='cals' ? `obj: ${fn(TARGETS.kcal)}` : k==='prot' ? `obj: ${TARGETS.prot}g` : `obj: ${TARGETS.fat}g`}
+                  </p>
+                  <p style="margin:1px 0 0;font-size:10px;color:${macroAdh[k]>=90?'#10B981':macroAdh[k]>=70?'#F59E0B':'#EF4444'};">${macroAdh[k]}%</p>
+                </div>
+              `)}
+            </div>
+            ${BarChart && html`
+              <div style="height:130px;">
+                <${ResponsiveContainer} width="100%" height="100%">
+                  <${BarChart} data=${macByDay} margin=${{top:0,right:0,left:-20,bottom:0}}>
+                    <${CartesianGrid} strokeDasharray="3 3" stroke="#1E2D45"/>
+                    <${XAxis} dataKey="name" tick=${{fill:'#64748b',fontSize:10}} axisLine=${false} tickLine=${false}/>
+                    <${YAxis} tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false}/>
+                    <${Tooltip} contentStyle=${tooltipStyle}/>
+                    <${Bar} dataKey="prot" name="Prot (g)" stackId="a" fill="#10B981"/>
+                    <${Bar} dataKey="carb" name="Carb (g)" stackId="a" fill="#6366F1"/>
+                    <${Bar} dataKey="fat" name="Grasa (g)" stackId="a" fill="#EF4444" radius=${[4,4,0,0]}/>
+                  <//>
+                <//>
+              </div>
+            `}
+          <//>
+
+          <!-- SUPLEMENTOS -->
+          <${Card}>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#EF4444;">💊 Adherencia Suplementos</p>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${medAdherence.map(({name,pct}) => html`
+                <div>
+                  <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                    <span style="font-size:12px;color:#cbd5e1;">${name}</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${pct>=85?'#10B981':pct>=50?'#F59E0B':'#EF4444'};">${pct}%</span>
+                  </div>
+                  <div style="width:100%;height:5px;background:#1E2D45;border-radius:3px;overflow:hidden;">
+                    <div style="width:${pct}%;height:100%;background:${pct>=85?'#10B981':pct>=50?'#F59E0B':'#EF4444'};border-radius:3px;transition:width 0.5s;"></div>
+                  </div>
+                </div>
+              `)}
+            </div>
+          <//>
+
+          <!-- VOLUMEN MUSCULAR con zonas MEV/MAV/MRV -->
+          <${Card}>
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#6366F1;display:flex;align-items:center;gap:6px;">
+              <${ITarget} s=${14}/>Series Efectivas — Zonas de Volumen
+            </p>
+            <div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+              ${[['MEV','mín','#EF4444',4],['MAV','óptimo','#10B981',10],['MRV','máx','#F59E0B',20]].map(([z,l,c,v])=>html`
+                <div style="display:flex;align-items:center;gap:4px;">
+                  <div style="width:16px;height:2px;background:${c};border-radius:1px;"></div>
+                  <span style="font-size:10px;color:#64748b;">${z} ${l} (~${v})</span>
+                </div>
+              `)}
+            </div>
+            ${BarChart && html`
+              <div style="height:220px;">
+                <${ResponsiveContainer} width="100%" height="100%">
+                  <${BarChart}
+                    data=${Object.entries(vol).map(([m,v])=>({name:m.slice(0,4), dir:v.direct, ind:v.indirect}))}
+                    margin=${{top:5,right:5,left:-25,bottom:0}}>
+                    <${CartesianGrid} strokeDasharray="3 3" stroke="#1E2D45" vertical=${false}/>
+                    <${XAxis} dataKey="name" tick=${{fill:'#64748b',fontSize:8}} axisLine=${false} tickLine=${false}/>
+                    <${YAxis} tick=${{fill:'#64748b',fontSize:8}} axisLine=${false} tickLine=${false} domain=${[0,'auto']}/>
+                    <${Tooltip} contentStyle=${tooltipStyle}
+                      formatter=${(v,n)=>[v+' series', n==='dir'?'Directas':'Indirectas']}/>
+                    <${Bar} dataKey="dir" name="dir" stackId="a" fill="#10B981" radius=${[0,0,0,0]}/>
+                    <${Bar} dataKey="ind" name="ind" stackId="a" fill="#6366F1" radius=${[3,3,0,0]}/>
+                    ${ReferenceLine && html`<${ReferenceLine} y=${4}  stroke="#EF4444" strokeDasharray="4 3" strokeWidth=${1.5} label=${{value:'MEV',fill:'#EF4444',fontSize:8,position:'insideTopRight'}}/>`}
+                    ${ReferenceLine && html`<${ReferenceLine} y=${10} stroke="#10B981" strokeDasharray="4 3" strokeWidth=${1.5} label=${{value:'MAV',fill:'#10B981',fontSize:8,position:'insideTopRight'}}/>`}
+                    ${ReferenceLine && html`<${ReferenceLine} y=${20} stroke="#F59E0B" strokeDasharray="4 3" strokeWidth=${1.5} label=${{value:'MRV',fill:'#F59E0B',fontSize:8,position:'insideTopRight'}}/>`}
+                  <//>
+                <//>
+              </div>
+            `}
+            ${!BarChart && html`
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                ${Object.entries(vol).map(([m,v]) => html`
+                  <div style="background:rgba(10,15,30,0.6);border:1px solid #1E2D45;border-radius:10px;padding:10px;">
+                    <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:white;">${m}</p>
+                    <div style="display:flex;justify-content:space-around;">
+                      <div style="text-align:center;"><p style="margin:0;font-size:9px;color:#10B981;">Dir</p><p style="margin:0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#10B981;">${v.direct}</p></div>
+                      <div style="text-align:center;"><p style="margin:0;font-size:9px;color:#F59E0B;">Ind</p><p style="margin:0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#F59E0B;">${v.indirect}</p></div>
+                    </div>
+                  </div>
+                `)}
+              </div>
+            `}
+          <//>
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  PROGRESO
+    // ═══════════════════════════════════════════════════
+    const ProgressView = ({allWeeks, onMount}) => {
+      const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = getRC();
+      const [selEx,      setSelEx]      = useState('');
+      const [loadingAll, setLoadingAll] = useState(false);
+      const [filterYear, setFilterYear] = useState('');
+      const [filterMonth,setFilterMonth]= useState('');
+
+      // Carga el historial completo la primera vez que se abre la tab
+      useEffect(()=>{
+        if(onMount) { setLoadingAll(true); onMount().finally(()=>setLoadingAll(false)); }
+      },[]);
+
+      // Años disponibles en el historial
+      const availableYears = useMemo(()=>{
+        const ys = new Set(Object.keys(allWeeks).filter(wk=>!isBeforeStart(wk)).map(wk=>wk.slice(0,4)));
+        return Array.from(ys).sort().reverse();
+      },[allWeeks]);
+
+      // Semanas filtradas por año/mes
+      const filteredWeeks = useMemo(()=>
+        Object.entries(allWeeks)
+          .filter(([wk])=> !isBeforeStart(wk))
+          .filter(([wk])=> !filterYear   || wk.startsWith(filterYear))
+          .filter(([wk])=> !filterMonth  || wk.slice(5,7) === filterMonth)
+          .sort(([a],[b])=>a.localeCompare(b))
+      ,[allWeeks, filterYear, filterMonth]);
+
+      const filteredWeeksObj = useMemo(()=>Object.fromEntries(filteredWeeks),[filteredWeeks]);
+
+      // Historial de peso corporal
+      const weightHistory = useMemo(()=>
+        Object.entries(allWeeks)
+          .filter(([wk])=> !isBeforeStart(wk) && allWeeks[wk]?.bodyWeight)
+          .sort(([a],[b])=>a.localeCompare(b))
+          .map(([wk,w])=>({ week: formatWeekLabel(wk).slice(0,6), kg: parseFloat(w.bodyWeight)||0 }))
+      ,[allWeeks]);
+
+      // Exportar PROGRESO como imagen PNG
+      const exportImage = async () => {
+        const el = document.getElementById('progress-export-area');
+        if(!el) return;
+        try {
+          await window._loadHtml2Canvas();
+          const canvas = await window.html2canvas(el, {
+            backgroundColor: '#080D1A',
+            scale: 2,
+            useCORS: true,
+            logging: false
+          });
+          const a = document.createElement('a');
+          a.href = canvas.toDataURL('image/png');
+          a.download = `enzo-progreso-${new Date().toISOString().split('T')[0]}.png`;
+          a.click();
+        } catch(e) {
+          console.warn('[Export]', e.message);
+          window.print(); // fallback si html2canvas falla
+        }
+      };
+
+      const allExercises = useMemo(()=>{const s=new Set();Object.values(filteredWeeksObj).forEach(w=>Object.values(w.sessions||{}).forEach(ss=>ss&&ss.forEach(ex=>s.add(ex.name))));return Array.from(s).sort();},[filteredWeeksObj]);
+      const exHistory = useMemo(()=>{
+        if(!selEx) return [];
+        const pts=[];
+        Object.entries(filteredWeeksObj)
+          .sort(([a],[b])=>a.localeCompare(b))
+          .forEach(([wk,w])=>Object.values(w.sessions||{}).forEach(ss=>ss&&ss.forEach(ex=>{
+            if(ex.name===selEx) ex.sets.filter(s=>s.completed).forEach((set,si)=>{
+              const wt=pn(set.weight);
+              if(wt>0) pts.push({
+                week: formatWeekLabel(wk).slice(0,6),
+                weight: wt,
+                rpe: set.rpe ? parseInt(set.rpe) : null,
+                set: si+1
+              });
+            });
+          })));
+        return pts;
+      },[selEx, filteredWeeksObj]);
+
+      const macHistory = useMemo(()=>
+        Object.entries(filteredWeeksObj)
+          .sort(([a],[b])=>a.localeCompare(b))
+          .map(([wk,w])=>{
+            let cals=0,prot=0;
+            Object.values(w.tracker||{}).forEach(d=>{ const t=dayTotals(d.meals||[]); cals+=t.cals; prot+=t.prot; });
+            return{week:formatWeekLabel(wk).slice(0,6),cals,prot};
+          })
+      ,[filteredWeeksObj]);
+
+      // PRs: máximo de TODO el historial (no filtrado — son records históricos)
+      const personalRecords = useMemo(()=>{
+        const prs = {};
+        Object.values(allWeeks).forEach(w=>
+          Object.values(w.sessions||{}).forEach(ss=>ss&&ss.forEach(ex=>{
+            ex.sets.filter(s=>s.completed).forEach(set=>{
+              const wt = pn(set.weight);
+              if(wt > 0 && (!prs[ex.name] || wt > prs[ex.name])) prs[ex.name] = wt;
+            });
+          }))
+        );
+        return Object.entries(prs).sort(([,a],[,b])=>b-a);
+      },[allWeeks]);
+      const tooltipStyle = {background:'#0F1729',border:'1px solid #1E2D45',borderRadius:'8px',fontFamily:'JetBrains Mono,monospace',fontSize:'11px'};
+
+      if(Object.keys(allWeeks).length===0) return html`
+        <${Card}>
+          <div style="text-align:center;padding:32px 0;">
+            <p style="font-size:36px;margin:0 0 8px;">📊</p>
+            <p style="color:#94a3b8;margin:0;">Todavía no hay datos históricos.</p>
+            <p style="color:#64748b;font-size:12px;margin:4px 0 0;">Completá entrenamientos en varias semanas para ver progresión.</p>
+          </div>
+        <//>
+      `;
+
+      return html`
+        <div id="progress-export-area" class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
+          ${loadingAll && html`
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);">
+              <span class="spin" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(99,102,241,0.3);border-top-color:#6366F1;border-radius:50%;flex-shrink:0;"></span>
+              <span style="font-size:12px;color:#6366F1;font-family:'JetBrains Mono',monospace;">Cargando historial completo...</span>
+            </div>
+          `}
+          <${Card}>
+            <!-- D. Filtro por Año/Mes -->
+            <div style="display:flex;gap:6px;margin-bottom:12px;">
+              <select class="inp" style="flex:1;font-size:12px;padding:6px 8px;"
+                value=${filterYear} onChange=${e=>{ setFilterYear(e.target.value); setFilterMonth(''); }}>
+                <option value="">Todos los años</option>
+                ${availableYears.map(y=>html`<option value=${y}>${y}</option>`)}
+              </select>
+              <select class="inp" style="flex:1;font-size:12px;padding:6px 8px;"
+                value=${filterMonth} onChange=${e=>setFilterMonth(e.target.value)}
+                disabled=${!filterYear}>
+                <option value="">Todos los meses</option>
+                ${['01','02','03','04','05','06','07','08','09','10','11','12'].map((m,i)=>html`
+                  <option value=${m}>${['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][i]}</option>
+                `)}
+              </select>
+              ${(filterYear||filterMonth) && html`
+                <button onClick=${()=>{ setFilterYear(''); setFilterMonth(''); }}
+                  style="padding:6px 10px;border-radius:8px;border:1px solid #1E2D45;background:rgba(239,68,68,0.1);color:#EF4444;font-size:11px;cursor:pointer;white-space:nowrap;">
+                  ✕ Reset
+                </button>
+              `}
+            </div>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">Progresión de Peso por Ejercicio</p>
+            <select class="inp" style="margin-bottom:12px;" value=${selEx} onChange=${e=>setSelEx(e.target.value)}>
+              <option value="">Seleccionar ejercicio...</option>
+              ${allExercises.map(e=>html`<option>${e}</option>`)}
+            </select>
+            ${selEx && exHistory.length>0 && LineChart && html`
+              <div style="height:200px;">
+                <${ResponsiveContainer} width="100%" height="100%">
+                  <${LineChart} data=${exHistory} margin=${{top:5,right:5,left:-20,bottom:0}}>
+                    <${CartesianGrid} strokeDasharray="3 3" stroke="#1E2D45"/>
+                    <${XAxis} dataKey="week" tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false}/>
+                    <${YAxis} yAxisId="w" tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false} unit="kg"/>
+                    <${YAxis} yAxisId="r" orientation="right" domain=${[1,10]} tick=${{fill:'#F59E0B',fontSize:9}} axisLine=${false} tickLine=${false}/>
+                    <${Tooltip} contentStyle=${tooltipStyle} formatter=${(v,n)=>[n==='RPE'?v:v+'kg',n]}/>
+                    <${Line} yAxisId="w" type="monotone" dataKey="weight" name="Peso" stroke="#10B981" strokeWidth=${2} dot=${{fill:'#10B981',r:3}}/>
+                    <${Line} yAxisId="r" type="monotone" dataKey="rpe" name="RPE" stroke="#F59E0B" strokeWidth=${1.5} strokeDasharray="4 3" dot=${{fill:'#F59E0B',r:2}} connectNulls/>
+                  <//>
+                <//>
+              </div>
+              <div style="display:flex;gap:12px;margin-top:6px;justify-content:center;">
+                <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:2px;background:#10B981;border-radius:1px;"></div><span style="font-size:10px;color:#64748b;">Peso (kg)</span></div>
+                <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:2px;background:#F59E0B;border-radius:1px;border-style:dashed;"></div><span style="font-size:10px;color:#64748b;">RPE (fatiga)</span></div>
+              </div>
+            `}
+            ${selEx && exHistory.length===0 && html`<p style="color:#64748b;font-size:13px;text-align:center;padding:20px 0;">Sin datos registrados aún para este ejercicio.</p>`}
+          <//>
+
+          <!-- RÉCORDS PERSONALES -->
+          ${personalRecords.length > 0 && html`
+            <${Card}>
+              <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">🏆 Récords Personales</p>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                ${personalRecords.map(([ex, pr], i) => html`
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:7px;background:${i===0?'rgba(245,158,11,0.08)':'rgba(10,15,30,0.4)'};border:1px solid ${i===0?'rgba(245,158,11,0.3)':'#1E2D45'};">
+                    <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                      <span style="font-size:12px;flex-shrink:0;">${i===0?'🥇':i===1?'🥈':i===2?'🥉':'  '}</span>
+                      <span style="font-size:12px;color:#cbd5e1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ex}</span>
+                    </div>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${i===0?'#F59E0B':'#94a3b8'};flex-shrink:0;margin-left:8px;">${pr}kg</span>
+                  </div>
+                `)}
+              </div>
+            <//>
+          `}
+
+          ${macHistory.length>1 && BarChart && html`
+            <${Card}>
+              <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">Calorías por Semana</p>
+              <div style="height:160px;">
+                <${ResponsiveContainer} width="100%" height="100%">
+                  <${BarChart} data=${macHistory} margin=${{top:5,right:5,left:-20,bottom:0}}>
+                    <${CartesianGrid} strokeDasharray="3 3" stroke="#1E2D45"/>
+                    <${XAxis} dataKey="week" tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false}/>
+                    <${YAxis} tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false}/>
+                    <${Tooltip} contentStyle=${tooltipStyle}/>
+                    <${Bar} dataKey="cals" name="Kcal" fill="#F59E0B" radius=${[4,4,0,0]}/>
+                  <//>
+                <//>
+              </div>
+            <//>
+          `}
+
+          <!-- PESO CORPORAL -->
+          ${weightHistory.length > 0 && LineChart && html`
+            <${Card}>
+              <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#38BDF8;">⚖️ Evolución de Peso Corporal</p>
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <div>
+                  <span style="font-size:10px;color:#64748b;">Inicio: </span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:white;">${weightHistory[0]?.kg}kg</span>
+                </div>
+                <div>
+                  <span style="font-size:10px;color:#64748b;">Actual: </span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:${pn(weightHistory.at(-1)?.kg) < pn(weightHistory[0]?.kg) ? '#10B981':'#F59E0B'};">
+                    ${weightHistory.at(-1)?.kg}kg
+                    ${weightHistory.length>1 ? ` (${(pn(weightHistory.at(-1)?.kg)-pn(weightHistory[0]?.kg)>0?'+':'')}${(pn(weightHistory.at(-1)?.kg)-pn(weightHistory[0]?.kg)).toFixed(1)}kg)` : ''}
+                  </span>
+                </div>
+              </div>
+              <div style="height:160px;">
+                <${ResponsiveContainer} width="100%" height="100%">
+                  <${LineChart} data=${weightHistory} margin=${{top:5,right:5,left:-20,bottom:0}}>
+                    <${CartesianGrid} strokeDasharray="3 3" stroke="#1E2D45"/>
+                    <${XAxis} dataKey="week" tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false}/>
+                    <${YAxis} tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false} unit="kg" domain=${['auto','auto']}/>
+                    <${Tooltip} contentStyle=${tooltipStyle} formatter=${v=>[v+'kg','Peso']}/>
+                    <${Line} type="monotone" dataKey="kg" name="Peso" stroke="#38BDF8" strokeWidth=${2} dot=${{fill:'#38BDF8',r:4}} connectNulls/>
+                  <//>
+                <//>
+              </div>
+            <//>
+          `}
+
+          <!-- EXPORTAR -->
+          <${Card}>
+            <p style="margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#64748b;">📤 Exportar</p>
+            <button onClick=${exportImage}
+              style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.1);color:#818CF8;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+              📸 Capturar progreso como imagen
+            </button>
+            <p style="margin:6px 0 0;font-size:10px;color:#374151;text-align:center;">
+              Usá Ctrl+P o la captura de pantalla del celular para guardar
+            </p>
+          <//>
+
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  FLOATING TIMER
+    // ═══════════════════════════════════════════════════
+    const FloatingTimer = ({left, active, onToggle, onReset}) => {
+      if(left===0 && !active) return null;
+      const urgent = left<=10 && active;
+      return html`
+        <div style="position:fixed;bottom:88px;right:16px;z-index:50;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:16px;background:rgba(8,13,26,0.97);border:1px solid #6366F1;box-shadow:0 0 20px rgba(99,102,241,0.25);">
+          <div style="width:48px;height:48px;border-radius:12px;background:#162035;border:1px solid #6366F1;display:flex;align-items:center;justify-content:center;">
+            <span class=${urgent?'timer-urgent':''} style=${`font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:${urgent?'#EF4444':'#6366F1'};`}>${ft(left)}</span>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn-icon" style="background:#1E2D45;" onClick=${onToggle}>${active ? html`<${IPause} s=${16}/>` : html`<${IPlay} s=${16}/>`}</button>
+            <button class="btn-icon" style="background:#1E2D45;" onClick=${onReset}><${IReset} s=${16} c="text-red"/></button>
+          </div>
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  LOGIN VIEW — Magic Link
+    // ═══════════════════════════════════════════════════
+    const LoginView = () => {
+      const [email,  setEmail]  = useState('');
+      const [status, setStatus] = useState('idle'); // idle | sending | sent | error
+      const [msg,    setMsg]    = useState('');
+
+      const handleLogin = async () => {
+        if(!email.trim()) return;
+        setStatus('sending');
+        const { error } = await supabase.auth.signInWithOtp({
+          email: email.trim(),
+          options: { emailRedirectTo: window.location.origin + window.location.pathname }
+        });
+        if(error) { setStatus('error'); setMsg(error.message); }
+        else       { setStatus('sent'); setMsg('✓ Revisá tu email — el link expira en 1 hora.'); }
+      };
+
+      return html`
+        <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#080D1A;">
+          <div style="width:100%;max-width:360px;">
+            <div style="text-align:center;margin-bottom:32px;">
+              <p style="font-size:28px;font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.1em;color:white;margin:0;">
+                ENZO <span style="color:#10B981;">TRAINING</span>
+              </p>
+              <p style="color:#64748b;font-size:13px;margin:8px 0 0;">Ingresá con tu email para sincronizar entre dispositivos</p>
+            </div>
+
+            ${status === 'sent' ? html`
+              <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:20px;text-align:center;">
+                <p style="font-size:32px;margin:0 0 8px;">📧</p>
+                <p style="color:#10B981;font-size:14px;margin:0;">${msg}</p>
+              </div>
+            ` : html`
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <input
+                  type="email"
+                  placeholder="tu@email.com"
+                  value=${email}
+                  onInput=${e=>setEmail(e.target.value)}
+                  onKeyDown=${e=>e.key==='Enter'&&handleLogin()}
+                  style="width:100%;box-sizing:border-box;background:#0F1729;border:1px solid #2A3F5F;border-radius:10px;padding:14px 16px;font-size:16px;color:white;outline:none;"
+                />
+                <button onClick=${handleLogin} disabled=${status==='sending'}
+                  style="width:100%;padding:14px;border-radius:10px;border:none;background:#10B981;color:white;font-size:14px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.08em;cursor:pointer;opacity:${status==='sending'?'0.7':'1'};">
+                  ${status==='sending' ? 'ENVIANDO...' : 'ENVIAR MAGIC LINK'}
+                </button>
+                ${status==='error' && html`<p style="color:#EF4444;font-size:12px;text-align:center;margin:0;">${msg}</p>`}
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  DEBUG PANEL — oculto, activar con ?debug=1
+    // ═══════════════════════════════════════════════════
+    const DebugPanel = ({ session, syncLog, outboxCount }) => {
+      const [open,    setOpen]    = useState(false);
+      const [swDebug, setSwDebug] = useState(null);
+      const conflictInfo = metaGet('last_conflict');
+
+      // Consultar SW al abrir el panel
+      useEffect(() => {
+        if(!open || !('serviceWorker' in navigator)) return;
+        const onMsg = (e) => {
+          if(e.data?.type === 'SW_DEBUG_RESPONSE') setSwDebug(e.data);
+        };
+        navigator.serviceWorker.addEventListener('message', onMsg);
+        navigator.serviceWorker.ready.then(reg => {
+          if(reg.active) reg.active.postMessage({ type: 'SW_DEBUG_REQUEST' });
+        }).catch(() => {});
+        return () => navigator.serviceWorker.removeEventListener('message', onMsg);
+      }, [open]);
+
+      if(!open) return html`
+        <button onClick=${()=>setOpen(true)}
+          style="position:fixed;bottom:90px;left:8px;z-index:999;width:24px;height:24px;border-radius:50%;background:rgba(99,102,241,0.3);border:1px solid rgba(99,102,241,0.5);font-size:10px;cursor:pointer;color:#6366F1;padding:0;">
+          🔧
+        </button>`;
+
+      const swCtrl = navigator.serviceWorker?.controller ? '✓ Controlando' : '⚠ No controla';
+      const rows = [
+        ['— Auth —',    ''],
+        ['User',        session?.user?.email || '—'],
+        ['UID',         (session?.user?.id || '—').slice(0,8)+'...'],
+        ['— Sync —',    ''],
+        ['Device',      DEVICE_ID],
+        ['Online',      navigator.onLine ? '✓' : '✗'],
+        ['Outbox',      outboxCount + ' items'],
+        ['Last sync',   syncLog.lastSync  || 'nunca'],
+        ['Last error',  syncLog.lastError || '—'],
+        ['— SW —',      ''],
+        ['SW API',      'serviceWorker' in navigator ? '✓' : '✗'],
+        ['SW estado',   'serviceWorker' in navigator ? swCtrl : '—'],
+        ['SW version',  swDebug?.cacheVersion || '—'],
+        ['Auth en SW',  swDebug ? (swDebug.authValid ? '✓ válida' : '✗ sin token') : '—'],
+        ['Auth expiry', swDebug?.authExpiry ? new Date(swDebug.authExpiry*1000).toLocaleTimeString('es-AR') : '—'],
+        ['Alertas SW',  swDebug?.scheduledCount != null ? swDebug.scheduledCount+' programadas' : '—'],
+        ['Notif perm',  typeof Notification!=='undefined' ? Notification.permission : 'N/A'],
+        ['— Conflictos —', ''],
+        ['Último conf.', conflictInfo ? `${conflictInfo.count||1} items — ${conflictInfo.at?.slice(0,10)||'?'}` : '—'],
+        ['Conf. fechas', conflictInfo?.items ? conflictInfo.items.slice(0,3).join(', ') + (conflictInfo.items.length>3?'…':'') : '—'],
+      ];
+
+      return html`
+        <div style="position:fixed;bottom:90px;left:8px;z-index:999;background:#0F1729;border:1px solid #2A3F5F;border-radius:10px;padding:12px;font-size:10px;font-family:'JetBrains Mono',monospace;color:#94a3b8;min-width:220px;max-width:280px;max-height:70vh;overflow-y:auto;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="color:#6366F1;font-weight:700;">DEBUG</span>
+            <div style="display:flex;gap:6px;">
+              <button onClick=${()=>flushOutbox().catch(()=>{})}
+                style="background:rgba(16,185,129,0.2);border:1px solid rgba(16,185,129,0.4);border-radius:4px;color:#10B981;font-size:9px;cursor:pointer;padding:2px 5px;">
+                Retry sync
+              </button>
+              <button onClick=${()=>setOpen(false)} style="background:none;border:none;color:#64748b;cursor:pointer;font-size:12px;">✕</button>
+            </div>
+          </div>
+          ${rows.map(([k,v])=> k.startsWith('—') ? html`
+            <div style="padding:4px 0 2px;color:#6366F1;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;">${k.replace(/—/g,'').trim()}</div>
+          ` : html`
+            <div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px solid #1E2D45;">
+              <span style="color:#64748b;flex-shrink:0;">${k}</span>
+              <span style="color:${v==='✗'||v.startsWith('✗')?'#EF4444':v==='✓'||v.startsWith('✓')?'#10B981':v.startsWith('⚠')?'#F59E0B':'white'};text-align:right;word-break:break-all;">${v}</span>
+            </div>
+          `)}
+        </div>
+      `;
+    };
+
+    // ═══════════════════════════════════════════════════
+    //  APP PRINCIPAL
+    // ═══════════════════════════════════════════════════
+    const App = () => {
+      // ── Auth state
+      const [session,     setSession]     = useState(null);
+      const [authLoading, setAuthLoading] = useState(true);
+      const [outboxCount, setOutboxCount] = useState(0);
+      const [syncLog,     setSyncLog]     = useState({ lastSync: null, lastError: null });
+      const showDebug = new URLSearchParams(window.location.search).get('debug') === '1';
+
+      // Listen for auth changes
+      useEffect(()=>{
+        supabase.auth.getSession().then(({ data }) => {
+          setSession(data.session);
+          setAuthLoading(false);
+        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
+          setSession(sess);
+          setAuthLoading(false);
+        });
+        return () => subscription.unsubscribe();
+      }, []);
+
+      // Show login if not authenticated
+      if(authLoading) return html`
+        <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#080D1A;">
+          <span class="spin" style="display:inline-block;width:28px;height:28px;border:3px solid rgba(16,185,129,0.3);border-top-color:#10B981;border-radius:50%;"></span>
+        </div>`;
+      if(!session) return html`<${LoginView}/>`;
+
+      const handleLogout = () => supabase.auth.signOut();
+      const [view, setView] = useState(()=>{
+        // Leer ?view=X de la URL para que los shortcuts del manifest funcionen
+        const p = new URLSearchParams(window.location.search).get('view');
+        return (p && ['today','week','progress','notif','routines'].includes(p)) ? p : 'today';
+      });
+      const [chartsReady, setChartsReady] = useState(()=>!!window.Recharts);
+
+      // Lazy load Recharts al abrir una tab con gráficos
+      const navigateTo = (tab) => {
+        setView(tab);
+        if(!chartsReady && (tab === 'week' || tab === 'progress')) {
+          window._loadRecharts && window._loadRecharts().then(()=>{
+            window._RC = window.Recharts || {};
+            setChartsReady(true);
+          }).catch(()=>{});
+        }
+      };
+
+      // Bug 12 fix: si la app arranca con ?view=week o ?view=progress, cargar Recharts al inicio
+      useEffect(()=>{
+        const initView = new URLSearchParams(window.location.search).get('view');
+        if(initView === 'week' || initView === 'progress') {
+          window._loadRecharts && window._loadRecharts().then(()=>{
+            window._RC = window.Recharts || {};
+            setChartsReady(true);
+          }).catch(()=>{});
+        }
+      },[]);
+      const [routineData, setRoutineData] = useState(()=>loadRoutines());
+      const [currentWk, setCurrentWk] = useState(()=>getWeekKey(new Date()));
+      const [activeDay, setActiveDay] = useState(()=>String(new Date().getDay()));
+      const activeDayRef = useRef(activeDay);
+      useEffect(()=>{ activeDayRef.current = activeDay; }, [activeDay]);
+      const [allWeeks, setAllWeeks] = useState({});
+      const [syncSaveStatus, setSyncSaveStatus] = useState('idle');
+      const [hasUnsaved, setHasUnsaved] = useState(false);
+      const [syncLoadStatus, setSyncLoadStatus] = useState('idle');
+      const [syncLoadMsg,    setSyncLoadMsg]    = useState('');
+      const [timerLeft, setTimerLeft] = useState(0);
+      const [timerActive, setTimerActive] = useState(false);
+      const timerRef = useRef(null);
+      // Audio silencioso — necesario para que MediaSession funcione en background (Android)
+      const audioRef = useRef(typeof Audio !== 'undefined'
+        ? new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=')
+        : null
+      );
+
+      // ── Auto-sync al arrancar: usa bootstrapRemoteState (no selects directos)
+      const fetchCloudData = useCallback(async () => {
+        setSyncLoadStatus('loading');
+        setSyncLoadMsg('');
+        try {
+          // BUG FIX: usar bootstrapRemoteState (RPC) en vez de selects directos prohibidos
+          const bootstrapData = await bootstrapRemoteState();
+          const { weeklyCache: wc, dailyCache: dc, routinesCache: rc } =
+            applyBootstrapToState(bootstrapData, {}, {});
+
+          setAllWeeks(buildAllWeeks(wc, dc));
+          if(Object.keys(rc).length > 0) setRoutineData(prev => ({ ...prev, ...rc }));
+
+          setSyncLoadStatus('ok');
+          setSyncLog(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString('es-AR') }));
+        } catch(e) {
+          console.warn('[AutoSync]', e.message);
+          setSyncLoadStatus('idle');
+          setSyncLog(prev => ({ ...prev, lastError: e.message.slice(0,60) }));
+        }
+        setTimeout(()=>{ setSyncLoadStatus('idle'); setSyncLoadMsg(''); }, 4000);
+      }, []);
+
+      // ── AUTO-SYNC AL INICIO (v3)
+      useEffect(()=>{
+        // 0. Migrar localStorage legacy (enzo_v2_ → enzo_v3_*) — idempotente
+        migrateLegacyLocalStorage();
+
+        // 1. Carga local instantánea — local-first, sin esperar red
+        const { weeklyCache, dailyCache, routinesCache } = loadLocalCaches();
+        const initWk = currentWk >= START_WEEK ? currentWk : START_WEEK;
+        if(!weeklyCache[initWk]) weeklyCache[initWk] = { dayMapping: {}, bodyWeight: '' };
+
+        const localAllWeeks = buildAllWeeks(weeklyCache, dailyCache);
+        if(!localAllWeeks[initWk]) localAllWeeks[initWk] = newWeek();
+        setAllWeeks(localAllWeeks);
+
+        // Rutinas locales
+        const localRoutines = Object.fromEntries(
+          Object.entries(routinesCache).map(([id, d]) => [id, d])
+        );
+        if(Object.keys(localRoutines).length > 0) setRoutineData(prev => ({ ...prev, ...localRoutines }));
+
+        // 2. Bootstrap remoto en background (solo si hay sesión)
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
+          if(!session) return;
+
+          // claim_legacy_rows: migra filas viejas de Supabase al nuevo esquema (idempotente)
+          supabase.rpc('claim_legacy_rows').then(()=>{}).catch(()=>{});
+
+          try {
+            const bootstrapData = await bootstrapRemoteState();
+            const { weeklyCache: wc2, dailyCache: dc2, routinesCache: rc2, conflicts } =
+              applyBootstrapToState(bootstrapData, weeklyCache, dailyCache);
+
+            setAllWeeks(buildAllWeeks(wc2, dc2));
+            bootstrapAppliedRef.current = true; // suppress auto-persist for this setState
+
+            if(Object.keys(rc2).length > 0) setRoutineData(prev => ({ ...prev, ...rc2 }));
+
+            // Cargar notification_settings del bootstrap para este device
+            const remoteNotifSettings = (bootstrapData.notification_settings||[]).find(n => n.device_id === DEVICE_ID);
+            if(remoteNotifSettings?.data?.notifs) {
+              const localNotifs = lsNotifLoad(DEVICE_ID);
+              const localTs  = localNotifs?._updatedAt || null;
+              const remoteTs = remoteNotifSettings.updated_at;
+              // Remoto gana si es más nuevo o no hay local
+              if(!localTs || (remoteTs && remoteTs > localTs)) {
+                lsNotifSave(DEVICE_ID, remoteNotifSettings.data.notifs);
+              }
+            }
+
+            if(conflicts.length > 0) {
+              console.warn('[Bootstrap] Conflictos detectados:', conflicts.length);
+              metaSet('last_conflict', { count: conflicts.length, items: conflicts.map(c=>c.date), at: new Date().toISOString() });
+              setSyncLoadMsg(`⚠ ${conflicts.length} conflicto(s) — ver debug`);
+              setSyncLoadStatus('error');
+              setTimeout(()=>{ setSyncLoadStatus('idle'); setSyncLoadMsg(''); }, 6000);
+            } else {
+              setSyncLog(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString('es-AR') }));
+            }
+          } catch(e) {
+            console.warn('[Bootstrap] error:', e.message);
+            metaSet('last_error', e.message?.slice(0,100));
+            setSyncLog(prev => ({ ...prev, lastError: e.message?.slice(0,60) }));
+          }
+        });
+
+        // 3. Flush outbox al arrancar y cuando vuelve la red
+        flushOutbox().catch(()=>{});
+        window.addEventListener('online', flushOutbox);
+
+        // 6. Suscripción Realtime — actualiza automáticamente desde cualquier dispositivo
+        const channel = supabase.channel('enzo-sync')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_logs' }, (payload) => {
+            const row = payload.new;
+            if(!row?.date || isBeforeStart(row.date) || row.last_device_id === DEVICE_ID) return;
+            const dateObj = new Date(row.date + 'T12:00:00');
+            const wkKey   = getWeekKey(dateObj);
+            const dayIdx  = dateObj.getDay();
+            setAllWeeks(prev => {
+              // Conflict resolution: local gana si es más nuevo
+              const localTs  = prev[wkKey]?.tracker?.[dayIdx]?._updatedAt;
+              if(localTs && row.updated_at && localTs > row.updated_at) return prev;
+              const next = { ...prev };
+              if(!next[wkKey]) next[wkKey] = hydrate(newWeek());
+              // BUG FIX: usar row.tracker/row.session (schema nuevo) en vez de row.data (schema viejo)
+              const tracker = row.tracker || {};
+              const sess    = row.session  || null;
+              if(sess) next[wkKey] = { ...next[wkKey], sessions: { ...next[wkKey].sessions, [dayIdx]: sess } };
+              next[wkKey] = { ...next[wkKey], tracker: { ...next[wkKey].tracker, [dayIdx]: { ...newDay(), ...tracker, meals: Array.isArray(tracker?.meals) ? tracker.meals : newDay().meals } } };
+              // BUG FIX: lsDaySave (no lsSaveDay — función no existía)
+              lsDaySave(row.date, { ...tracker, _session: sess, _revision: row.revision, _updatedAt: row.updated_at });
+              return next;
+            });
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_configs' }, (payload) => {
+            const row = payload.new;
+            if(!row?.week_key || row.last_device_id === DEVICE_ID) return;
+            if(isBeforeStart(row.week_key)) return;
+            setAllWeeks(prev => {
+              const next = { ...prev };
+              const existing = prev[row.week_key] || newWeek();
+              // BUG FIX: usar row.day_mapping/row.body_weight (schema nuevo)
+              const bwStr = (row.body_weight !== undefined && row.body_weight !== null)
+                ? String(row.body_weight).replace('.', ',') : existing.bodyWeight;
+              const newWkData = {
+                ...existing,
+                dayMapping: row.day_mapping || existing.dayMapping,
+                bodyWeight: bwStr,
+                _revision:  row.revision,
+                _updatedAt: row.updated_at,
+              };
+              next[row.week_key] = newWkData;
+              lsWeekSave(row.week_key, newWkData);
+              return next;
+            });
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'routines' }, (payload) => {
+            const row = payload.new;
+            if(!row?.routine_id || row.last_device_id === DEVICE_ID) return;
+            // Routine updated from another device — apply to local state
+            lsRoutineSave(row.routine_id, { ...row.data, _revision: row.revision, _updatedAt: row.updated_at });
+            setRoutineData(prev => ({ ...prev, [row.routine_id]: { ...row.data, _revision: row.revision } }));
+          })
+          .subscribe();
+
+        // 7. Mensajes del Service Worker
+        const onSwMessage = (event) => {
+          if(event.data?.type === 'MEDS_DONE') {
+            const medId  = event.data.id;
+            const medMap = { meds:'roacuttan', meds2:'magnesium' };
+            const medKey = medMap[medId];
+            if(medKey) {
+              const todayWk  = getWeekKey(new Date());
+              const todayIdx = String(new Date().getDay());
+              const dateKey  = getDayDate(todayWk, parseInt(todayIdx));
+
+              // Actualizar UI inmediatamente (optimista)
+              setAllWeeks(prev => {
+                const wk  = prev[todayWk] || newWeek();
+                const tr  = { ...wk.tracker };
+                const updatedDay = { ...tr[todayIdx], meds: { ...(tr[todayIdx]?.meds||{}), [medKey]: true } };
+                tr[todayIdx] = updatedDay;
+                lsDaySave(dateKey, { ...updatedDay, _updatedAt: new Date().toISOString() });
+                return { ...prev, [todayWk]: { ...wk, tracker: tr } };
+              });
+
+              // BUG FIX: llamar patch_med_status via Supabase (no el stub persistEntry)
+              supabase.rpc('patch_med_status', {
+                p_date:      dateKey,
+                p_med:       medKey,
+                p_val:       true,
+                p_device_id: DEVICE_ID
+              }).then(({ data, error }) => {
+                if(error) {
+                  console.warn('[MEDS_DONE] patch_med_status falló, encolando:', error.message);
+                  // Si falla por red, encolar en outbox
+                  const wk = allWeeks[todayWk] || newWeek();
+                  const dayData = wk.tracker?.[todayIdx];
+                  if(dayData) {
+                    enqueueOutboxOp({
+                      entity_type: 'daily_log',
+                      entity_id:   dateKey,
+                      payload:     { tracker: { ...dayData, meds: { ...(dayData.meds||{}), [medKey]: true } }, session: null },
+                      base_revision: dayData._revision || null
+                    }).catch(()=>{});
+                  }
+                } else {
+                  metaSet('last_sync', new Date().toISOString());
+                }
+              }).catch(()=>{});
+            }
+          }
+
+          // Acción pendiente del SW cuando la app se reabre sin auth fresca
+          if(event.data?.type === 'PENDING_MED_ACTION') {
+            const { medId, date } = event.data;
+            const medMap = { meds:'roacuttan', meds2:'magnesium' };
+            const medKey = medMap[medId];
+            if(medKey && date) {
+              supabase.rpc('patch_med_status', {
+                p_date: date, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
+              }).then(()=>{}).catch(()=>{});
+            }
+          }
+
+          // SW avisa que hay red disponible → flush outbox
+          if(event.data?.type === 'FLUSH_OUTBOX') {
+            flushOutbox().catch(()=>{});
+          }
+        };
+        if('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', onSwMessage);
+
+        // Manejar ?pending_med= en URL (app reabierta por el SW tras mark_done sin auth)
+        const urlParams = new URLSearchParams(window.location.search);
+        const pendingMedId   = urlParams.get('pending_med');
+        const pendingMedDate = urlParams.get('pending_date');
+        if(pendingMedId && pendingMedDate) {
+          const medMap = { meds:'roacuttan', meds2:'magnesium' };
+          const medKey = medMap[pendingMedId];
+          if(medKey) {
+            // Esperar a que haya sesión activa antes de persistir
+            supabase.auth.getSession().then(({ data: { session: sess } }) => {
+              if(!sess) return;
+              supabase.rpc('patch_med_status', {
+                p_date: pendingMedDate, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
+              }).then(() => {
+                // Limpiar params de URL sin recargar
+                const clean = window.location.pathname + (window.location.search.replace(/[?&]pending_med=[^&]*/g,'').replace(/[?&]pending_date=[^&]*/g,'').replace(/^&/,'?') || '');
+                window.history.replaceState({}, '', clean);
+              }).catch(()=>{});
+            });
+          }
+        }
+
+        // Polling de outbox para el debug panel
+        const outboxInterval = setInterval(async () => {
+          try {
+            const db = await openOutboxDB();
+            const keys = await db.getAllKeys('outbox');
+            setOutboxCount(keys.length);
+          } catch(e) {}
+        }, 5000);
+
+        return () => {
+          window.removeEventListener('online', flushOutbox);
+          supabase.removeChannel(channel);
+          if('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', onSwMessage);
+          clearInterval(outboxInterval);
+        };
+      }, []);
+
+      // ── Auto-persist (v3): localStorage inmediato + Supabase vía RPC con debounce
+      const saveTimerRef        = useRef(null);
+      const prevTrackerRef      = useRef(null);
+      const prevWeeklyRef       = useRef(null);
+      // Guard: evitar writes remotos innecesarios cuando allWeeks viene de bootstrap
+      const bootstrapAppliedRef = useRef(false);
+
+      useEffect(()=>{
+        if(Object.keys(allWeeks).length===0) return;
+
+        // 1. localStorage — namespace v3 (siempre, independiente de la fuente)
+        Object.entries(allWeeks).forEach(([wkKey, wkData]) => {
+          if(!isDateKey(wkKey)) return;
+          lsWeekSave(wkKey, { dayMapping: wkData.dayMapping, bodyWeight: wkData.bodyWeight||'' });
+          Object.entries(wkData.tracker||{}).forEach(([dayIdx, dayData]) => {
+            const dateKey    = getDayDate(wkKey, parseInt(dayIdx));
+            const daySession = wkData.sessions?.[dayIdx] || null;
+            lsDaySave(dateKey, { ...dayData, ...(daySession ? { _session: daySession } : {}) });
+          });
+        });
+
+        // Si este setState vino de bootstrap, no disparar writes remotos
+        if(bootstrapAppliedRef.current) {
+          bootstrapAppliedRef.current = false;
+          // Actualizar los refs para que el próximo cambio real se detecte correctamente
+          const wkData = allWeeks[currentWk];
+          if(wkData) {
+            prevWeeklyRef.current  = JSON.stringify({ bw: wkData.bodyWeight, dm: wkData.dayMapping });
+            prevTrackerRef.current = JSON.stringify(wkData.tracker?.[activeDayRef.current]);
+          }
+          return;
+        }
+
+        const wkData = allWeeks[currentWk];
+        if(!wkData) return;
+        const day = activeDayRef.current;
+
+        // 2. Cambios semanales → saveWeeklyRemote
+        const weeklyStr = JSON.stringify({ bw: wkData.bodyWeight, dm: wkData.dayMapping });
+        if(weeklyStr !== prevWeeklyRef.current) {
+          prevWeeklyRef.current = weeklyStr;
+          clearTimeout(saveTimerRef.current);
+          saveTimerRef.current = setTimeout(()=>{
+            const wk = allWeeks[currentWk];
+            if(!wk) return;
+            saveWeeklyRemote(currentWk, wk.bodyWeight||null, wk.dayMapping||{}, wk._revision||null).catch(()=>{});
+          }, 1500);
+          return;
+        }
+
+        // 3. Cambios de tracker → saveDayRemote (sin session — esa va con GUARDAR)
+        const trackerStr = JSON.stringify(wkData.tracker?.[day]);
+        if(trackerStr === prevTrackerRef.current) return;
+        prevTrackerRef.current = trackerStr;
+
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(()=>{
+          const wk = allWeeks[currentWk];
+          if(!wk) return;
+          const d       = activeDayRef.current;
+          const dayData = wk.tracker?.[d];
+          if(!dayData) return;
+          const dateKey = getDayDate(currentWk, parseInt(d));
+          saveDayRemote(dateKey, dayData, null, dayData._revision||null).catch(()=>{});
+        }, 1500);
+      },[allWeeks]);
+
+
+      // ── Timer con MediaSession (mantiene el timer visible en background / pantalla bloqueada)
+      useEffect(()=>{
+        clearInterval(timerRef.current);
+        if(timerActive && timerLeft > 0) {
+          // Iniciar audio silencioso para que el browser no suspenda el proceso
+          if(audioRef.current) {
+            audioRef.current.loop = true;
+            audioRef.current.play().catch(()=>{});
+          }
+          timerRef.current = setInterval(()=>{
+            setTimerLeft(p => {
+              const next = p - 1;
+              // Actualizar MediaSession para mostrar el timer en la pantalla bloqueada
+              if('mediaSession' in navigator) {
+                try {
+                  navigator.mediaSession.metadata = new MediaMetadata({
+                    title: `Descanso: ${Math.floor(next/60)}:${String(next%60).padStart(2,'0')}`,
+                    artist: 'Enzo Training',
+                    album: 'Gym'
+                  });
+                } catch(e) {}
+              }
+              return next;
+            });
+          }, 1000);
+        } else {
+          // Detener audio silencioso
+          if(audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
+          if(timerLeft === 0 && timerActive) { setTimerActive(false); playBeep(); }
+        }
+        return () => clearInterval(timerRef.current);
+      },[timerActive, timerLeft]);
+
+      const upd = fn => { setHasUnsaved(true); setAllWeeks(prev=>{ const wk=prev[currentWk]||newWeek(); const next={...prev,[currentWk]:fn(wk)}; return next; }); };
+
+      // ── Ensure session exists
+      const ensureSession = useCallback((wkKey, dayKey)=>{
+        setAllWeeks(prev=>{
+          const wd=prev[wkKey]||newWeek();
+          const rid=wd.dayMapping[dayKey];
+          if(!rid||!routineData[rid]||wd.sessions[dayKey]) return prev;
+          // idealReps: copia de reps objetivo para detectar superación de reps en sobrecarga progresiva
+          const session=routineData[rid].exercises.map((ex,ei)=>({
+            ...ex,
+            id:`ex-${wkKey}-${dayKey}-${ei}`,
+            sets:ex.sets.map((s,si)=>({
+              ...s,
+              id:`s-${wkKey}-${dayKey}-${ei}-${si}`,
+              completed:false,
+              idealReps: s.reps
+            }))
+          }));
+          return {...prev,[wkKey]:{...wd,sessions:{...wd.sessions,[dayKey]:session}}};
+        });
+      },[routineData]);
+
+      useEffect(()=>ensureSession(currentWk,activeDay),[currentWk,activeDay]);
+
+      const wd = allWeeks[currentWk]||newWeek();
+      const tracker    = wd.tracker[activeDay]||newDay();
+      const gymSession = wd.sessions[activeDay]||[];
+      const yesterdayFastMsg = getYesterdayFast(allWeeks, currentWk, activeDay);
+      const routineId  = wd.dayMapping[activeDay];
+      const routineInfo = routineId ? routineData[routineId] : null;
+
+      const updateHabit = (f,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}));
+      const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek()),bodyWeight:v}})); };
+      const updateMed   = (med,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...w.tracker[activeDay].meds,[med]:v}}}}));
+      // updateMeal: solo para firstBite/lastBite (los macros vienen de items)
+      const updateMeal  = (i,f,v) => upd(w=>{const meals=[...w.tracker[activeDay].meals];meals[i]={...meals[i],[f]:v};return{...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meals}}};});
+
+      const addMealItem = (mealIndex, item) => upd(w => {
+        const meals = [...w.tracker[activeDay].meals];
+        meals[mealIndex] = { ...meals[mealIndex], items: [...(meals[mealIndex].items||[]), item] };
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+      });
+
+      const removeMealItem = (mealIndex, itemIndex) => upd(w => {
+        const meals = [...w.tracker[activeDay].meals];
+        meals[mealIndex] = { ...meals[mealIndex], items: (meals[mealIndex].items||[]).filter((_,i)=>i!==itemIndex) };
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+      });
+
+      const handleRoutineChange = v => {
+        upd(w=>{
+          const dm  = {...w.dayMapping};
+          const ns  = {...w.sessions};
+
+          // Si esta rutina estaba asignada a otro día, limpiarlo
+          // Y borrar TAMBIÉN la sesión huérfana de ese día
+          if(v) {
+            Object.keys(dm).forEach(k=>{
+              if(dm[k]===v && k!==activeDay) {
+                dm[k]='';
+                delete ns[k]; // Bug 4 fix: eliminar sesión huérfana
+              }
+            });
+          }
+          dm[activeDay] = v;
+          delete ns[activeDay]; // limpiar sesión del día actual para regenerar
+          return{...w, dayMapping:dm, sessions:ns};
+        });
+        if(v) setTimeout(()=>ensureSession(currentWk,activeDay),50);
+      };
+
+      const handleSetComplete = (ei,si,restSecs) => {
+        upd(w=>{
+          const s=[...(w.sessions[activeDay]||[])];
+          const sets=[...s[ei].sets];
+          const was=sets[si].completed;
+          sets[si]={...sets[si],completed:!was};
+          s[ei]={...s[ei],sets};
+          if(!was){setTimerLeft(restSecs);setTimerActive(true);}
+          return{...w,sessions:{...w.sessions,[activeDay]:s}};
+        });
+      };
+
+      const handleInput = (ei,si,f,v) => {
+        upd(w=>{const s=[...(w.sessions[activeDay]||[])];const sets=[...s[ei].sets];sets[si]={...sets[si],[f]:v};s[ei]={...s[ei],sets};return{...w,sessions:{...w.sessions,[activeDay]:s}};});
+      };
+
+      // Helper: detectar si un día tiene datos reales (no es un newDay vacío)
+      const dayHasData = (dayData) => {
+        if(!dayData) return false;
+        if(dayData.fasted || dayData.walked || dayData.gymStartTime || dayData.mateOrCoffee) return true;
+        if(dayData.sleepHours || dayData.water > 0) return true;
+        if(dayData.steps || dayData.gymNotes) return true;
+        if(Object.values(dayData.meds || {}).some(v => v)) return true;
+        if((dayData.meals || []).some(m => (m.items || []).length > 0)) return true;
+        return false;
+      };
+
+      // ── GUARDAR (v3): usa RPCs save_daily_log + save_weekly_config
+      const handleSave = async () => {
+        if(syncSaveStatus === 'saving') return;
+        setSyncSaveStatus('saving');
+        try {
+          const wkData = allWeeks[currentWk] || newWeek();
+
+          // 1. weekly_config: SOLO dayMapping + bodyWeight vía RPC
+          const wkResult = await saveWeeklyRemote(
+            currentWk,
+            wkData.bodyWeight || null,
+            wkData.dayMapping || {},
+            wkData._revision || null
+          );
+
+          // 2. Solo los días con datos reales vía RPC save_daily_log
+          const dayResults = await Promise.all(
+            Object.entries(wkData.tracker)
+              .filter(([idx, dayData]) => dayHasData(dayData) || wkData.sessions?.[idx])
+              .map(([idx, dayData]) => {
+                const dateKey    = getDayDate(currentWk, parseInt(idx));
+                const daySession = wkData.sessions?.[idx] || null;
+                return saveDayRemote(dateKey, dayData, daySession, dayData._revision || null);
+              })
+          );
+
+          const allOk      = [wkResult, ...dayResults].every(r => r.ok || r.queued);
+          const anyQueued  = [wkResult, ...dayResults].some(r => r.queued);
+          const anyConflict = [wkResult, ...dayResults].some(r => r.conflict);
+          const errors     = [wkResult, ...dayResults].filter(r => !r.ok && !r.queued && !r.conflict).map(r => r.error);
+
+          if(anyConflict) {
+            setSyncSaveStatus('error');
+            setSyncLoadMsg('⚠ Conflicto — otro dispositivo tiene versión más nueva');
+          } else if(allOk) {
+            setSyncSaveStatus('ok');
+            setHasUnsaved(false);
+            if(anyQueued) setSyncLoadMsg('Sin red — en cola local');
+            setSyncLog(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString('es-AR') }));
+          } else {
+            setSyncSaveStatus('error');
+            setSyncLoadMsg(errors[0] || 'Error al guardar');
+            metaSet('last_error', errors[0]?.slice(0,100));
+          }
+        } catch(e) {
+          console.error('[Save Error]', e);
+          setSyncSaveStatus('error');
+          setSyncLoadMsg(e.message || 'Error inesperado');
+        }
+        setTimeout(()=>{ setSyncSaveStatus('idle'); setSyncLoadMsg(''); }, 4000);
+      };
+
+      // ── CARGAR (v3): usa bootstrap RPC
+      const handleLoad = async () => {
+        if(syncLoadStatus === 'loading') return;
+        setSyncLoadStatus('loading');
+        setSyncLoadMsg('');
+        try {
+          const bootstrapData = await bootstrapRemoteState();
+          const { weeklyCache: wc, dailyCache: dc, routinesCache: rc, conflicts } =
+            applyBootstrapToState(bootstrapData, {}, {}); // fresh from server
+
+          setAllWeeks(buildAllWeeks(wc, dc));
+          if(Object.keys(rc).length > 0) setRoutineData(prev => ({ ...prev, ...rc }));
+
+          const dayCount = (bootstrapData.daily_logs||[]).length;
+          const msg = conflicts.length > 0
+            ? `✓ ${dayCount} días (${conflicts.length} conflicto(s) — ver debug)`
+            : `✓ ${dayCount} días sincronizados`;
+
+          setSyncLoadMsg(msg);
+          setSyncLoadStatus('ok');
+          setSyncLog(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString('es-AR') }));
+          if(conflicts.length > 0) metaSet('last_conflict', { count: conflicts.length, items: conflicts.map(c=>c.date), at: new Date().toISOString() });
+        } catch(e) {
+          setSyncLoadStatus('error');
+          setSyncLoadMsg('Fallo: ' + e.message);
+          metaSet('last_error', e.message?.slice(0,100));
+        }
+        setTimeout(()=>{ setSyncLoadStatus('idle'); setSyncLoadMsg(''); }, 4000);
+      };
+
+      // Carga COMPLETA (todo el historial) — solo para la tab PROGRESO
+      // Usa get_bootstrap_state sin filtro de fecha en vez de selects directos
+      const loadFullHistory = useCallback(async () => {
+        try {
+          // Sin p_from → bootstrap trae todo el historial del usuario
+          const { data, error } = await supabase.rpc('get_bootstrap_state');
+          if(error) throw new Error(error.message);
+          const bootstrapData = data || {};
+
+          setAllWeeks(prev => {
+            const next = { ...prev };
+
+            // weekly_configs
+            (bootstrapData.weekly_configs || []).forEach(row => {
+              if(isBeforeStart(row.week_key)) return;
+              const bwStr = (row.body_weight !== undefined && row.body_weight !== null)
+                ? String(row.body_weight).replace('.', ',') : '';
+              next[row.week_key] = hydrate({
+                dayMapping: row.day_mapping || {},
+                bodyWeight: bwStr,
+                _revision:  row.revision,
+                _updatedAt: row.updated_at,
+              });
+            });
+
+            // daily_logs
+            (bootstrapData.daily_logs || []).forEach(row => {
+              if(isBeforeStart(row.date)) return;
+              const dateObj = new Date(row.date + 'T12:00:00');
+              const wkKey   = getWeekKey(dateObj);
+              const dayIdx  = dateObj.getDay();
+              if(!next[wkKey]) next[wkKey] = hydrate(newWeek());
+              const tracker = row.tracker || {};
+              const sess    = row.session  || null;
+              if(sess) next[wkKey].sessions = { ...next[wkKey].sessions, [dayIdx]: sess };
+              next[wkKey].tracker[dayIdx] = {
+                ...newDay(), ...tracker,
+                meals: Array.isArray(tracker?.meals) ? tracker.meals : newDay().meals
+              };
+            });
+
+            return { ...next };
+          });
+          bootstrapAppliedRef.current = true; // suppress auto-persist writes after full history load
+        } catch(e) { console.warn('[FullHistory]', e.message); }
+      }, []);
+
+      const navWeek = dir => {
+        const nk = addWeeks(currentWk, dir);
+        if(isBeforeStart(nk)) return; // no navegar antes del inicio oficial
+        setCurrentWk(nk);
+        setAllWeeks(prev=>prev[nk]?prev:{...prev,[nk]:newWeek()});
+      };
+      const isAtStart = currentWk <= START_WEEK;
+
+      const handleSaveRoutines = async (updated) => {
+        setRoutineData(updated);
+        await saveRoutines(updated); // guarda en localStorage + Supabase
+      };
+
+      // A. Motor de sobrecarga progresiva: aplica +2,5kg a los pesos base de la rutina
+      const handleApplyOverload = (candidates) => {
+        const updated = JSON.parse(JSON.stringify(routineData)); // deep copy
+        const routineId = wd.dayMapping[activeDay];
+        if(!routineId || !updated[routineId]) return;
+
+        candidates.forEach(({name}) => {
+          const ex = updated[routineId].exercises.find(e => e.name === name);
+          if(!ex) return;
+          ex.sets = ex.sets.map(s => {
+            const current = pn(s.weight); // pn() ya maneja "65,0" correctamente
+            const newWeight = (current + 2.5).toFixed(1).replace('.', ',');
+            return { ...s, weight: newWeight };
+          });
+        });
+
+        setRoutineData(updated);
+        saveRoutines(updated);
+      };
+
+      const saveColor = {idle:'#374151',saving:'#F59E0B',ok:'#10B981',error:'#EF4444'}[syncSaveStatus];
+      const loadColor = {idle:'#374151',loading:'#F59E0B',ok:'#10B981',error:'#EF4444'}[syncLoadStatus];
+
+      // ── Enviar auth context al SW cuando la sesión cambia
+      useEffect(()=>{
+        if(!('serviceWorker' in navigator)) return;
+        const sendAuthCtx = async () => {
+          const reg = await navigator.serviceWorker.ready.catch(()=>null);
+          if(!reg?.active) return;
+          if(session?.access_token) {
+            reg.active.postMessage({
+              type: 'SW_SET_AUTH_CONTEXT',
+              access_token: session.access_token,
+              user_id: session.user?.id?.slice(0,8),
+              device_id: DEVICE_ID,
+              expiry: session.expires_at
+            });
+          } else {
+            reg.active.postMessage({ type: 'SW_CLEAR_AUTH_CONTEXT' });
+          }
+        };
+        sendAuthCtx();
+      }, [session]);
+
+      return html`
+        <div style="min-height:100vh;background:#080D1A;">
+
+          <!-- DEBUG PANEL (solo con ?debug=1) -->
+          <!-- BUG FIX: pasar session (auth) no gymSession -->
+          ${showDebug && html`<${DebugPanel} session=${session} syncLog=${syncLog} outboxCount=${outboxCount}/>`}
+
+          <!-- HEADER -->
+          <header class="pt-safe" style="position:sticky;top:0;z-index:30;background:rgba(8,13,26,0.97);border-bottom:1px solid #1E2D45;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);">
+            <div style="max-width:640px;margin:0 auto;padding:12px 16px;">
+
+              <!-- Top row -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <h1 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:0.08em;color:white;">
+                    ENZO <span style="color:#10B981;">TRAINING</span>
+                  </h1>
+                  <!-- Logout button -->
+                  <button onClick=${handleLogout} title="Cerrar sesión"
+                    style="background:none;border:none;cursor:pointer;color:#374151;font-size:11px;padding:2px 6px;border-radius:4px;line-height:1;">
+                    ⏏
+                  </button>
+                </div>
+                <!-- Botones de sync -->
+                <div style="display:flex;gap:6px;">
+
+                  <!-- CARGAR -->
+                  <button onClick=${handleLoad} disabled=${syncLoadStatus==='loading'}
+                    title="Cargar datos desde Supabase"
+                    style=${`display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:8px;border:1px solid ${syncLoadStatus==='ok'?'#10B981':syncLoadStatus==='error'?'#EF4444':'#1E2D45'};background:rgba(22,32,53,0.9);cursor:pointer;transition:all 0.2s;opacity:${syncLoadStatus==='loading'?'0.7':'1'};`}>
+                    <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${loadColor};"></div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${syncLoadStatus==='loading'?'#F59E0B':'#94a3b8'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${syncLoadStatus==='loading'?'spin':''}>
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span style="font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.05em;color:${syncLoadStatus==='loading'?'#F59E0B':syncLoadStatus==='ok'?'#10B981':syncLoadStatus==='error'?'#EF4444':'#94a3b8'};">
+                      ${syncLoadStatus==='loading'?'CARGANDO...':syncLoadStatus==='ok'?'LISTO ✓':syncLoadStatus==='error'?'ERROR':'CARGAR'}
+                    </span>
+                  </button>
+
+                  <!-- GUARDAR -->
+                  <button onClick=${handleSave} disabled=${syncSaveStatus==='saving'}
+                    title="Guardar datos en Supabase"
+                    style=${`display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:8px;border:1px solid ${syncSaveStatus==='error'?'#EF4444':hasUnsaved?'rgba(245,158,11,0.5)':'rgba(16,185,129,0.3)'};background:${syncSaveStatus==='saving'?'rgba(22,32,53,0.9)':hasUnsaved?'rgba(245,158,11,0.1)':'rgba(16,185,129,0.12)'};cursor:pointer;transition:all 0.2s;opacity:${syncSaveStatus==='saving'?'0.7':'1'};`}>
+                    <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;background:${hasUnsaved&&syncSaveStatus==='idle'?'#F59E0B':saveColor};${hasUnsaved&&syncSaveStatus==='idle'?'animation:pulse 1.2s ease-in-out infinite;':''}"></div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${syncSaveStatus==='saving'?'#F59E0B':hasUnsaved?'#F59E0B':'#10B981'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class=${syncSaveStatus==='saving'?'spin':''}>
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    <span style="font-size:11px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.05em;color:${syncSaveStatus==='saving'?'#F59E0B':syncSaveStatus==='ok'?'#10B981':syncSaveStatus==='error'?'#EF4444':hasUnsaved?'#F59E0B':'#10B981'};">
+                      ${syncSaveStatus==='saving'?'GUARDANDO...':syncSaveStatus==='ok'?'GUARDADO ✓':syncSaveStatus==='error'?'ERROR':hasUnsaved?'GUARDAR *':'GUARDAR'}
+                    </span>
+                  </button>
+
+                </div>
+              </div>
+
+              <!-- Mensaje de error visible -->
+              ${syncLoadMsg && html`
+                <div style="margin-bottom:8px;padding:6px 10px;border-radius:6px;font-size:11px;font-family:'JetBrains Mono',monospace;
+                  background:${syncLoadStatus==='error'?'rgba(239,68,68,0.1)':'rgba(16,185,129,0.1)'};
+                  border:1px solid ${syncLoadStatus==='error'?'rgba(239,68,68,0.3)':'rgba(16,185,129,0.3)'};
+                  color:${syncLoadStatus==='error'?'#EF4444':'#10B981'};">
+                  ${syncLoadStatus==='error'?'❌':'✓'} ${syncLoadMsg}
+                </div>
+              `}
+
+              <!-- Week nav -->
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <button class="btn-icon" style=${`background:#162035;border:1px solid #1E2D45;opacity:${isAtStart?'0.3':'1'};`} onClick=${()=>navWeek(-1)} disabled=${isAtStart}>
+                  <${IChevL} s=${16}/>
+                </button>
+                <div style="flex:1;text-align:center;">
+                  <p style="margin:0;font-size:13px;font-weight:600;color:white;">${formatWeekLabel(currentWk)}</p>
+                  ${isCurrentWeek(currentWk) && html`<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:#10B981;">● SEMANA ACTUAL</span>`}
+                </div>
+                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${()=>navWeek(1)} disabled=${isCurrentWeek(currentWk)}>
+                  <${IChevR} s=${16}/>
+                </button>
+              </div>
+
+              <!-- Day tabs -->
+              <div class="hide-scroll" style="display:flex;gap:4px;overflow-x:auto;">
+                ${DAYS.map(day=>{
+                  const active=activeDay===day.key;
+                  const hasR=wd.dayMapping[day.key]!=='';
+                  const sess=wd.sessions[day.key]||[];
+                  const done=sess.reduce((a,ex)=>a+ex.sets.filter(s=>s.completed).length,0);
+                  const total=sess.reduce((a,ex)=>a+ex.sets.length,0);
+                  return html`
+                    <button key=${day.key} onClick=${()=>{setActiveDay(day.key);setView('today');}}
+                      style=${`flex:1;min-width:38px;padding:8px 4px;border-radius:10px;border:1px solid ${active?'#10B981':'#1E2D45'};background:${active?'#10B981':'#162035'};cursor:pointer;position:relative;${active?'box-shadow:0 0 12px rgba(16,185,129,0.3);':''}`}>
+                      <p style=${`margin:0;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${active?'white':'#64748b'};`}>${day.abbr}</p>
+                      <p style=${`margin:0;font-size:9px;color:${active?'rgba(255,255,255,0.75)':'#374151'};`}>${day.label}</p>
+                      ${hasR && !active && html`<div style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:#6366F1;"></div>`}
+                      ${done>0 && html`<div style="position:absolute;bottom:3px;right:3px;font-size:8px;font-family:'JetBrains Mono',monospace;color:#10B981;">${done}/${total}</div>`}
+                    </button>
+                  `;
+                })}
+              </div>
+
+            </div>
+          </header>
+
+          <!-- CONTENIDO -->
+          <main style="max-width:640px;margin:0 auto;padding:16px 16px calc(88px + env(safe-area-inset-bottom, 12px));">
+
+            ${view==='today' && html`
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <!-- Day header -->
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+                  <div>
+                    <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;letter-spacing:0.04em;color:white;">
+                      ${routineInfo?.fullName||`DÍA ${activeDay}: Descanso`}
+                    </h2>
+                    ${routineInfo?.description && html`<p style="margin:2px 0 0;font-size:13px;color:#6366F1;">${routineInfo.description}</p>`}
+                  </div>
+                  <select class="inp" style="min-width:110px;font-size:12px;padding:8px 10px;" value=${routineId||''} onChange=${e=>handleRoutineChange(e.target.value)}>
+                    <option value="">Descanso</option>
+                    ${Object.values(routineData).map(r=>html`<option value=${r.id}>${r.name}</option>`)}
+                  </select>
+                </div>
+
+                <${HabitsPanel} tracker=${tracker} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem}/>
+
+                <!-- Peso corporal semanal -->
+                <div class="glass-card" style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                  <div>
+                    <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">⚖️ Peso corporal (semana)</p>
+                    <p style="margin:2px 0 0;font-size:10px;color:#374151;">Solo se registra una vez por semana</p>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <input type="number" step="0.1" placeholder="kg"
+                      value=${wd.bodyWeight||''}
+                      onInput=${e=>updateBodyWeight(e.target.value)}
+                      style="width:72px;background:#0F1729;border:1px solid #2A3F5F;border-radius:8px;padding:7px 10px;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;text-align:center;"/>
+                    ${wd.bodyWeight && html`<span style="font-size:13px;color:#10B981;font-weight:700;">kg</span>`}
+                  </div>
+                </div>
+
+                <!-- Water + Macros elásticos del día + Asistente nutricional -->
+                <div class="glass-card" style="padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
+                  ${[
+                    {label:'Prot restante', val:Math.max(0,Math.round(TARGETS.prot - dayTotals(tracker.meals||[]).prot))+'g', color:'#10B981'},
+                    {label:'Carbos disp.',  val:Math.max(0,Math.round((TARGETS.kcal - TARGETS.prot*4 - dayTotals(tracker.meals||[]).fat*9)/4 - dayTotals(tracker.meals||[]).carb))+'g', color:'#6366F1'},
+                    {label:'Kcal objetivo', val:fn(TARGETS.kcal), color:'#F59E0B'},
+                  ].map(({label,val,color})=>html`
+                    <div>
+                      <p style="margin:0;font-size:9px;text-transform:uppercase;color:#64748b;">${label}</p>
+                      <p style="margin:0;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${color};">${val}</p>
+                    </div>
+                  `)}
+                </div>
+                <${WaterTracker}
+                  val=${tracker.water||0}
+                  onChange=${v=>updateHabit('water',v)}
+                  roacuttan=${tracker.meds?.roacuttan||false}/>
+                <${SmartCena} currentProt=${dayTotals(tracker.meals||[]).prot}/>
+
+                <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleInput} onHabit=${updateHabit} onApplyOverload=${handleApplyOverload}/>
+
+                ${gymSession.length===0 && !routineId && html`
+                  <${Card}>
+                    <div style="text-align:center;padding:24px 0;">
+                      <p style="font-size:36px;margin:0 0 8px;">🛌</p>
+                      <p style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#cbd5e1;margin:0;">Día de Descanso</p>
+                      <p style="font-size:13px;color:#64748b;margin:4px 0 0;">Recuperá y registrá tus hábitos arriba.</p>
+                    </div>
+                  <//>
+                `}
+              </div>
+            `}
+
+            ${view==='week'     && html`<${WeekSummary} weekData=${wd}/>`}
+            ${view==='progress' && html`<${ProgressView} allWeeks=${allWeeks} onMount=${loadFullHistory}/>`}
+            ${view==='notif'    && html`<${NotifView}/>`}
+            ${view==='routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
+
+          </main>
+
+          <!-- TIMER -->
+          <${FloatingTimer} left=${timerLeft} active=${timerActive}
+            onToggle=${()=>setTimerActive(!timerActive)}
+            onReset=${()=>{setTimerActive(false);setTimerLeft(0);}}/>
+
+          <!-- BOTTOM NAV -->
+          <nav class="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:30;">
+            <div style="max-width:640px;margin:0 auto;display:flex;">
+              ${[
+                {id:'today',    icon:html`<${IHome} s=${20}/>`, label:'HOY'},
+                {id:'week',     icon:html`<${ICal}  s=${20}/>`, label:'SEMANA'},
+                {id:'progress', icon:html`<${IBar}  s=${20}/>`, label:'PROGRESO'},
+                {id:'notif',    icon:html`<${IBell} s=${20}/>`, label:'ALERTAS'},
+                {id:'routines', icon:html`<${IEdit} s=${20}/>`, label:'RUTINAS'},
+              ].map(tab => html`
+                <button key=${tab.id} onClick=${()=>navigateTo(tab.id)}
+                  style=${`flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0 7px;gap:2px;border:none;background:transparent;cursor:pointer;color:${view===tab.id?'#10B981':'#374151'};`}>
+                  ${tab.icon}
+                  <span style="font-size:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.1em;">${tab.label}</span>
+                  ${view===tab.id && html`<div style="width:14px;height:2px;border-radius:1px;background:#10B981;"></div>`}
+                </button>
+              `)}
+            </div>
+          </nav>
+
+        </div>
+      `;
+    };
+
+    // ── Mount
+    render(html`<${App}/>`, document.getElementById('app'));
+
+    // ── Ocultar splash
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const el = document.getElementById('splash');
+      if(el){ el.style.opacity='0'; setTimeout(()=>el.style.display='none', 300); }
+    }));
+
+  </script>
+
+  <script>
+    // Service Worker — sólo en producción HTTPS
+    if('serviceWorker' in navigator) {
+      const h = window.location.hostname;
+      const isPreview = h.includes('claudeusercontent') || h==='localhost' || h==='127.0.0.1';
+      if(!isPreview) {
+        window.addEventListener('load', ()=>{
+          navigator.serviceWorker.register('./sw.js')
+            .then(r=>console.log('[PWA] SW registrado:',r.scope))
+            .catch(e=>console.warn('[PWA] SW:',e.message));
+        });
+      }
+    }
+  </script>
+
+</body>
+</html>
