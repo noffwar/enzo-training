@@ -1,5 +1,5 @@
 const { GEMINI_API_KEY } = process.env;
-const GEMINI_MODEL = 'gemini-3-flash-preview';
+const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
 
 function extractFirstJsonObject(text) {
   if(!text) return null;
