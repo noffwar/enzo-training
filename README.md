@@ -6,8 +6,10 @@ Panel personal de entrenamiento, nutrición y hábitos.
 
 - **Frontend**: Preact + HTM (sin build step)
 - **Base de datos**: Supabase (PostgreSQL)
-- **IA nutricional**: Google Gemini 2.0 Flash via Netlify Functions
+- **IA nutricional**: Google Gemini Flash (v3-preview) via Netlify Functions
 - **Hosting**: Netlify
+
+## Archivos
 
 ## Archivos
 
