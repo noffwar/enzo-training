@@ -2658,6 +2658,31 @@
         return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}&dates=${fmt(start)}/${fmt(end)}`;
       };
 
+      const sendTaskEmail = async (task) => {
+        setSaving(`mail-${task.id}`);
+        setError('');
+        try {
+          const res = await fetch('/.netlify/functions/send-task-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: task.title,
+              details: task.details || '',
+              dueAt: task.due_at ? formatTaskDate(task.due_at) : '',
+              priority: task.priority || 'normal'
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          setError('Correo enviado correctamente.');
+          setTimeout(() => setError(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo enviar el correo.');
+        } finally {
+          setSaving('');
+        }
+      };
+
       const pendingTasks = tasks.filter(t => t.status !== 'done');
       const doneTasks = tasks.filter(t => t.status === 'done');
       const activeNotes = notes.filter(n => n.kind !== 'converted');
@@ -2803,10 +2828,10 @@
                               style="padding:6px 10px;border-radius:8px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);color:#818CF8;font-size:11px;font-weight:700;text-decoration:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;">
                               CALENDARIO
                             </a>
-                            <a href=${mailtoForTask(task)}
-                              style="padding:6px 10px;border-radius:8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#FBBF24;font-size:11px;font-weight:700;text-decoration:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;">
-                              MAIL
-                            </a>
+                            <button onClick=${()=>sendTaskEmail(task)}
+                              style="padding:6px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);color:#FBBF24;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;cursor:pointer;">
+                              ${saving === `mail-${task.id}` ? 'ENVIANDO...' : 'MAIL'}
+                            </button>
                           </div>
                         </div>
                       `)}
