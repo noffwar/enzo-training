@@ -2968,6 +2968,17 @@
         }
       };
 
+      const removeAiReply = async (note, idxToRemove) => {
+        try {
+          const currentThread = aiReplies[note.id] || [];
+          const nextThread = currentThread.filter((_, idx) => idx !== idxToRemove);
+          setAiReplies(prev => ({ ...prev, [note.id]: nextThread }));
+          await persistAiThread(note.id, nextThread);
+        } catch(e) {
+          setError(e.message || 'No se pudo borrar ese bloque del debate.');
+        }
+      };
+
       const openInGemini = async (note) => {
         const thread = aiReplies[note.id] || [];
         const draft = (aiDrafts[note.id] || '').trim();
@@ -3311,9 +3322,15 @@
                           </div>
                           ${aiReplies[note.id]?.length > 0 && html`
                             <div style="display:flex;flex-direction:column;gap:8px;">
-                              ${aiReplies[note.id].map(item => html`
+                              ${aiReplies[note.id].map((item, idx) => html`
                                 <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.9);border:1px solid #1E2D45;">
-                                  <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Pregunta</p>
+                                  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                                    <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Pregunta</p>
+                                    <button onClick=${()=>removeAiReply(note, idx)}
+                                      style="padding:0 6px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;cursor:pointer;line-height:18px;">
+                                      X
+                                    </button>
+                                  </div>
                                   <p style="margin:0 0 10px;font-size:12px;color:#E2E8F0;">${item.question}</p>
                                   <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Gemini</p>
                                   <p style="margin:0;font-size:12px;color:#CBD5E1;white-space:pre-wrap;">${item.reply}</p>
