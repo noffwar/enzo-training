@@ -1627,6 +1627,9 @@
             if(recipeHit) {
               onAddItem(mealIndex, recipeHit);
               onMeal(mealIndex, 'aiDraft', '');
+              if(recipeHit.stock_unit && recipeHit.stock_delta_unit && normalizeStockUnit(recipeHit.stock_unit) === normalizeStockUnit(recipeHit.stock_delta_unit)) {
+                await discountItemStock(mealIndex, recipeHit);
+              }
               return;
             }
           } catch(recipeErr) {
@@ -1956,12 +1959,9 @@
                             </div>
                             <div style="display:flex;align-items:center;gap:10px;margin-left:8px;">
                               ${item.recipe_id && item.stock_unit && item.stock_delta_unit && normalizeStockUnit(item.stock_unit) === normalizeStockUnit(item.stock_delta_unit) && html`
-                                <button
-                                  onClick=${()=>discountItemStock(i, item)}
-                                  disabled=${stockBusyKey === `${i}:${item.recipe_id}`}
-                                  style=${`padding:4px 7px;border-radius:6px;border:1px solid rgba(125,211,252,0.3);background:rgba(14,165,233,0.12);color:#7DD3FC;font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:${stockBusyKey === `${i}:${item.recipe_id}` ? 'not-allowed' : 'pointer'};letter-spacing:0.05em;white-space:nowrap;opacity:${stockBusyKey === `${i}:${item.recipe_id}` ? '0.7' : '1'};`}>
-                                  ${stockBusyKey === `${i}:${item.recipe_id}` ? '...' : 'DESCONTAR STOCK'}
-                                </button>
+                                <span style="padding:4px 7px;border-radius:6px;border:1px solid rgba(125,211,252,0.3);background:rgba(14,165,233,0.12);color:#7DD3FC;font-size:9px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;white-space:nowrap;">
+                                  ${stockBusyKey === `${i}:${item.recipe_id}` ? 'ACTUALIZANDO STOCK...' : 'STOCK AUTO'}
+                                </span>
                               `}
                               <span style="font-size:11px;font-weight:700;color:#6366F1;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${fn(item.prot)}g P</span>
                               <button onClick=${()=>onRemoveItem(i, idx)} style="color:#EF4444;background:none;border:none;font-size:20px;cursor:pointer;padding:0;line-height:1;">×</button>
@@ -2980,6 +2980,9 @@
                 <input class="inp" value=${form.stock_unit} onInput=${e=>setForm(prev => ({ ...prev, stock_unit:e.target.value }))} placeholder="Unidad stock" />
                 <input class="inp" value=${form.low_stock_threshold} onInput=${e=>setForm(prev => ({ ...prev, low_stock_threshold:e.target.value }))} placeholder="Reponer <=" />
               </div>
+              <p style="margin:0;font-size:11px;color:#94A3B8;">
+                Stock actual: cuanto te queda en casa ahora mismo. Unidad stock: en que lo medis para descontar, por ejemplo g, porcion o unidad.
+              </p>
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                 <input class="inp" value=${form.cals} onInput=${e=>setForm(prev => ({ ...prev, cals:e.target.value }))} placeholder="Kcal" />
                 <input class="inp" value=${form.prot} onInput=${e=>setForm(prev => ({ ...prev, prot:e.target.value }))} placeholder="P" />
