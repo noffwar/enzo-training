@@ -2393,6 +2393,13 @@
       normal: '#F59E0B',
       low: '#10B981'
     }[priority] || '#94A3B8');
+    const CATEGORY_OPTIONS = [
+      { value:'personal', label:'Personal', color:'#6366F1' },
+      { value:'estudio', label:'Estudio', color:'#10B981' },
+      { value:'salud', label:'Salud', color:'#F59E0B' },
+      { value:'trabajo', label:'Trabajo', color:'#EF4444' }
+    ];
+    const categoryMeta = (value) => CATEGORY_OPTIONS.find(c => c.value === value) || CATEGORY_OPTIONS[0];
 
     const ProductivityView = ({session}) => {
       const [tasks, setTasks] = useState([]);
@@ -2407,13 +2414,16 @@
       const [taskSearch, setTaskSearch] = useState('');
       const [priorityFilter, setPriorityFilter] = useState('all');
       const [statusFilter, setStatusFilter] = useState('all');
+      const [categoryFilter, setCategoryFilter] = useState('all');
       const [taskAutoEmail, setTaskAutoEmail] = useState(true);
+      const [taskCategory, setTaskCategory] = useState('personal');
       const [editingTaskId, setEditingTaskId] = useState(null);
       const [editingTaskTitle, setEditingTaskTitle] = useState('');
       const [editingTaskDetails, setEditingTaskDetails] = useState('');
       const [editingTaskDue, setEditingTaskDue] = useState('');
       const [editingTaskPriority, setEditingTaskPriority] = useState('normal');
       const [editingTaskAutoEmail, setEditingTaskAutoEmail] = useState(true);
+      const [editingTaskCategory, setEditingTaskCategory] = useState('personal');
       const [editingNoteId, setEditingNoteId] = useState(null);
       const [editingNoteContent, setEditingNoteContent] = useState('');
 
@@ -2456,6 +2466,7 @@
             user_id: session.user.id,
             title: taskTitle.trim(),
             priority: taskPriority,
+            category: taskCategory,
             status: 'pending',
             auto_email_reminder: taskAutoEmail,
             due_at: taskDue || null
@@ -2465,6 +2476,7 @@
           setTaskTitle('');
           setTaskDue('');
           setTaskPriority('normal');
+          setTaskCategory('personal');
           setTaskAutoEmail(true);
         } catch(e) {
           setError(e.message || 'No se pudo guardar la tarea.');
@@ -2519,6 +2531,7 @@
         setEditingTaskDetails(task.details || '');
         setEditingTaskDue(task.due_at ? String(task.due_at).slice(0,16) : '');
         setEditingTaskPriority(task.priority || 'normal');
+        setEditingTaskCategory(task.category || 'personal');
         setEditingTaskAutoEmail(task.auto_email_reminder !== false);
       };
 
@@ -2533,6 +2546,7 @@
               details: editingTaskDetails.trim() || null,
               due_at: editingTaskDue || null,
               priority: editingTaskPriority,
+              category: editingTaskCategory,
               auto_email_reminder: editingTaskAutoEmail,
               email_reminder_sent_at: null,
               updated_at: new Date().toISOString()
@@ -2630,6 +2644,7 @@
             title: note.content.slice(0, 120),
             details: note.content,
             priority: 'normal',
+            category: 'personal',
             status: 'pending'
           }).select().single();
           if(taskErr) throw taskErr;
@@ -2703,6 +2718,7 @@
         if(searchNeedle && !text.includes(searchNeedle)) return false;
         if(priorityFilter !== 'all' && (task.priority || 'normal') !== priorityFilter) return false;
         if(statusFilter !== 'all' && task.status !== statusFilter) return false;
+        if(categoryFilter !== 'all' && (task.category || 'personal') !== categoryFilter) return false;
         return true;
       });
       const filteredNotes = notes.filter(note => {
@@ -2722,6 +2738,12 @@
         later: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfWeek),
         someday: pendingTasks.filter(t => !t.due_at)
       };
+      const todayFocus = tasks.filter(t => t.status !== 'done' && t.due_at && new Date(t.due_at) <= endOfToday);
+      const urgentCount = tasks.filter(t => t.status !== 'done' && (t.priority || 'normal') === 'high').length;
+      const byCategory = CATEGORY_OPTIONS.map(cat => ({
+        ...cat,
+        count: tasks.filter(t => t.status !== 'done' && (t.category || 'personal') === cat.value).length
+      }));
 
       return html`
         <div style="display:flex;flex-direction:column;gap:12px;">
@@ -2748,15 +2770,36 @@
                 </div>
               `)}
             </div>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px;">
+              <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
+                <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;">Vencen hoy</p>
+                <p style="margin:4px 0 0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#EF4444;">${todayFocus.length}</p>
+              </div>
+              <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
+                <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;">Alta prioridad</p>
+                <p style="margin:4px 0 0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#F59E0B;">${urgentCount}</p>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+              ${byCategory.map(cat => html`
+                <div style=${`padding:6px 10px;border-radius:999px;background:${cat.color}18;border:1px solid ${cat.color}55;color:${cat.color};font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;`}>
+                  ${cat.label}: ${cat.count}
+                </div>
+              `)}
+            </div>
             <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
               <input class="inp" placeholder="Buscar tarea o pensamiento..."
                 value=${taskSearch} onInput=${e=>setTaskSearch(e.target.value)} />
-              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
                 <select class="inp" value=${priorityFilter} onChange=${e=>setPriorityFilter(e.target.value)}>
                   <option value="all">Todas las prioridades</option>
                   <option value="high">Alta</option>
                   <option value="normal">Normal</option>
                   <option value="low">Baja</option>
+                </select>
+                <select class="inp" value=${categoryFilter} onChange=${e=>setCategoryFilter(e.target.value)}>
+                  <option value="all">Todas las categorías</option>
+                  ${CATEGORY_OPTIONS.map(cat => html`<option value=${cat.value}>${cat.label}</option>`)}
                 </select>
                 <select class="inp" value=${statusFilter} onChange=${e=>setStatusFilter(e.target.value)}>
                   <option value="all">Todos los estados</option>
@@ -2780,6 +2823,9 @@
                   <option value="low">Baja</option>
                 </select>
               </div>
+              <select class="inp" value=${taskCategory} onChange=${e=>setTaskCategory(e.target.value)}>
+                ${CATEGORY_OPTIONS.map(cat => html`<option value=${cat.value}>${cat.label}</option>`)}
+              </select>
               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
                 <input type="checkbox" checked=${taskAutoEmail} onChange=${e=>setTaskAutoEmail(e.target.checked)} />
                 <span>Enviar recordatorio automático por email cuando venza</span>
@@ -2837,6 +2883,9 @@
                                   <option value="low">Baja</option>
                                 </select>
                               </div>
+                              <select class="inp" value=${editingTaskCategory} onChange=${e=>setEditingTaskCategory(e.target.value)}>
+                                ${CATEGORY_OPTIONS.map(cat => html`<option value=${cat.value}>${cat.label}</option>`)}
+                              </select>
                               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
                                 <input type="checkbox" checked=${editingTaskAutoEmail} onChange=${e=>setEditingTaskAutoEmail(e.target.checked)} />
                                 <span>Recordatorio automático por email</span>
@@ -2859,6 +2908,7 @@
                                 ${task.details && task.details !== task.title && html`<p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">${task.details}</p>`}
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
                                   <span style=${`font-size:10px;color:${priorityColor(task.priority)};font-family:'JetBrains Mono',monospace;`}>${(task.priority || 'normal').toUpperCase()}</span>
+                                  <span style=${`font-size:10px;color:${categoryMeta(task.category || 'personal').color};font-family:'JetBrains Mono',monospace;`}>${categoryMeta(task.category || 'personal').label.toUpperCase()}</span>
                                   <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.due_at)}</span>
                                 </div>
                               </div>
