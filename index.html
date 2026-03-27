@@ -1446,6 +1446,17 @@
       const [savedRecipes, setSavedRecipes] = useState([]);
       const [recipesLoading, setRecipesLoading] = useState(true);
       const [recipesError, setRecipesError] = useState('');
+      const [editingRecipeId, setEditingRecipeId] = useState(null);
+      const [editingRecipeName, setEditingRecipeName] = useState('');
+      const [editingRecipeBaseQty, setEditingRecipeBaseQty] = useState('1');
+      const [editingRecipeBaseUnit, setEditingRecipeBaseUnit] = useState('porcion');
+      const [editingRecipeCals, setEditingRecipeCals] = useState('0');
+      const [editingRecipeProt, setEditingRecipeProt] = useState('0');
+      const [editingRecipeCarb, setEditingRecipeCarb] = useState('0');
+      const [editingRecipeFat, setEditingRecipeFat] = useState('0');
+      const [editingRecipeIngredients, setEditingRecipeIngredients] = useState('');
+      const [editingRecipeNotes, setEditingRecipeNotes] = useState('');
+      const [editingRecipeSaving, setEditingRecipeSaving] = useState(false);
       const recipesRef = useRef(null);
 
       const fs = getFastStats(t);
@@ -1690,6 +1701,86 @@
         }
       };
 
+      const startEditRecipe = (recipe) => {
+        setEditingRecipeId(recipe.id);
+        setEditingRecipeName(recipe.recipe_name || '');
+        setEditingRecipeBaseQty(String(recipe.base_qty ?? 1));
+        setEditingRecipeBaseUnit(recipe.base_unit || 'porcion');
+        setEditingRecipeCals(String(Math.round(parseFloat(recipe.macros?.cals) || 0)));
+        setEditingRecipeProt(String(Math.round(parseFloat(recipe.macros?.prot) || 0)));
+        setEditingRecipeCarb(String(Math.round(parseFloat(recipe.macros?.carb) || 0)));
+        setEditingRecipeFat(String(Math.round(parseFloat(recipe.macros?.fat) || 0)));
+        setEditingRecipeIngredients(
+          Array.isArray(recipe.ingredients)
+            ? recipe.ingredients.map(it => `${it.qty || '1 porcion'} | ${it.name || 'Ingrediente'}`).join('\n')
+            : ''
+        );
+        setEditingRecipeNotes(recipe.notes || '');
+      };
+
+      const cancelEditRecipe = () => {
+        setEditingRecipeId(null);
+        setEditingRecipeName('');
+        setEditingRecipeBaseQty('1');
+        setEditingRecipeBaseUnit('porcion');
+        setEditingRecipeCals('0');
+        setEditingRecipeProt('0');
+        setEditingRecipeCarb('0');
+        setEditingRecipeFat('0');
+        setEditingRecipeIngredients('');
+        setEditingRecipeNotes('');
+      };
+
+      const saveRecipeEdit = async (recipeId) => {
+        if(!editingRecipeName.trim()) return;
+        setEditingRecipeSaving(true);
+        setRecipesError('');
+        try {
+          const ingredients = editingRecipeIngredients
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean)
+            .map(line => {
+              const [qtyPart, ...nameParts] = line.split('|');
+              return {
+                qty: (qtyPart || '').trim() || '1 porcion',
+                name: nameParts.join('|').trim() || qtyPart.trim() || 'Ingrediente'
+              };
+            });
+
+          const payload = {
+            recipe_name: editingRecipeName.trim(),
+            base_qty: parseFloat(String(editingRecipeBaseQty).replace(',', '.')) || 1,
+            base_unit: editingRecipeBaseUnit.trim() || 'porcion',
+            macros: {
+              cals: Math.max(0, Math.round(parseFloat(editingRecipeCals) || 0)),
+              prot: Math.max(0, Math.round(parseFloat(editingRecipeProt) || 0)),
+              carb: Math.max(0, Math.round(parseFloat(editingRecipeCarb) || 0)),
+              fat: Math.max(0, Math.round(parseFloat(editingRecipeFat) || 0))
+            },
+            ingredients,
+            notes: editingRecipeNotes.trim() || null,
+            updated_at: new Date().toISOString()
+          };
+
+          const { data, error } = await supabase.from('user_recipes')
+            .update(payload)
+            .eq('id', recipeId)
+            .select()
+            .single();
+          if(error) throw error;
+
+          recipesRef.current = null;
+          setSavedRecipes(prev => prev.map(r => r.id === recipeId ? data : r));
+          cancelEditRecipe();
+        } catch(e) {
+          setRecipesError(e.message || 'No se pudo editar la receta.');
+          setTimeout(() => setRecipesError(''), 3000);
+        } finally {
+          setEditingRecipeSaving(false);
+        }
+      };
+
       return html`
         <${SectionAccordion} icon=${html`<${IActivity} s=${18} c=""/>`} title="Parámetros Diarios" isOpen=${open} onToggle=${()=>setOpen(!open)}>
           <div style="display:grid;gap:12px;grid-template-columns:1fr;"> 
@@ -1851,26 +1942,71 @@
                   <div style="display:flex;flex-direction:column;gap:8px;">
                     ${savedRecipes.map(recipe => html`
                       <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.85);border:1px solid #1E2D45;">
-                        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-                          <div style="flex:1;min-width:0;">
-                            <p style="margin:0;font-size:13px;font-weight:700;color:#E2E8F0;">${recipe.recipe_name}</p>
-                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-                              <span style="font-size:10px;color:#F59E0B;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.cals)||0)} kcal</span>
-                              <span style="font-size:10px;color:#10B981;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.prot)||0)}g P</span>
-                              <span style="font-size:10px;color:#6366F1;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.carb)||0)}g C</span>
-                              <span style="font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.fat)||0)}g G</span>
+                        ${editingRecipeId === recipe.id ? html`
+                          <div style="display:flex;flex-direction:column;gap:8px;">
+                            <input class="inp" value=${editingRecipeName} onInput=${e=>setEditingRecipeName(e.target.value)} placeholder="Nombre de receta" />
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                              <input class="inp" value=${editingRecipeBaseQty} onInput=${e=>setEditingRecipeBaseQty(e.target.value)} placeholder="Base qty" />
+                              <input class="inp" value=${editingRecipeBaseUnit} onInput=${e=>setEditingRecipeBaseUnit(e.target.value)} placeholder="Unidad base" />
                             </div>
-                            ${Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && html`
-                              <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;white-space:pre-wrap;">
-                                ${recipe.ingredients.map(it => `${it.qty || '1 porcion'} ${it.name || 'Ingrediente'}`).join(' · ')}
-                              </p>
-                            `}
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                              <input class="inp" value=${editingRecipeCals} onInput=${e=>setEditingRecipeCals(e.target.value)} placeholder="Kcal" />
+                              <input class="inp" value=${editingRecipeProt} onInput=${e=>setEditingRecipeProt(e.target.value)} placeholder="P" />
+                              <input class="inp" value=${editingRecipeCarb} onInput=${e=>setEditingRecipeCarb(e.target.value)} placeholder="C" />
+                              <input class="inp" value=${editingRecipeFat} onInput=${e=>setEditingRecipeFat(e.target.value)} placeholder="G" />
+                            </div>
+                            <textarea
+                              value=${editingRecipeIngredients}
+                              onInput=${e=>setEditingRecipeIngredients(e.target.value)}
+                              placeholder="Una linea por ingrediente. Formato: cantidad | nombre"
+                              style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:80px;"></textarea>
+                            <textarea
+                              value=${editingRecipeNotes}
+                              onInput=${e=>setEditingRecipeNotes(e.target.value)}
+                              placeholder="Notas opcionales"
+                              style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                              <button onClick=${()=>saveRecipeEdit(recipe.id)}
+                                style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                ${editingRecipeSaving ? 'GUARDANDO...' : 'GUARDAR'}
+                              </button>
+                              <button onClick=${cancelEditRecipe}
+                                style="padding:6px 10px;border-radius:8px;border:1px solid rgba(100,116,139,0.35);background:rgba(100,116,139,0.12);color:#CBD5E1;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                CANCELAR
+                              </button>
+                            </div>
                           </div>
-                          <button onClick=${()=>deleteRecipe(recipe)}
-                            style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                            BORRAR
-                          </button>
-                        </div>
+                        ` : html`
+                          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                            <div style="flex:1;min-width:0;">
+                              <p style="margin:0;font-size:13px;font-weight:700;color:#E2E8F0;">${recipe.recipe_name}</p>
+                              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                                <span style="font-size:10px;color:#F59E0B;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.cals)||0)} kcal</span>
+                                <span style="font-size:10px;color:#10B981;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.prot)||0)}g P</span>
+                                <span style="font-size:10px;color:#6366F1;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.carb)||0)}g C</span>
+                                <span style="font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.fat)||0)}g G</span>
+                              </div>
+                              ${Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && html`
+                                <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;white-space:pre-wrap;">
+                                  ${recipe.ingredients.map(it => `${it.qty || '1 porcion'} ${it.name || 'Ingrediente'}`).join(' · ')}
+                                </p>
+                              `}
+                              ${recipe.notes && html`
+                                <p style="margin:6px 0 0;font-size:10px;color:#64748b;">${recipe.notes}</p>
+                              `}
+                            </div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                              <button onClick=${()=>startEditRecipe(recipe)}
+                                style="padding:4px 8px;border-radius:6px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                EDITAR
+                              </button>
+                              <button onClick=${()=>deleteRecipe(recipe)}
+                                style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                BORRAR
+                              </button>
+                            </div>
+                          </div>
+                        `}
                       </div>
                     `)}
                   </div>
