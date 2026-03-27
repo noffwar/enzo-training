@@ -1,2 +1,12 @@
 # Local Netlify folder
-.netlify
+.netlify/
+
+# Supabase local workspace
+.supabase/
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*

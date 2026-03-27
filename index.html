@@ -1410,11 +1410,115 @@
       const [aiText,    setAiText]    = useState(['','','']);
       const [aiLoading, setAiLoading] = useState([false,false,false]);
       const [aiError,   setAiError]   = useState(['','','']);
+      const recipesRef = useRef(null);
 
       const fs = getFastStats(t);
 
       // Totales diarios calculados desde items
       const macros = dayTotals(t.meals);
+
+      const normalizeRecipeText = (s='') =>
+        String(s)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .replace(/\s+/g, ' ');
+
+      const parseRecipeAmount = (text='') => {
+        const m = String(text).toLowerCase().match(/(\d+(?:[.,]\d+)?)\s*(kg|g|gramos?|porciones?|porcion|u|unidades?)/);
+        if(!m) return null;
+        return {
+          value: parseFloat(m[1].replace(',', '.')),
+          unit: m[2]
+        };
+      };
+
+      const stripRecipeAmount = (text='') =>
+        normalizeRecipeText(String(text).replace(/(\d+(?:[.,]\d+)?)\s*(kg|g|gramos?|porciones?|porcion|u|unidades?)/ig, ' '));
+
+      const unitToGrams = (value, unit) => {
+        const u = String(unit||'').toLowerCase();
+        if(u === 'kg') return value * 1000;
+        if(u === 'g' || u === 'gramo' || u === 'gramos') return value;
+        return null;
+      };
+
+      const unitToPortions = (value, unit) => {
+        const u = String(unit||'').toLowerCase();
+        if(u === 'porcion' || u === 'porciones') return value;
+        return null;
+      };
+
+      const formatRecipeQty = (value, unit) => {
+        const n = Number(value);
+        const clean = Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100).replace('.', ',');
+        return `${clean} ${unit}`.trim();
+      };
+
+      const scaleRecipeMacros = (recipe, factor) => {
+        const macrosBase = recipe.macros || {};
+        return {
+          cals: Math.round((parseFloat(macrosBase.cals) || 0) * factor),
+          prot: Math.round((parseFloat(macrosBase.prot) || 0) * factor),
+          carb: Math.round((parseFloat(macrosBase.carb) || 0) * factor),
+          fat:  Math.round((parseFloat(macrosBase.fat)  || 0) * factor)
+        };
+      };
+
+      const findRecipeMatch = (recipes, inputText) => {
+        const raw = String(inputText || '').trim();
+        const normalizedFull = normalizeRecipeText(raw);
+        const normalizedNameOnly = stripRecipeAmount(raw);
+        const parsedAmount = parseRecipeAmount(raw);
+
+        for(const recipe of (recipes || [])) {
+          const names = [recipe.recipe_name, ...((Array.isArray(recipe.aliases) ? recipe.aliases : []))]
+            .filter(Boolean)
+            .map(normalizeRecipeText);
+          const matches = names.includes(normalizedFull) || names.includes(normalizedNameOnly);
+          if(!matches) continue;
+
+          let factor = 1;
+          let qty = formatRecipeQty(recipe.base_qty || 1, recipe.base_unit || 'porcion');
+
+          if(parsedAmount?.value > 0) {
+            const baseQty = parseFloat(recipe.base_qty) || 1;
+            const inputGrams = unitToGrams(parsedAmount.value, parsedAmount.unit);
+            const baseGrams = unitToGrams(baseQty, recipe.base_unit);
+            const inputPortions = unitToPortions(parsedAmount.value, parsedAmount.unit);
+            const basePortions = unitToPortions(baseQty, recipe.base_unit);
+
+            if(inputGrams && baseGrams) {
+              factor = inputGrams / baseGrams;
+              qty = `${formatRecipeQty(parsedAmount.value, parsedAmount.unit)} (${recipe.base_unit})`;
+            } else if(inputPortions && basePortions) {
+              factor = inputPortions / basePortions;
+              qty = `${formatRecipeQty(parsedAmount.value, parsedAmount.unit)} (${recipe.base_unit})`;
+            }
+          }
+
+          return {
+            name: recipe.recipe_name,
+            qty,
+            nota: recipe.notes || 'Receta guardada',
+            ...scaleRecipeMacros(recipe, factor)
+          };
+        }
+
+        return null;
+      };
+
+      const getRecipes = async () => {
+        if(recipesRef.current) return recipesRef.current;
+        const { data, error } = await supabase
+          .from('user_recipes')
+          .select('recipe_name, aliases, base_qty, base_unit, macros, notes');
+        if(error) throw error;
+        recipesRef.current = data || [];
+        return recipesRef.current;
+      };
 
       // analyzeMeal: llama a la IA y agrega el resultado como item a la leyenda
       const analyzeMeal = async (mealIndex) => {
@@ -1425,6 +1529,18 @@
         setAiError(prev   => { const n=[...prev]; n[mealIndex]='';   return n; });
 
         try {
+          try {
+            const recipes = await getRecipes();
+            const recipeHit = findRecipeMatch(recipes, text);
+            if(recipeHit) {
+              onAddItem(mealIndex, recipeHit);
+              setAiText(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
+              return;
+            }
+          } catch(recipeErr) {
+            console.warn('[RECIPES]', recipeErr.message);
+          }
+
           const res = await fetch('/.netlify/functions/get-macros', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ meal: text })
