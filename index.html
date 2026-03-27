@@ -257,11 +257,12 @@
   <!-- Preact + HTM — sin Babel, sin compilación, carga en <100ms -->
   <script type="module">
     // htm/preact standalone: todo en uno, sin bare specifiers
-    import { html, render, Component, useState, useEffect, useCallback, useRef, useMemo } from 'https://unpkg.com/htm@3.1.1/preact/standalone.module.js';
+    import { html, render, Component, useState, useEffect, useCallback, useRef, useMemo, useImperativeHandle } from 'https://unpkg.com/htm@3.1.1/preact/standalone.module.js';
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
     // Inyectar el Component de Preact al shim de React para que Recharts pueda heredar
     window.React.Component = window.React.Component || Component;
     window.React.PureComponent = window.React.PureComponent || Component;
+    window.React.useImperativeHandle = window.React.useImperativeHandle || useImperativeHandle;
     
     // Getter dinámico — se evalúa en cada render, no al cargar el módulo
     // Necesario porque Recharts carga de forma diferida (lazy)
