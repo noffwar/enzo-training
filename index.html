@@ -819,9 +819,9 @@
       water: 0, gymNotes: '',
       meds:{roacuttan:false, finasteride:false, minoxidil:false, creatine:false, magnesium:false},
       meals:[
-        { items:[], firstBite:'', lastBite:'' },
-        { items:[], firstBite:'', lastBite:'' },
-        { items:[], firstBite:'', lastBite:'' }
+        { items:[], firstBite:'', lastBite:'', aiDraft:'' },
+        { items:[], firstBite:'', lastBite:'', aiDraft:'' },
+        { items:[], firstBite:'', lastBite:'', aiDraft:'' }
       ]
     });
 
@@ -1439,7 +1439,6 @@
 
     const HabitsPanel = ({tracker:t, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem}) => {
       const [open,setOpen] = useState(true);
-      const [aiText,    setAiText]    = useState(['','','']);
       const [aiLoading, setAiLoading] = useState([false,false,false]);
       const [aiError,   setAiError]   = useState(['','','']);
       const recipesRef = useRef(null);
@@ -1554,7 +1553,7 @@
 
       // analyzeMeal: llama a la IA y agrega el resultado como item a la leyenda
       const analyzeMeal = async (mealIndex) => {
-        const text = aiText[mealIndex].trim();
+        const text = String(t.meals?.[mealIndex]?.aiDraft || '').trim();
         if(!text) return;
 
         setAiLoading(prev => { const n=[...prev]; n[mealIndex]=true; return n; });
@@ -1566,7 +1565,7 @@
             const recipeHit = findRecipeMatch(recipes, text);
             if(recipeHit) {
               onAddItem(mealIndex, recipeHit);
-              setAiText(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
+              onMeal(mealIndex, 'aiDraft', '');
               return;
             }
           } catch(recipeErr) {
@@ -1590,7 +1589,7 @@
             nota: data.nota || ''
           });
 
-          setAiText(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
+          onMeal(mealIndex, 'aiDraft', '');
         } catch(e) {
           console.error('[IA]', e);
           setAiError(prev => { const n=[...prev]; n[mealIndex]=e.message||'Error'; return n; });
@@ -1653,8 +1652,8 @@
                     <div style="display:flex;gap:6px;margin-bottom:8px;">
                       <input
                         type="text"
-                        value=${aiText[i]}
-                        onInput=${e=>{ const n=[...aiText]; n[i]=e.target.value; setAiText(n); }}
+                        value=${m.aiDraft || ''}
+                        onInput=${e=>onMeal(i,'aiDraft',e.target.value)}
                         onKeyDown=${e=>{ if(e.key==='Enter'&&!loading) analyzeMeal(i); }}
                         placeholder="Sumar alimento a la leyenda..."
                         style="flex:1;background:#0a0f1e;border:1px solid #2A3F5F;border-radius:8px;padding:7px 10px;font-size:12px;color:#e2e8f0;font-family:'Barlow',sans-serif;"
@@ -1662,9 +1661,9 @@
                       />
                       <button
                         onClick=${()=>analyzeMeal(i)}
-                        disabled=${loading||!aiText[i].trim()}
+                        disabled=${loading||!String(m.aiDraft||'').trim()}
                         title="Analizar con IA y sumar"
-                        style=${`display:flex;align-items:center;gap:4px;padding:7px 12px;border-radius:8px;border:1px solid ${loading?'rgba(99,102,241,0.4)':aiText[i].trim()?'rgba(99,102,241,0.3)':'#1E2D45'};cursor:${loading||!aiText[i].trim()?'not-allowed':'pointer'};background:${loading?'rgba(99,102,241,0.15)':aiText[i].trim()?'rgba(99,102,241,0.25)':'rgba(30,45,69,0.5)'};color:${loading?'#818CF8':aiText[i].trim()?'#A5B4FC':'#374151'};font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;transition:all 0.15s;`}
+                        style=${`display:flex;align-items:center;gap:4px;padding:7px 12px;border-radius:8px;border:1px solid ${loading?'rgba(99,102,241,0.4)':String(m.aiDraft||'').trim()?'rgba(99,102,241,0.3)':'#1E2D45'};cursor:${loading||!String(m.aiDraft||'').trim()?'not-allowed':'pointer'};background:${loading?'rgba(99,102,241,0.15)':String(m.aiDraft||'').trim()?'rgba(99,102,241,0.25)':'rgba(30,45,69,0.5)'};color:${loading?'#818CF8':String(m.aiDraft||'').trim()?'#A5B4FC':'#374151'};font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;transition:all 0.15s;`}
                       >
                         ${loading
                           ? html`<span class="spin" style="display:inline-block;width:12px;height:12px;border:2px solid rgba(129,140,248,0.3);border-top-color:#818CF8;border-radius:50%;"></span>`
@@ -2933,6 +2932,42 @@
         }
       };
 
+      const summarizeThoughtDebate = async (note) => {
+        setAiLoadingNoteId(note.id);
+        setError('');
+        try {
+          const thread = aiReplies[note.id] || [];
+          if(thread.length === 0) throw new Error('Todavia no hay debate para resumir.');
+          const historyText = thread.map((item, idx) => `${idx + 1}. Pregunta: ${item.question}\nRespuesta: ${item.reply}`).join('\n\n');
+          const res = await fetch('/.netlify/functions/thought-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              thought: note.content,
+              question: `Resumi este debate en 5 puntos concretos, una conclusion breve y una siguiente pregunta util.\n\n${historyText}`
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          const nextThread = [
+            ...thread,
+            {
+              question: 'Resumen del debate',
+              reply: data.reply || 'No hubo resumen.'
+            }
+          ];
+          setAiReplies(prev => ({ ...prev, [note.id]: nextThread }));
+          try {
+            await persistAiThread(note.id, nextThread);
+          } catch(_) {}
+          setAiOpenNoteId(note.id);
+        } catch(e) {
+          setError(e.message || 'No se pudo resumir el debate.');
+        } finally {
+          setAiLoadingNoteId(null);
+        }
+      };
+
       const openInGemini = async (note) => {
         const thread = aiReplies[note.id] || [];
         const draft = (aiDrafts[note.id] || '').trim();
@@ -3260,6 +3295,10 @@
                             <button onClick=${()=>askThoughtAI(note)}
                               style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.35);background:rgba(56,189,248,0.14);color:#7DD3FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                               ${aiLoadingNoteId === note.id ? 'PENSANDO...' : 'PREGUNTAR A GEMINI'}
+                            </button>
+                            <button onClick=${()=>summarizeThoughtDebate(note)}
+                              style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              RESUMIR DEBATE
                             </button>
                             <button onClick=${()=>openInGemini(note)}
                               style="padding:6px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
