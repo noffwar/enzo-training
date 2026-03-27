@@ -2711,6 +2711,9 @@
         aliases: '',
         base_qty: '1',
         base_unit: 'porcion',
+        stock_qty: '',
+        stock_unit: '',
+        low_stock_threshold: '',
         cals: '',
         prot: '',
         carb: '',
@@ -2725,7 +2728,7 @@
         try {
           const { data, error } = await supabase
             .from('user_recipes')
-            .select('id, recipe_name, aliases, base_qty, base_unit, macros, ingredients, notes, updated_at')
+            .select('id, recipe_name, aliases, base_qty, base_unit, stock_qty, stock_unit, low_stock_threshold, macros, ingredients, notes, updated_at')
             .order('updated_at', { ascending: false });
           if(error) throw error;
           setRows(data || []);
@@ -2745,6 +2748,9 @@
           aliases: '',
           base_qty: '1',
           base_unit: 'porcion',
+          stock_qty: '',
+          stock_unit: '',
+          low_stock_threshold: '',
           cals: '',
           prot: '',
           carb: '',
@@ -2761,6 +2767,9 @@
           aliases: Array.isArray(recipe.aliases) ? recipe.aliases.join(', ') : '',
           base_qty: String(recipe.base_qty ?? 1),
           base_unit: recipe.base_unit || 'porcion',
+          stock_qty: recipe.stock_qty == null ? '' : String(recipe.stock_qty),
+          stock_unit: recipe.stock_unit || '',
+          low_stock_threshold: recipe.low_stock_threshold == null ? '' : String(recipe.low_stock_threshold),
           cals: String(Math.round(parseFloat(recipe.macros?.cals) || 0)),
           prot: String(Math.round(parseFloat(recipe.macros?.prot) || 0)),
           carb: String(Math.round(parseFloat(recipe.macros?.carb) || 0)),
@@ -2782,6 +2791,9 @@
             aliases: form.aliases.split(',').map(v => v.trim()).filter(Boolean),
             base_qty: parseFloat(String(form.base_qty).replace(',', '.')) || 1,
             base_unit: form.base_unit.trim() || 'porcion',
+            stock_qty: form.stock_qty === '' ? null : (parseFloat(String(form.stock_qty).replace(',', '.')) || 0),
+            stock_unit: form.stock_unit.trim() || null,
+            low_stock_threshold: form.low_stock_threshold === '' ? null : (parseFloat(String(form.low_stock_threshold).replace(',', '.')) || 0),
             macros: {
               cals: Math.max(0, Math.round(parseFloat(form.cals) || 0)),
               prot: Math.max(0, Math.round(parseFloat(form.prot) || 0)),
@@ -2855,7 +2867,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
               <div>
                 <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Recetas e ingredientes</p>
-                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Carg&aacute; comidas o ingredientes con macros conocidos. Si escrib&iacute;s ese nombre en una comida, la app lo usa antes que Gemini.</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Carga comidas o ingredientes con macros conocidos. Si escribis ese nombre en una comida, la app lo usa antes que Gemini.</p>
               </div>
               <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadRecipes}>
                 <${ISync} s=${16}/>
@@ -2868,6 +2880,11 @@
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <input class="inp" value=${form.base_qty} onInput=${e=>setForm(prev => ({ ...prev, base_qty:e.target.value }))} placeholder="Cantidad base" />
                 <input class="inp" value=${form.base_unit} onInput=${e=>setForm(prev => ({ ...prev, base_unit:e.target.value }))} placeholder="Unidad base (g, porcion, unidad...)" />
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                <input class="inp" value=${form.stock_qty} onInput=${e=>setForm(prev => ({ ...prev, stock_qty:e.target.value }))} placeholder="Stock actual" />
+                <input class="inp" value=${form.stock_unit} onInput=${e=>setForm(prev => ({ ...prev, stock_unit:e.target.value }))} placeholder="Unidad stock" />
+                <input class="inp" value=${form.low_stock_threshold} onInput=${e=>setForm(prev => ({ ...prev, low_stock_threshold:e.target.value }))} placeholder="Reponer <=" />
               </div>
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                 <input class="inp" value=${form.cals} onInput=${e=>setForm(prev => ({ ...prev, cals:e.target.value }))} placeholder="Kcal" />
@@ -2922,6 +2939,16 @@
                           <span style="font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.fat)||0)}g G</span>
                         </div>
                         <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;">Base: ${recipe.base_qty || 1} ${recipe.base_unit || 'porcion'}</p>
+                        ${(recipe.stock_qty !== null && recipe.stock_qty !== undefined && recipe.stock_qty !== '') && html`
+                          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                            <span style="font-size:10px;color:#7DD3FC;font-family:'JetBrains Mono',monospace;">
+                              Stock: ${recipe.stock_qty} ${recipe.stock_unit || ''}
+                            </span>
+                            ${(recipe.low_stock_threshold !== null && recipe.low_stock_threshold !== undefined && recipe.low_stock_threshold !== '' && Number(recipe.stock_qty) <= Number(recipe.low_stock_threshold)) && html`
+                              <span style="font-size:10px;color:#FCA5A5;font-family:'JetBrains Mono',monospace;">Reponer</span>
+                            `}
+                          </div>
+                        `}
                         ${Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && html`
                           <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;white-space:pre-wrap;">
                             ${recipe.ingredients.map(it => `${it.qty || '1 porcion'} ${it.name || 'Ingrediente'}`).join(' · ')}
