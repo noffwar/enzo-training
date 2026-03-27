@@ -2404,11 +2404,16 @@
       const [taskPriority, setTaskPriority] = useState('normal');
       const [noteText, setNoteText] = useState('');
       const [saving, setSaving] = useState('');
+      const [taskSearch, setTaskSearch] = useState('');
+      const [priorityFilter, setPriorityFilter] = useState('all');
+      const [statusFilter, setStatusFilter] = useState('all');
+      const [taskAutoEmail, setTaskAutoEmail] = useState(true);
       const [editingTaskId, setEditingTaskId] = useState(null);
       const [editingTaskTitle, setEditingTaskTitle] = useState('');
       const [editingTaskDetails, setEditingTaskDetails] = useState('');
       const [editingTaskDue, setEditingTaskDue] = useState('');
       const [editingTaskPriority, setEditingTaskPriority] = useState('normal');
+      const [editingTaskAutoEmail, setEditingTaskAutoEmail] = useState(true);
       const [editingNoteId, setEditingNoteId] = useState(null);
       const [editingNoteContent, setEditingNoteContent] = useState('');
 
@@ -2452,6 +2457,7 @@
             title: taskTitle.trim(),
             priority: taskPriority,
             status: 'pending',
+            auto_email_reminder: taskAutoEmail,
             due_at: taskDue || null
           }).select().single();
           if(error) throw error;
@@ -2459,6 +2465,7 @@
           setTaskTitle('');
           setTaskDue('');
           setTaskPriority('normal');
+          setTaskAutoEmail(true);
         } catch(e) {
           setError(e.message || 'No se pudo guardar la tarea.');
         } finally {
@@ -2490,7 +2497,11 @@
       const updateTaskStatus = async (task, status) => {
         try {
           const { data, error } = await supabase.from('tasks')
-            .update({ status, updated_at: new Date().toISOString() })
+            .update({
+              status,
+              email_reminder_sent_at: status === 'pending' ? null : task.email_reminder_sent_at || null,
+              updated_at: new Date().toISOString()
+            })
             .eq('id', task.id)
             .eq('user_id', session.user.id)
             .select()
@@ -2508,6 +2519,7 @@
         setEditingTaskDetails(task.details || '');
         setEditingTaskDue(task.due_at ? String(task.due_at).slice(0,16) : '');
         setEditingTaskPriority(task.priority || 'normal');
+        setEditingTaskAutoEmail(task.auto_email_reminder !== false);
       };
 
       const saveTaskEdit = async (task) => {
@@ -2521,6 +2533,8 @@
               details: editingTaskDetails.trim() || null,
               due_at: editingTaskDue || null,
               priority: editingTaskPriority,
+              auto_email_reminder: editingTaskAutoEmail,
+              email_reminder_sent_at: null,
               updated_at: new Date().toISOString()
             })
             .eq('id', task.id)
@@ -2683,9 +2697,22 @@
         }
       };
 
-      const pendingTasks = tasks.filter(t => t.status !== 'done');
-      const doneTasks = tasks.filter(t => t.status === 'done');
-      const activeNotes = notes.filter(n => n.kind !== 'converted');
+      const searchNeedle = taskSearch.trim().toLowerCase();
+      const filteredTasks = tasks.filter(task => {
+        const text = `${task.title || ''} ${task.details || ''}`.toLowerCase();
+        if(searchNeedle && !text.includes(searchNeedle)) return false;
+        if(priorityFilter !== 'all' && (task.priority || 'normal') !== priorityFilter) return false;
+        if(statusFilter !== 'all' && task.status !== statusFilter) return false;
+        return true;
+      });
+      const filteredNotes = notes.filter(note => {
+        if(note.kind === 'converted') return false;
+        if(!searchNeedle) return true;
+        return String(note.content || '').toLowerCase().includes(searchNeedle);
+      });
+      const pendingTasks = filteredTasks.filter(t => t.status !== 'done');
+      const doneTasks = filteredTasks.filter(t => t.status === 'done');
+      const activeNotes = filteredNotes;
       const now = new Date();
       const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
       const endOfWeek = new Date(now); endOfWeek.setDate(now.getDate() + 7); endOfWeek.setHours(23,59,59,999);
@@ -2721,6 +2748,23 @@
                 </div>
               `)}
             </div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+              <input class="inp" placeholder="Buscar tarea o pensamiento..."
+                value=${taskSearch} onInput=${e=>setTaskSearch(e.target.value)} />
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                <select class="inp" value=${priorityFilter} onChange=${e=>setPriorityFilter(e.target.value)}>
+                  <option value="all">Todas las prioridades</option>
+                  <option value="high">Alta</option>
+                  <option value="normal">Normal</option>
+                  <option value="low">Baja</option>
+                </select>
+                <select class="inp" value=${statusFilter} onChange=${e=>setStatusFilter(e.target.value)}>
+                  <option value="all">Todos los estados</option>
+                  <option value="pending">Pendientes</option>
+                  <option value="done">Hechas</option>
+                </select>
+              </div>
+            </div>
           <//>
 
           <${Card}>
@@ -2736,6 +2780,10 @@
                   <option value="low">Baja</option>
                 </select>
               </div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
+                <input type="checkbox" checked=${taskAutoEmail} onChange=${e=>setTaskAutoEmail(e.target.checked)} />
+                <span>Enviar recordatorio automático por email cuando venza</span>
+              </label>
               <button onClick=${addTask}
                 style="width:100%;padding:10px;border-radius:10px;border:none;background:#10B981;color:#041018;font-size:13px;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;cursor:pointer;">
                 ${saving === 'task' ? 'GUARDANDO...' : 'AGREGAR TAREA'}
@@ -2789,6 +2837,10 @@
                                   <option value="low">Baja</option>
                                 </select>
                               </div>
+                              <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
+                                <input type="checkbox" checked=${editingTaskAutoEmail} onChange=${e=>setEditingTaskAutoEmail(e.target.checked)} />
+                                <span>Recordatorio automático por email</span>
+                              </label>
                               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <button onClick=${()=>saveTaskEdit(task)}
                                   style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">

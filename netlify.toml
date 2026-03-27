@@ -14,6 +14,9 @@
   # Tiempo de espera máximo (por si Gemini tarda en responder)
   included_files = ["netlify/functions/**"]
 
+[functions."send-task-reminders"]
+  schedule = "*/15 * * * *"
+
 [[redirects]]
   # Manejo de rutas para Single Page Application (SPA)
   # Evita errores 404 al recargar la página en Netlify

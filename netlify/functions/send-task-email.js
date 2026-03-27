@@ -40,14 +40,28 @@ exports.handler = async (event) => {
       };
     }
 
+    const accent = priority === 'high' ? '#ef4444' : priority === 'low' ? '#10b981' : '#f59e0b';
     const html = `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a;">
-        <h2 style="margin:0 0 12px;">Recordatorio de tarea</h2>
-        <p style="margin:0 0 8px;"><strong>Título:</strong> ${title}</p>
-        <p style="margin:0 0 8px;"><strong>Prioridad:</strong> ${priority}</p>
-        <p style="margin:0 0 8px;"><strong>Vencimiento:</strong> ${dueAt || 'Sin fecha'}</p>
-        <p style="margin:0;"><strong>Detalle:</strong></p>
-        <p style="white-space:pre-wrap;">${details || title}</p>
+      <div style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">
+        <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;">
+          <div style="padding:18px 22px;background:#0f172a;color:#ffffff;">
+            <p style="margin:0;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.8;">Enzo Training</p>
+            <h1 style="margin:8px 0 0;font-size:24px;line-height:1.2;">Recordatorio de tarea</h1>
+          </div>
+          <div style="padding:22px;">
+            <div style="display:inline-block;padding:6px 10px;border-radius:999px;background:${accent};color:#ffffff;font-size:12px;font-weight:700;text-transform:uppercase;">
+              Prioridad ${priority}
+            </div>
+            <h2 style="margin:16px 0 10px;font-size:22px;line-height:1.3;">${title}</h2>
+            <p style="margin:0 0 14px;font-size:14px;color:#475569;">
+              Vencimiento: <strong style="color:#0f172a;">${dueAt || 'Sin fecha'}</strong>
+            </p>
+            <div style="padding:14px 16px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;">
+              <p style="margin:0 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Detalle</p>
+              <p style="margin:0;white-space:pre-wrap;font-size:14px;line-height:1.6;color:#0f172a;">${details || title}</p>
+            </div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -61,7 +75,8 @@ exports.handler = async (event) => {
         from: RESEND_FROM || 'Enzo Training <onboarding@resend.dev>',
         to: [TASKS_EMAIL_TO],
         subject: `Recordatorio: ${title}`,
-        html
+        html,
+        text: `Recordatorio de tarea\n\nTitulo: ${title}\nPrioridad: ${priority}\nVencimiento: ${dueAt || 'Sin fecha'}\n\nDetalle:\n${details || title}`
       })
     });
 
