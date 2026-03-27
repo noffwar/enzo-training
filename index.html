@@ -2698,6 +2698,255 @@
       try { localStorage.setItem(AI_DRAFTS_KEY, JSON.stringify(drafts || {})); } catch(_) {}
     };
 
+    const RecipesView = ({session}) => {
+      const [rows, setRows] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState('');
+      const [search, setSearch] = useState('');
+      const [typeFilter, setTypeFilter] = useState('all');
+      const [editingId, setEditingId] = useState(null);
+      const [saving, setSaving] = useState(false);
+      const [form, setForm] = useState({
+        recipe_name: '',
+        aliases: '',
+        base_qty: '1',
+        base_unit: 'porcion',
+        cals: '',
+        prot: '',
+        carb: '',
+        fat: '',
+        ingredients: '',
+        notes: ''
+      });
+
+      const loadRecipes = useCallback(async () => {
+        setLoading(true);
+        setError('');
+        try {
+          const { data, error } = await supabase
+            .from('user_recipes')
+            .select('id, recipe_name, aliases, base_qty, base_unit, macros, ingredients, notes, updated_at')
+            .order('updated_at', { ascending: false });
+          if(error) throw error;
+          setRows(data || []);
+        } catch(e) {
+          setError(e.message || 'No se pudieron cargar las recetas.');
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => { loadRecipes(); }, [loadRecipes]);
+
+      const resetForm = () => {
+        setEditingId(null);
+        setForm({
+          recipe_name: '',
+          aliases: '',
+          base_qty: '1',
+          base_unit: 'porcion',
+          cals: '',
+          prot: '',
+          carb: '',
+          fat: '',
+          ingredients: '',
+          notes: ''
+        });
+      };
+
+      const hydrateForm = (recipe) => {
+        setEditingId(recipe.id);
+        setForm({
+          recipe_name: recipe.recipe_name || '',
+          aliases: Array.isArray(recipe.aliases) ? recipe.aliases.join(', ') : '',
+          base_qty: String(recipe.base_qty ?? 1),
+          base_unit: recipe.base_unit || 'porcion',
+          cals: String(Math.round(parseFloat(recipe.macros?.cals) || 0)),
+          prot: String(Math.round(parseFloat(recipe.macros?.prot) || 0)),
+          carb: String(Math.round(parseFloat(recipe.macros?.carb) || 0)),
+          fat: String(Math.round(parseFloat(recipe.macros?.fat) || 0)),
+          ingredients: Array.isArray(recipe.ingredients)
+            ? recipe.ingredients.map(it => `${it.qty || '1 porcion'} | ${it.name || 'Ingrediente'}`).join('\n')
+            : '',
+          notes: recipe.notes || ''
+        });
+      };
+
+      const saveRecipe = async () => {
+        if(!form.recipe_name.trim()) return;
+        setSaving(true);
+        setError('');
+        try {
+          const payload = {
+            recipe_name: form.recipe_name.trim(),
+            aliases: form.aliases.split(',').map(v => v.trim()).filter(Boolean),
+            base_qty: parseFloat(String(form.base_qty).replace(',', '.')) || 1,
+            base_unit: form.base_unit.trim() || 'porcion',
+            macros: {
+              cals: Math.max(0, Math.round(parseFloat(form.cals) || 0)),
+              prot: Math.max(0, Math.round(parseFloat(form.prot) || 0)),
+              carb: Math.max(0, Math.round(parseFloat(form.carb) || 0)),
+              fat: Math.max(0, Math.round(parseFloat(form.fat) || 0))
+            },
+            ingredients: form.ingredients
+              .split('\n')
+              .map(line => line.trim())
+              .filter(Boolean)
+              .map(line => {
+                const [qtyPart, ...nameParts] = line.split('|');
+                return {
+                  qty: (qtyPart || '').trim() || '1 porcion',
+                  name: nameParts.join('|').trim() || qtyPart.trim() || 'Ingrediente'
+                };
+              }),
+            notes: form.notes.trim() || null,
+            updated_at: new Date().toISOString()
+          };
+
+          if(editingId) {
+            const { data, error } = await supabase.from('user_recipes')
+              .update(payload)
+              .eq('id', editingId)
+              .select()
+              .single();
+            if(error) throw error;
+            setRows(prev => prev.map(r => r.id === editingId ? data : r));
+          } else {
+            const { data, error } = await supabase.from('user_recipes')
+              .insert(payload)
+              .select()
+              .single();
+            if(error) throw error;
+            setRows(prev => [data, ...prev]);
+          }
+          resetForm();
+        } catch(e) {
+          setError(e.message || 'No se pudo guardar.');
+        } finally {
+          setSaving(false);
+        }
+      };
+
+      const deleteRecipe = async (id) => {
+        try {
+          const { error } = await supabase.from('user_recipes').delete().eq('id', id);
+          if(error) throw error;
+          setRows(prev => prev.filter(r => r.id !== id));
+          if(editingId === id) resetForm();
+        } catch(e) {
+          setError(e.message || 'No se pudo borrar.');
+        }
+      };
+
+      const classifyRecipe = (recipe) =>
+        Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 ? 'receta' : 'ingrediente';
+
+      const filtered = rows.filter(recipe => {
+        const kind = classifyRecipe(recipe);
+        const hay = `${recipe.recipe_name || ''} ${(recipe.notes || '')}`.toLowerCase();
+        if(typeFilter !== 'all' && kind !== typeFilter) return false;
+        if(search.trim() && !hay.includes(search.trim().toLowerCase())) return false;
+        return true;
+      });
+
+      return html`
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <${Card}>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+              <div>
+                <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Recetas e ingredientes</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Carg&aacute; comidas o ingredientes con macros conocidos. Si escrib&iacute;s ese nombre en una comida, la app lo usa antes que Gemini.</p>
+              </div>
+              <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadRecipes}>
+                <${ISync} s=${16}/>
+              </button>
+            </div>
+            ${error && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <input class="inp" value=${form.recipe_name} onInput=${e=>setForm(prev => ({ ...prev, recipe_name:e.target.value }))} placeholder="Nombre: arroz con pollo casero, avena, banana..." />
+              <input class="inp" value=${form.aliases} onInput=${e=>setForm(prev => ({ ...prev, aliases:e.target.value }))} placeholder="Alias separados por coma (opcional)" />
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <input class="inp" value=${form.base_qty} onInput=${e=>setForm(prev => ({ ...prev, base_qty:e.target.value }))} placeholder="Cantidad base" />
+                <input class="inp" value=${form.base_unit} onInput=${e=>setForm(prev => ({ ...prev, base_unit:e.target.value }))} placeholder="Unidad base (g, porcion, unidad...)" />
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                <input class="inp" value=${form.cals} onInput=${e=>setForm(prev => ({ ...prev, cals:e.target.value }))} placeholder="Kcal" />
+                <input class="inp" value=${form.prot} onInput=${e=>setForm(prev => ({ ...prev, prot:e.target.value }))} placeholder="P" />
+                <input class="inp" value=${form.carb} onInput=${e=>setForm(prev => ({ ...prev, carb:e.target.value }))} placeholder="C" />
+                <input class="inp" value=${form.fat} onInput=${e=>setForm(prev => ({ ...prev, fat:e.target.value }))} placeholder="G" />
+              </div>
+              <textarea value=${form.ingredients} onInput=${e=>setForm(prev => ({ ...prev, ingredients:e.target.value }))} placeholder="Ingredientes, una linea por item. Formato: cantidad | nombre" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
+              <textarea value=${form.notes} onInput=${e=>setForm(prev => ({ ...prev, notes:e.target.value }))} placeholder="Nota opcional" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button onClick=${saveRecipe} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                  ${saving ? 'GUARDANDO...' : (editingId ? 'GUARDAR CAMBIOS' : 'AGREGAR A LA BIBLIOTECA')}
+                </button>
+                ${editingId && html`
+                  <button onClick=${resetForm} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(100,116,139,0.35);background:rgba(100,116,139,0.12);color:#CBD5E1;font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                    CANCELAR
+                  </button>
+                `}
+              </div>
+            </div>
+          <//>
+
+          <${Card}>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <input class="inp" value=${search} onInput=${e=>setSearch(e.target.value)} placeholder="Buscar por nombre..." />
+              <select class="inp" value=${typeFilter} onChange=${e=>setTypeFilter(e.target.value)}>
+                <option value="all">Todo</option>
+                <option value="ingrediente">Ingredientes</option>
+                <option value="receta">Recetas</option>
+              </select>
+            </div>
+          <//>
+
+          <${Card}>
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Biblioteca</p>
+            ${loading ? html`<p style="margin:0;color:#64748b;font-size:12px;">Cargando...</p>` : filtered.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay elementos cargados.</p>` : html`
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${filtered.map(recipe => html`
+                  <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.85);border:1px solid #1E2D45;">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                      <div style="flex:1;min-width:0;">
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                          <p style="margin:0;font-size:13px;font-weight:700;color:#E2E8F0;">${recipe.recipe_name}</p>
+                          <span style="font-size:10px;color:${classifyRecipe(recipe)==='receta'?'#10B981':'#F59E0B'};font-family:'JetBrains Mono',monospace;text-transform:uppercase;">
+                            ${classifyRecipe(recipe)}
+                          </span>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                          <span style="font-size:10px;color:#F59E0B;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.cals)||0)} kcal</span>
+                          <span style="font-size:10px;color:#10B981;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.prot)||0)}g P</span>
+                          <span style="font-size:10px;color:#6366F1;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.carb)||0)}g C</span>
+                          <span style="font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.fat)||0)}g G</span>
+                        </div>
+                        <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;">Base: ${recipe.base_qty || 1} ${recipe.base_unit || 'porcion'}</p>
+                        ${Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && html`
+                          <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;white-space:pre-wrap;">
+                            ${recipe.ingredients.map(it => `${it.qty || '1 porcion'} ${it.name || 'Ingrediente'}`).join(' · ')}
+                          </p>
+                        `}
+                        ${recipe.notes && html`<p style="margin:6px 0 0;font-size:10px;color:#64748b;">${recipe.notes}</p>`}
+                      </div>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                        <button onClick=${()=>hydrateForm(recipe)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                          EDITAR
+                        </button>
+                        <button onClick=${()=>deleteRecipe(recipe.id)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                          BORRAR
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                `)}
+              </div>
+            `}
+          <//>
+        </div>
+      `;
+    };
+
     const TodayDashboard = ({session, onOpenTasks}) => {
       const [summary, setSummary] = useState({ pending:0, dueToday:0, notes:0, high:0, nextTask:null });
       const [loading, setLoading] = useState(true);
@@ -3813,7 +4062,7 @@
       const [view, setView] = useState(()=>{
         // Leer ?view=X de la URL para que los shortcuts del manifest funcionen
         const p = new URLSearchParams(window.location.search).get('view');
-        return (p && ['today','week','progress','tasks','notif','routines'].includes(p)) ? p : 'today';
+        return (p && ['today','week','progress','tasks','recipes','notif','routines'].includes(p)) ? p : 'today';
       });
       const [chartsReady, setChartsReady] = useState(()=>!!window.Recharts);
 
@@ -4686,6 +4935,7 @@
             ${view==='week'     && html`<${WeekSummary} weekData=${wd}/>`}
             ${view==='progress' && html`<${ProgressView} allWeeks=${allWeeks} onMount=${loadFullHistory}/>`}
             ${view==='tasks'    && html`<${ProductivityView} session=${session}/>`}
+            ${view==='recipes'  && html`<${RecipesView} session=${session}/>`}
             ${view==='notif'    && html`<${NotifView}/>`}
             ${view==='routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
 
@@ -4704,6 +4954,7 @@
                 {id:'week',     icon:html`<${ICal}  s=${20}/>`, label:'SEMANA'},
                 {id:'progress', icon:html`<${IBar}  s=${20}/>`, label:'PROGRESO'},
                 {id:'tasks',    icon:html`<${IList} s=${20}/>`, label:'TAREAS'},
+                {id:'recipes',  icon:html`<${IActivity} s=${20}/>`, label:'RECETAS'},
                 {id:'notif',    icon:html`<${IBell} s=${20}/>`, label:'ALERTAS'},
                 {id:'routines', icon:html`<${IEdit} s=${20}/>`, label:'RUTINAS'},
               ].map(tab => html`
