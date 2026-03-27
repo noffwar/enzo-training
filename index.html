@@ -2401,6 +2401,92 @@
     ];
     const categoryMeta = (value) => CATEGORY_OPTIONS.find(c => c.value === value) || CATEGORY_OPTIONS[0];
 
+    const TodayDashboard = ({session, onOpenTasks}) => {
+      const [summary, setSummary] = useState({ pending:0, dueToday:0, notes:0, high:0, nextTask:null });
+      const [loading, setLoading] = useState(true);
+
+      const loadSummary = useCallback(async () => {
+        setLoading(true);
+        try {
+          const [{ data: taskRows, error: taskErr }, { data: noteRows, error: noteErr }] = await Promise.all([
+            supabase.from('tasks')
+              .select('id,title,due_at,priority,status,category')
+              .eq('user_id', session.user.id)
+              .order('due_at', { ascending: true, nullsFirst: false }),
+            supabase.from('notes')
+              .select('id,kind,content,created_at')
+              .eq('user_id', session.user.id)
+              .order('created_at', { ascending: false })
+          ]);
+          if(taskErr) throw taskErr;
+          if(noteErr) throw noteErr;
+
+          const tasks = taskRows || [];
+          const notes = (noteRows || []).filter(n => n.kind !== 'converted');
+          const now = new Date();
+          const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+          const pending = tasks.filter(t => t.status !== 'done');
+          const dueToday = pending.filter(t => t.due_at && new Date(t.due_at) <= endOfToday);
+          const nextTask = pending
+            .filter(t => t.due_at)
+            .sort((a,b)=>new Date(a.due_at)-new Date(b.due_at))[0] || pending[0] || null;
+
+          setSummary({
+            pending: pending.length,
+            dueToday: dueToday.length,
+            notes: notes.length,
+            high: pending.filter(t => (t.priority || 'normal') === 'high').length,
+            nextTask
+          });
+        } catch(_) {
+          setSummary({ pending:0, dueToday:0, notes:0, high:0, nextTask:null });
+        } finally {
+          setLoading(false);
+        }
+      }, [session.user.id]);
+
+      useEffect(() => { loadSummary(); }, [loadSummary]);
+
+      return html`
+        <div class="glass-card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div>
+              <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;font-weight:700;">Tablero principal</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">Lo importante del d&iacute;a, sin salir del Diario.</p>
+            </div>
+            <button onClick=${onOpenTasks}
+              style="padding:8px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+              VER TAREAS
+            </button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;">
+            ${[
+              { label:'Pend.', val: summary.pending, color:'#10B981' },
+              { label:'Hoy', val: summary.dueToday, color:'#EF4444' },
+              { label:'Ideas', val: summary.notes, color:'#F59E0B' },
+              { label:'Alta', val: summary.high, color:'#38BDF8' }
+            ].map(item => html`
+              <div style="padding:10px 8px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
+                <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;">${item.label}</p>
+                <p style=${`margin:4px 0 0;font-size:17px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${item.color};`}>${loading ? '...' : item.val}</p>
+              </div>
+            `)}
+          </div>
+          <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
+            <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Siguiente foco</p>
+            <p style="margin:6px 0 0;font-size:13px;color:#E2E8F0;font-weight:700;">
+              ${loading ? 'Cargando...' : (summary.nextTask?.title || 'Nada urgente. Buen momento para ordenar ideas.')}
+            </p>
+            ${!loading && summary.nextTask?.due_at && html`
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;font-family:'JetBrains Mono',monospace;">
+                ${formatTaskDate(summary.nextTask.due_at)}
+              </p>
+            `}
+          </div>
+        </div>
+      `;
+    };
+
     const ProductivityView = ({session}) => {
       const [tasks, setTasks] = useState([]);
       const [notes, setNotes] = useState([]);
@@ -2426,6 +2512,10 @@
       const [editingTaskCategory, setEditingTaskCategory] = useState('personal');
       const [editingNoteId, setEditingNoteId] = useState(null);
       const [editingNoteContent, setEditingNoteContent] = useState('');
+      const [aiOpenNoteId, setAiOpenNoteId] = useState(null);
+      const [aiQuestion, setAiQuestion] = useState('');
+      const [aiReplies, setAiReplies] = useState({});
+      const [aiLoadingNoteId, setAiLoadingNoteId] = useState(null);
 
       const loadData = useCallback(async () => {
         setLoading(true);
@@ -2712,6 +2802,39 @@
         }
       };
 
+      const askThoughtAI = async (note) => {
+        setAiLoadingNoteId(note.id);
+        setError('');
+        try {
+          const res = await fetch('/.netlify/functions/thought-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              thought: note.content,
+              question: aiQuestion.trim() || 'Quiero debatir esta idea. Analizala con argumentos a favor, en contra y una conclusion provisoria.'
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+          setAiReplies(prev => ({
+            ...prev,
+            [note.id]: [
+              ...(prev[note.id] || []),
+              {
+                question: aiQuestion.trim() || 'Debate general',
+                reply: data.reply || 'No hubo respuesta.'
+              }
+            ]
+          }));
+          setAiQuestion('');
+          setAiOpenNoteId(note.id);
+        } catch(e) {
+          setError(e.message || 'No se pudo consultar la IA.');
+        } finally {
+          setAiLoadingNoteId(null);
+        }
+      };
+
       const searchNeedle = taskSearch.trim().toLowerCase();
       const filteredTasks = tasks.filter(task => {
         const text = `${task.title || ''} ${task.details || ''}`.toLowerCase();
@@ -2982,6 +3105,10 @@
                             style="padding:6px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);color:#FBBF24;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                             ${note.pinned ? 'DESFIJAR' : 'FIJAR'}
                           </button>
+                          <button onClick=${()=>setAiOpenNoteId(aiOpenNoteId === note.id ? null : note.id)}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.35);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            IA
+                          </button>
                           <button onClick=${()=>convertNoteToTask(note)}
                             style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                             ${saving === `convert-${note.id}` ? 'CONVIRTIENDO...' : 'PASAR A TAREA'}
@@ -2992,6 +3119,38 @@
                           </button>
                         </div>
                       </div>
+                      ${aiOpenNoteId === note.id && html`
+                        <div style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(8,13,26,0.75);border:1px solid rgba(56,189,248,0.25);display:flex;flex-direction:column;gap:8px;">
+                          <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#7DD3FC;font-weight:700;">Debatir con IA</p>
+                          <textarea
+                            value=${aiQuestion}
+                            onInput=${e=>setAiQuestion(e.target.value)}
+                            placeholder="Ej: cuestiona la idea desde la fisica, la logica o el sentido comun..."
+                            style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:76px;"></textarea>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                            <button onClick=${()=>askThoughtAI(note)}
+                              style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.35);background:rgba(56,189,248,0.14);color:#7DD3FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              ${aiLoadingNoteId === note.id ? 'PENSANDO...' : 'PREGUNTAR A GEMINI'}
+                            </button>
+                            <button onClick=${()=>{ setAiOpenNoteId(null); setAiQuestion(''); }}
+                              style="padding:6px 10px;border-radius:8px;border:1px solid rgba(100,116,139,0.35);background:rgba(100,116,139,0.12);color:#CBD5E1;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              CERRAR
+                            </button>
+                          </div>
+                          ${aiReplies[note.id]?.length > 0 && html`
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                              ${aiReplies[note.id].map(item => html`
+                                <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.9);border:1px solid #1E2D45;">
+                                  <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Pregunta</p>
+                                  <p style="margin:0 0 10px;font-size:12px;color:#E2E8F0;">${item.question}</p>
+                                  <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Gemini</p>
+                                  <p style="margin:0;font-size:12px;color:#CBD5E1;white-space:pre-wrap;">${item.reply}</p>
+                                </div>
+                              `)}
+                            </div>
+                          `}
+                        </div>
+                      `}
                     `}
                   </div>
                 `)}
@@ -4001,6 +4160,8 @@
                     ${Object.values(routineData).map(r=>html`<option value=${r.id}>${r.name}</option>`)}
                   </select>
                 </div>
+
+                <${TodayDashboard} session=${session} onOpenTasks=${()=>navigateTo('tasks')}/>
 
                 <${HabitsPanel} tracker=${tracker} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem}/>
 
