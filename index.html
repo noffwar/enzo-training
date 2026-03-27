@@ -2400,6 +2400,15 @@
       { value:'trabajo', label:'Trabajo', color:'#EF4444' }
     ];
     const categoryMeta = (value) => CATEGORY_OPTIONS.find(c => c.value === value) || CATEGORY_OPTIONS[0];
+    const AI_THREADS_KEY = 'enzo_ai_thought_threads_v1';
+
+    const loadThoughtThreads = () => {
+      try { return JSON.parse(localStorage.getItem(AI_THREADS_KEY) || '{}') || {}; }
+      catch(_) { return {}; }
+    };
+    const saveThoughtThreads = (threads) => {
+      try { localStorage.setItem(AI_THREADS_KEY, JSON.stringify(threads || {})); } catch(_) {}
+    };
 
     const TodayDashboard = ({session, onOpenTasks}) => {
       const [summary, setSummary] = useState({ pending:0, dueToday:0, notes:0, high:0, nextTask:null });
@@ -2513,9 +2522,12 @@
       const [editingNoteId, setEditingNoteId] = useState(null);
       const [editingNoteContent, setEditingNoteContent] = useState('');
       const [aiOpenNoteId, setAiOpenNoteId] = useState(null);
-      const [aiQuestion, setAiQuestion] = useState('');
-      const [aiReplies, setAiReplies] = useState({});
+      const [aiDrafts, setAiDrafts] = useState({});
+      const [aiReplies, setAiReplies] = useState(()=>loadThoughtThreads());
       const [aiLoadingNoteId, setAiLoadingNoteId] = useState(null);
+      const [aiNotice, setAiNotice] = useState('');
+
+      useEffect(() => { saveThoughtThreads(aiReplies); }, [aiReplies]);
 
       const loadData = useCallback(async () => {
         setLoading(true);
@@ -2806,12 +2818,13 @@
         setAiLoadingNoteId(note.id);
         setError('');
         try {
+          const currentQuestion = (aiDrafts[note.id] || '').trim();
           const res = await fetch('/.netlify/functions/thought-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               thought: note.content,
-              question: aiQuestion.trim() || 'Quiero debatir esta idea. Analizala con argumentos a favor, en contra y una conclusion provisoria.'
+              question: currentQuestion || 'Quiero debatir esta idea. Analizala con argumentos a favor, en contra y una conclusion provisoria.'
             })
           });
           const data = await res.json().catch(() => ({}));
@@ -2821,18 +2834,48 @@
             [note.id]: [
               ...(prev[note.id] || []),
               {
-                question: aiQuestion.trim() || 'Debate general',
+                question: currentQuestion || 'Debate general',
                 reply: data.reply || 'No hubo respuesta.'
               }
             ]
           }));
-          setAiQuestion('');
+          setAiDrafts(prev => ({ ...prev, [note.id]: '' }));
           setAiOpenNoteId(note.id);
         } catch(e) {
           setError(e.message || 'No se pudo consultar la IA.');
         } finally {
           setAiLoadingNoteId(null);
         }
+      };
+
+      const openInGemini = async (note) => {
+        const thread = aiReplies[note.id] || [];
+        const draft = (aiDrafts[note.id] || '').trim();
+        const prompt = [
+          'Quiero seguir este debate en Gemini.',
+          '',
+          `Pensamiento original: ${note.content}`,
+          '',
+          ...(thread.length ? ['Historial del debate:', '', ...thread.flatMap((item, idx) => [
+            `${idx + 1}. Usuario: ${item.question}`,
+            `Gemini: ${item.reply}`,
+            ''
+          ])] : []),
+          `Nueva consigna: ${draft || 'Segui cuestionando esta idea y llevandola a una conclusion mas fuerte.'}`
+        ].join('\n').trim();
+
+        try {
+          if(navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(prompt);
+          }
+          setAiNotice('Contexto copiado. Gemini abierto.');
+          setTimeout(() => setAiNotice(''), 3000);
+        } catch(_) {
+          setAiNotice('No se pudo copiar, pero igual abrimos Gemini.');
+          setTimeout(() => setAiNotice(''), 3000);
+        }
+
+        window.open('https://gemini.google.com/app', '_blank', 'noopener,noreferrer');
       };
 
       const searchNeedle = taskSearch.trim().toLowerCase();
@@ -2880,6 +2923,7 @@
                 <${ISync} s=${16}/>
               </button>
             </div>
+            ${aiNotice && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);color:#7DD3FC;font-size:12px;">${aiNotice}</div>`}
             ${error && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
               ${[
@@ -3123,8 +3167,8 @@
                         <div style="margin-top:10px;padding:10px;border-radius:10px;background:rgba(8,13,26,0.75);border:1px solid rgba(56,189,248,0.25);display:flex;flex-direction:column;gap:8px;">
                           <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#7DD3FC;font-weight:700;">Debatir con IA</p>
                           <textarea
-                            value=${aiQuestion}
-                            onInput=${e=>setAiQuestion(e.target.value)}
+                            value=${aiDrafts[note.id] || ''}
+                            onInput=${e=>setAiDrafts(prev => ({ ...prev, [note.id]: e.target.value }))}
                             placeholder="Ej: cuestiona la idea desde la fisica, la logica o el sentido comun..."
                             style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:76px;"></textarea>
                           <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -3132,7 +3176,11 @@
                               style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.35);background:rgba(56,189,248,0.14);color:#7DD3FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                               ${aiLoadingNoteId === note.id ? 'PENSANDO...' : 'PREGUNTAR A GEMINI'}
                             </button>
-                            <button onClick=${()=>{ setAiOpenNoteId(null); setAiQuestion(''); }}
+                            <button onClick=${()=>openInGemini(note)}
+                              style="padding:6px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              SEGUIR EN GEMINI
+                            </button>
+                            <button onClick=${()=>{ setAiOpenNoteId(null); setAiDrafts(prev => ({ ...prev, [note.id]: '' })); }}
                               style="padding:6px 10px;border-radius:8px;border:1px solid rgba(100,116,139,0.35);background:rgba(100,116,139,0.12);color:#CBD5E1;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                               CERRAR
                             </button>
