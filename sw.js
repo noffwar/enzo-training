@@ -11,7 +11,7 @@
 //     SW_CLEAR_AUTH_CONTEXT, SW_TEST_NOTIFICATION, SW_DEBUG_REQUEST
 // ═══════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'enzo-training-v3.2';
+const CACHE_NAME = 'enzo-training-v3.3';
 const DATA_CACHE = 'enzo-data-v2';
 const SUPA_URL   = 'https://qflajqvveuyoclmtrjtg.supabase.co';
 // SUPA_ANON: solo para apikey header (identificación del proyecto)

@@ -103,6 +103,8 @@
        evita el error "Cannot read properties of undefined (reading 'forwardRef')"
        cuando Recharts carga antes que cualquier React/Preact compat layer. -->
   <script>
+    var __noopValidator = function(){ return __noopValidator; };
+    __noopValidator.isRequired = __noopValidator;
     window.React = window.React || {
       createElement: function(t,p){var a=Array.prototype.slice.call(arguments,2);return{type:t,props:Object.assign({},p,{children:a.length===1?a[0]:a})}; },
       createContext: function(d){return{_currentValue:d,Provider:function(p){return p.children;},Consumer:function(p){return p.children(d);}};},
@@ -118,8 +120,23 @@
       useContext: function(c){return c._currentValue;},
       isValidElement: function(e){return e&&typeof e==='object'&&'type' in e;},
       cloneElement: function(e,p){return Object.assign({},e,{props:Object.assign({},e.props,p)});},
+      PropTypes: {
+        any: __noopValidator,
+        array: __noopValidator,
+        arrayOf: function(){ return __noopValidator; },
+        bool: __noopValidator,
+        func: __noopValidator,
+        number: __noopValidator,
+        object: __noopValidator,
+        objectOf: function(){ return __noopValidator; },
+        oneOf: function(){ return __noopValidator; },
+        oneOfType: function(){ return __noopValidator; },
+        shape: function(){ return __noopValidator; },
+        string: __noopValidator
+      },
       version: '18.0.0'
     };
+    window.PropTypes = window.PropTypes || window.React.PropTypes;
   </script>
 
   <!-- Recharts (UMD) — carga diferida: solo cuando se necesitan los gráficos -->
@@ -792,6 +809,7 @@
 
 
     const playBeep = () => { try{ const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination);o.type='sine';o.frequency.setValueAtTime(880,c.currentTime);g.gain.setValueAtTime(0.7,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.6);o.start();o.stop(c.currentTime+0.6); }catch(e){} };
+    const playTickBeep = () => { try{ const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain(); o.connect(g);g.connect(c.destination);o.type='triangle';o.frequency.setValueAtTime(1320,c.currentTime);g.gain.setValueAtTime(0.14,c.currentTime);g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.12);o.start();o.stop(c.currentTime+0.12); }catch(e){} };
 
     const newDay = () => ({
       fasted:false, fastHours:'', fastStartTime:'', walked:false, steps:'', walkStartTime:'', walkEndTime:'',
@@ -1165,8 +1183,20 @@
           const target = new Date(now); target.setHours(h, m, 0, 0);
           if(target <= now) target.setDate(target.getDate() + 1);
           timers[n.id] = setTimeout(() => {
-            if(Notification.permission === 'granted')
-              new Notification('Enzo Training', { body: n.label, icon: './icon-192.png' });
+            if(Notification.permission !== 'granted') return;
+            if('serviceWorker' in navigator) {
+              navigator.serviceWorker.ready.then(reg => {
+                if(reg?.showNotification) {
+                  reg.showNotification('Enzo Training', {
+                    body:   n.label,
+                    icon:   './icon-192.png',
+                    badge:  './icon-192.png',
+                    tag:    `fallback-${n.id}-${Date.now()}`,
+                    data:   { id: n.id, time: n.time }
+                  }).catch(() => {});
+                }
+              }).catch(() => {});
+            }
           }, target - now);
         });
       };
@@ -2548,6 +2578,7 @@
       const [timerLeft, setTimerLeft] = useState(0);
       const [timerActive, setTimerActive] = useState(false);
       const timerRef = useRef(null);
+      const prevTimerLeftRef = useRef(0);
       // Audio silencioso — necesario para que MediaSession funcione en background (Android)
       const audioRef = useRef(typeof Audio !== 'undefined'
         ? new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=')
@@ -2879,10 +2910,18 @@
       useEffect(()=>{
         clearInterval(timerRef.current);
         if(timerActive && timerLeft > 0) {
-          // Iniciar audio silencioso para que el browser no suspenda el proceso
+          // Solo usar audio secundario en la recta final para no pausar música externa.
           if(audioRef.current) {
-            audioRef.current.loop = true;
-            audioRef.current.play().catch(()=>{});
+            if(timerLeft <= 10) {
+              audioRef.current.loop = true;
+              audioRef.current.play().catch(()=>{});
+            } else {
+              audioRef.current.pause();
+              audioRef.current.currentTime = 0;
+            }
+          }
+          if(timerLeft <= 10 && prevTimerLeftRef.current !== timerLeft) {
+            playTickBeep();
           }
           timerRef.current = setInterval(()=>{
             setTimerLeft(p => {
@@ -2905,6 +2944,7 @@
           if(audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
           if(timerLeft === 0 && timerActive) { setTimerActive(false); playBeep(); }
         }
+        prevTimerLeftRef.current = timerLeft;
         return () => clearInterval(timerRef.current);
       },[timerActive, timerLeft]);
 
