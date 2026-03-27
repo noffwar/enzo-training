@@ -2550,6 +2550,19 @@
           if(noteErr) throw noteErr;
           setTasks(taskRows || []);
           setNotes(noteRows || []);
+          const remoteThreads = Object.fromEntries(
+            (noteRows || [])
+              .filter(n => Array.isArray(n.ai_thread) && n.ai_thread.length > 0)
+              .map(n => [n.id, n.ai_thread])
+          );
+          setAiReplies(prev => {
+            const merged = { ...prev };
+            Object.entries(remoteThreads).forEach(([noteId, thread]) => {
+              const localThread = merged[noteId] || [];
+              merged[noteId] = thread.length >= localThread.length ? thread : localThread;
+            });
+            return merged;
+          });
         } catch(e) {
           setError(e.message || 'No se pudieron cargar tareas y pensamientos.');
         } finally {
@@ -2596,7 +2609,8 @@
             user_id: session.user.id,
             content: noteText.trim(),
             kind: 'thought',
-            pinned: false
+            pinned: false,
+            ai_thread: []
           }).select().single();
           if(error) throw error;
           setNotes(prev => [data, ...prev]);
@@ -2695,6 +2709,17 @@
         }
       };
 
+      const persistAiThread = async (noteId, thread) => {
+        const { error } = await supabase.from('notes')
+          .update({
+            ai_thread: thread,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', noteId)
+          .eq('user_id', session.user.id);
+        if(error) throw error;
+      };
+
       const startEditNote = (note) => {
         setEditingNoteId(note.id);
         setEditingNoteContent(note.content || '');
@@ -2732,6 +2757,16 @@
             .eq('user_id', session.user.id);
           if(error) throw error;
           setNotes(prev => prev.filter(n => n.id !== note.id));
+          setAiReplies(prev => {
+            const next = { ...prev };
+            delete next[note.id];
+            return next;
+          });
+          setAiDrafts(prev => {
+            const next = { ...prev };
+            delete next[note.id];
+            return next;
+          });
         } catch(e) {
           setError(e.message || 'No se pudo borrar el pensamiento.');
         }
@@ -2829,16 +2864,20 @@
           });
           const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-          setAiReplies(prev => ({
-            ...prev,
-            [note.id]: [
-              ...(prev[note.id] || []),
-              {
-                question: currentQuestion || 'Debate general',
-                reply: data.reply || 'No hubo respuesta.'
-              }
-            ]
-          }));
+          const nextThread = [
+            ...(aiReplies[note.id] || []),
+            {
+              question: currentQuestion || 'Debate general',
+              reply: data.reply || 'No hubo respuesta.'
+            }
+          ];
+          setAiReplies(prev => ({ ...prev, [note.id]: nextThread }));
+          try {
+            await persistAiThread(note.id, nextThread);
+          } catch(syncErr) {
+            setAiNotice('Se guardo local, pero no se pudo sincronizar el debate.');
+            setTimeout(() => setAiNotice(''), 3000);
+          }
           setAiDrafts(prev => ({ ...prev, [note.id]: '' }));
           setAiOpenNoteId(note.id);
         } catch(e) {
