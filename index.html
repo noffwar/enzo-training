@@ -2404,6 +2404,13 @@
       const [taskPriority, setTaskPriority] = useState('normal');
       const [noteText, setNoteText] = useState('');
       const [saving, setSaving] = useState('');
+      const [editingTaskId, setEditingTaskId] = useState(null);
+      const [editingTaskTitle, setEditingTaskTitle] = useState('');
+      const [editingTaskDetails, setEditingTaskDetails] = useState('');
+      const [editingTaskDue, setEditingTaskDue] = useState('');
+      const [editingTaskPriority, setEditingTaskPriority] = useState('normal');
+      const [editingNoteId, setEditingNoteId] = useState(null);
+      const [editingNoteContent, setEditingNoteContent] = useState('');
 
       const loadData = useCallback(async () => {
         setLoading(true);
@@ -2495,6 +2502,54 @@
         }
       };
 
+      const startEditTask = (task) => {
+        setEditingTaskId(task.id);
+        setEditingTaskTitle(task.title || '');
+        setEditingTaskDetails(task.details || '');
+        setEditingTaskDue(task.due_at ? String(task.due_at).slice(0,16) : '');
+        setEditingTaskPriority(task.priority || 'normal');
+      };
+
+      const saveTaskEdit = async (task) => {
+        if(!editingTaskTitle.trim()) return;
+        setSaving(`edit-task-${task.id}`);
+        setError('');
+        try {
+          const { data, error } = await supabase.from('tasks')
+            .update({
+              title: editingTaskTitle.trim(),
+              details: editingTaskDetails.trim() || null,
+              due_at: editingTaskDue || null,
+              priority: editingTaskPriority,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', task.id)
+            .eq('user_id', session.user.id)
+            .select()
+            .single();
+          if(error) throw error;
+          setTasks(prev => prev.map(t => t.id === task.id ? data : t));
+          setEditingTaskId(null);
+        } catch(e) {
+          setError(e.message || 'No se pudo editar la tarea.');
+        } finally {
+          setSaving('');
+        }
+      };
+
+      const deleteTask = async (task) => {
+        try {
+          const { error } = await supabase.from('tasks')
+            .delete()
+            .eq('id', task.id)
+            .eq('user_id', session.user.id);
+          if(error) throw error;
+          setTasks(prev => prev.filter(t => t.id !== task.id));
+        } catch(e) {
+          setError(e.message || 'No se pudo borrar la tarea.');
+        }
+      };
+
       const togglePinNote = async (note) => {
         try {
           const { data, error } = await supabase.from('notes')
@@ -2507,6 +2562,48 @@
           setNotes(prev => prev.map(n => n.id === note.id ? data : n));
         } catch(e) {
           setError(e.message || 'No se pudo actualizar el pensamiento.');
+        }
+      };
+
+      const startEditNote = (note) => {
+        setEditingNoteId(note.id);
+        setEditingNoteContent(note.content || '');
+      };
+
+      const saveNoteEdit = async (note) => {
+        if(!editingNoteContent.trim()) return;
+        setSaving(`edit-note-${note.id}`);
+        setError('');
+        try {
+          const { data, error } = await supabase.from('notes')
+            .update({
+              content: editingNoteContent.trim(),
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', note.id)
+            .eq('user_id', session.user.id)
+            .select()
+            .single();
+          if(error) throw error;
+          setNotes(prev => prev.map(n => n.id === note.id ? data : n));
+          setEditingNoteId(null);
+        } catch(e) {
+          setError(e.message || 'No se pudo editar el pensamiento.');
+        } finally {
+          setSaving('');
+        }
+      };
+
+      const deleteNote = async (note) => {
+        try {
+          const { error } = await supabase.from('notes')
+            .delete()
+            .eq('id', note.id)
+            .eq('user_id', session.user.id);
+          if(error) throw error;
+          setNotes(prev => prev.filter(n => n.id !== note.id));
+        } catch(e) {
+          setError(e.message || 'No se pudo borrar el pensamiento.');
         }
       };
 
@@ -2564,6 +2661,15 @@
       const pendingTasks = tasks.filter(t => t.status !== 'done');
       const doneTasks = tasks.filter(t => t.status === 'done');
       const activeNotes = notes.filter(n => n.kind !== 'converted');
+      const now = new Date();
+      const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+      const endOfWeek = new Date(now); endOfWeek.setDate(now.getDate() + 7); endOfWeek.setHours(23,59,59,999);
+      const groupedPending = {
+        today: pendingTasks.filter(t => t.due_at && new Date(t.due_at) <= endOfToday),
+        week: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfToday && new Date(t.due_at) <= endOfWeek),
+        later: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfWeek),
+        someday: pendingTasks.filter(t => !t.due_at)
+      };
 
       return html`
         <div style="display:flex;flex-direction:column;gap:12px;">
@@ -2630,31 +2736,80 @@
           <${Card}>
             <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Pendientes</p>
             ${loading ? html`<p style="margin:0;color:#64748b;font-size:12px;">Cargando...</p>` : pendingTasks.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">Todavia no tenes tareas pendientes.</p>` : html`
-              <div style="display:flex;flex-direction:column;gap:8px;">
-                ${pendingTasks.map(task => html`
-                  <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
-                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-                      <div style="flex:1;">
-                        <p style="margin:0;font-size:14px;color:#E2E8F0;font-weight:700;">${task.title}</p>
-                        ${task.details && task.details !== task.title && html`<p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">${task.details}</p>`}
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-                          <span style=${`font-size:10px;color:${priorityColor(task.priority)};font-family:'JetBrains Mono',monospace;`}>${(task.priority || 'normal').toUpperCase()}</span>
-                          <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.due_at)}</span>
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                ${[
+                  ['Hoy', groupedPending.today],
+                  ['Esta semana', groupedPending.week],
+                  ['Mas adelante', groupedPending.later],
+                  ['Sin fecha', groupedPending.someday]
+                ].filter(([,items]) => items.length > 0).map(([label, items]) => html`
+                  <div>
+                    <p style="margin:0 0 8px;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">${label}</p>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                      ${items.map(task => html`
+                        <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
+                          ${editingTaskId === task.id ? html`
+                            <div style="display:flex;flex-direction:column;gap:8px;">
+                              <input class="inp" value=${editingTaskTitle} onInput=${e=>setEditingTaskTitle(e.target.value)} />
+                              <textarea
+                                value=${editingTaskDetails}
+                                onInput=${e=>setEditingTaskDetails(e.target.value)}
+                                placeholder="Detalle opcional"
+                                style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:72px;"></textarea>
+                              <div style="display:grid;grid-template-columns:1fr 120px;gap:8px;">
+                                <input class="inp" type="datetime-local" value=${editingTaskDue} onInput=${e=>setEditingTaskDue(e.target.value)} />
+                                <select class="inp" value=${editingTaskPriority} onChange=${e=>setEditingTaskPriority(e.target.value)}>
+                                  <option value="high">Alta</option>
+                                  <option value="normal">Normal</option>
+                                  <option value="low">Baja</option>
+                                </select>
+                              </div>
+                              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                                <button onClick=${()=>saveTaskEdit(task)}
+                                  style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                  ${saving === `edit-task-${task.id}` ? 'GUARDANDO...' : 'GUARDAR'}
+                                </button>
+                                <button onClick=${()=>setEditingTaskId(null)}
+                                  style="padding:6px 10px;border-radius:8px;border:1px solid rgba(100,116,139,0.35);background:rgba(100,116,139,0.12);color:#CBD5E1;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                  CANCELAR
+                                </button>
+                              </div>
+                            </div>
+                          ` : html`
+                            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                              <div style="flex:1;">
+                                <p style="margin:0;font-size:14px;color:#E2E8F0;font-weight:700;">${task.title}</p>
+                                ${task.details && task.details !== task.title && html`<p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">${task.details}</p>`}
+                                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                                  <span style=${`font-size:10px;color:${priorityColor(task.priority)};font-family:'JetBrains Mono',monospace;`}>${(task.priority || 'normal').toUpperCase()}</span>
+                                  <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.due_at)}</span>
+                                </div>
+                              </div>
+                              <div style="display:flex;gap:6px;">
+                                <button class="btn-icon" style="background:#162035;border:1px solid rgba(99,102,241,0.35);color:#A5B4FC;" onClick=${()=>startEditTask(task)}>
+                                  E
+                                </button>
+                                <button class="btn-icon" style="background:#162035;border:1px solid rgba(16,185,129,0.35);" onClick=${()=>updateTaskStatus(task,'done')}>
+                                  <${ICheck} s=${16} c="text-green"/>
+                                </button>
+                                <button class="btn-icon" style="background:#162035;border:1px solid rgba(239,68,68,0.35);color:#F87171;" onClick=${()=>deleteTask(task)}>
+                                  X
+                                </button>
+                              </div>
+                            </div>
+                          `}
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+                            <a href=${calendarLinkForTask(task)} target="_blank" rel="noreferrer"
+                              style="padding:6px 10px;border-radius:8px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);color:#818CF8;font-size:11px;font-weight:700;text-decoration:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;">
+                              CALENDARIO
+                            </a>
+                            <a href=${mailtoForTask(task)}
+                              style="padding:6px 10px;border-radius:8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#FBBF24;font-size:11px;font-weight:700;text-decoration:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;">
+                              MAIL
+                            </a>
+                          </div>
                         </div>
-                      </div>
-                      <button class="btn-icon" style="background:#162035;border:1px solid rgba(16,185,129,0.35);" onClick=${()=>updateTaskStatus(task,'done')}>
-                        <${ICheck} s=${16} c="text-green"/>
-                      </button>
-                    </div>
-                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
-                      <a href=${calendarLinkForTask(task)} target="_blank" rel="noreferrer"
-                        style="padding:6px 10px;border-radius:8px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);color:#818CF8;font-size:11px;font-weight:700;text-decoration:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;">
-                        CALENDARIO
-                      </a>
-                      <a href=${mailtoForTask(task)}
-                        style="padding:6px 10px;border-radius:8px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:#FBBF24;font-size:11px;font-weight:700;text-decoration:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;">
-                        MAIL
-                      </a>
+                      `)}
                     </div>
                   </div>
                 `)}
@@ -2668,27 +2823,73 @@
               <div style="display:flex;flex-direction:column;gap:8px;">
                 ${activeNotes.map(note => html`
                   <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid ${note.pinned?'rgba(245,158,11,0.35)':'#1E2D45'};">
-                    <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.content}</p>
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                      <span style="font-size:10px;color:${note.pinned?'#FBBF24':'#64748b'};font-family:'JetBrains Mono',monospace;">
-                        ${note.pinned ? 'FIJADO' : formatTaskDate(note.created_at)}
-                      </span>
-                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button onClick=${()=>togglePinNote(note)}
-                          style="padding:6px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);color:#FBBF24;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                          ${note.pinned ? 'DESFIJAR' : 'FIJAR'}
-                        </button>
-                        <button onClick=${()=>convertNoteToTask(note)}
-                          style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                          ${saving === `convert-${note.id}` ? 'CONVIRTIENDO...' : 'PASAR A TAREA'}
-                        </button>
+                    ${editingNoteId === note.id ? html`
+                      <div style="display:flex;flex-direction:column;gap:8px;">
+                        <textarea
+                          value=${editingNoteContent}
+                          onInput=${e=>setEditingNoteContent(e.target.value)}
+                          style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                          <button onClick=${()=>saveNoteEdit(note)}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            ${saving === `edit-note-${note.id}` ? 'GUARDANDO...' : 'GUARDAR'}
+                          </button>
+                          <button onClick=${()=>setEditingNoteId(null)}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(100,116,139,0.35);background:rgba(100,116,139,0.12);color:#CBD5E1;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            CANCELAR
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    ` : html`
+                      <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.content}</p>
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                        <span style="font-size:10px;color:${note.pinned?'#FBBF24':'#64748b'};font-family:'JetBrains Mono',monospace;">
+                          ${note.pinned ? 'FIJADO' : formatTaskDate(note.created_at)}
+                        </span>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                          <button onClick=${()=>startEditNote(note)}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            EDITAR
+                          </button>
+                          <button onClick=${()=>togglePinNote(note)}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);color:#FBBF24;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            ${note.pinned ? 'DESFIJAR' : 'FIJAR'}
+                          </button>
+                          <button onClick=${()=>convertNoteToTask(note)}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            ${saving === `convert-${note.id}` ? 'CONVIRTIENDO...' : 'PASAR A TAREA'}
+                          </button>
+                          <button onClick=${()=>deleteNote(note)}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.35);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            BORRAR
+                          </button>
+                        </div>
+                      </div>
+                    `}
                   </div>
                 `)}
               </div>
             `}
           <//>
+
+          ${doneTasks.length > 0 && html`
+            <${Card}>
+              <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Hechas recientemente</p>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${doneTasks.slice(0,5).map(task => html`
+                  <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.35);border:1px solid rgba(16,185,129,0.2);display:flex;justify-content:space-between;gap:10px;">
+                    <div>
+                      <p style="margin:0;font-size:13px;color:#94A3B8;text-decoration:line-through;">${task.title}</p>
+                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.updated_at)}</p>
+                    </div>
+                    <button class="btn-icon" style="background:#162035;border:1px solid rgba(245,158,11,0.35);color:#FBBF24;" onClick=${()=>updateTaskStatus(task,'pending')}>
+                      ↺
+                    </button>
+                  </div>
+                `)}
+              </div>
+            <//>
+          `}
         </div>
       `;
     };
