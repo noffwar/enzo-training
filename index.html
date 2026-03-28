@@ -3167,16 +3167,24 @@
 
       return html`
         <div style="display:flex;flex-direction:column;gap:12px;">
-          <${Card}>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+          <${Card} style="order:2;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:${sweetsOpen?'12px':'0'};">
               <div>
                 <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Dulces y Salsas</p>
                 <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Stock de venta para saber cuantos te van quedando. Este bloque no se usa para las macros de comida.</p>
               </div>
-              <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadSweetsStock}>
-                <${ISync} s=${16}/>
-              </button>
+              <div style="display:flex;gap:8px;align-items:center;">
+                ${sweetsOpen && html`
+                  <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadSweetsStock}>
+                    <${ISync} s=${16}/>
+                  </button>
+                `}
+                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${()=>setSweetsOpen(v=>!v)}>
+                  <span style=${`display:inline-flex;transform:${sweetsOpen?'rotate(0deg)':'rotate(-90deg)'};transition:transform 0.15s;`}><${IChevD} s=${16}/></span>
+                </button>
+              </div>
             </div>
+            ${sweetsOpen && html`
             ${sweetsMsg && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:${String(sweetsMsg).includes('guardado')?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)'};border:1px solid ${String(sweetsMsg).includes('guardado')?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'};color:${String(sweetsMsg).includes('guardado')?'#86EFAC':'#FCA5A5'};font-size:12px;">${sweetsMsg}</div>`}
             ${sweetsLoading ? html`
               <p style="margin:0;color:#64748b;font-size:12px;">Cargando stock...</p>
@@ -3268,18 +3276,27 @@
                 `}
               </div>
             `}
+            `}
           <//>
 
-          <${Card}>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+          <${Card} style="order:1;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:${recipesOpen?'12px':'0'};">
               <div>
                 <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Recetas e ingredientes</p>
                 <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Carga comidas o ingredientes con macros conocidos. Si escribis ese nombre en una comida, la app lo usa antes que Gemini.</p>
               </div>
-              <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadRecipes}>
-                <${ISync} s=${16}/>
-              </button>
+              <div style="display:flex;gap:8px;align-items:center;">
+                ${recipesOpen && html`
+                  <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadRecipes}>
+                    <${ISync} s=${16}/>
+                  </button>
+                `}
+                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${()=>setRecipesOpen(v=>!v)}>
+                  <span style=${`display:inline-flex;transform:${recipesOpen?'rotate(0deg)':'rotate(-90deg)'};transition:transform 0.15s;`}><${IChevD} s=${16}/></span>
+                </button>
+              </div>
             </div>
+            ${recipesOpen && html`
             ${error && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
             <div style="display:flex;flex-direction:column;gap:8px;">
               <input class="inp" value=${form.recipe_name} onInput=${e=>setForm(prev => ({ ...prev, recipe_name:e.target.value }))} placeholder="Nombre: arroz con pollo casero, avena, banana..." />
@@ -3389,6 +3406,7 @@
                   </div>
                 `)}
               </div>
+            `}
             `}
           <//>
         </div>
