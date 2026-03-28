@@ -3094,7 +3094,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
               <div>
                 <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Dulces y Salsas</p>
-                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Stock de venta para saber cuantos te van quedando.</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Stock de venta para saber cuantos te van quedando. Este bloque no se usa para las macros de comida.</p>
               </div>
               <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadSweetsStock}>
                 <${ISync} s=${16}/>
@@ -3180,12 +3180,12 @@
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
                 <input class="inp" value=${form.stock_qty} onInput=${e=>setForm(prev => ({ ...prev, stock_qty:e.target.value }))} placeholder="Stock actual" />
                 <input class="inp" value=${form.stock_unit} onInput=${e=>setForm(prev => ({ ...prev, stock_unit:e.target.value }))} placeholder="Unidad stock" />
-                <input class="inp" value=${form.low_stock_threshold} onInput=${e=>setForm(prev => ({ ...prev, low_stock_threshold:e.target.value }))} placeholder="Reponer <=" />
+                <input class="inp" value=${form.low_stock_threshold} onInput=${e=>setForm(prev => ({ ...prev, low_stock_threshold:e.target.value }))} placeholder="Minimo de reposicion" />
               </div>
               <p style="margin:0;font-size:11px;color:#94A3B8;">
                 Stock actual: cuanto te queda en casa ahora mismo. Unidad stock: en que lo medis para descontar, por ejemplo g, porcion o unidad.
               </p>
-              <p style="margin:0;font-size:11px;color:#94A3B8;">Reponer <=: cuando el stock llegue a ese valor, la app te va a marcar que conviene reponer.</p>
+              <p style="margin:0;font-size:11px;color:#94A3B8;">Minimo de reposicion: cuando el stock llegue a ese valor, la app te va a marcar que conviene reponer.</p>
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                 <input class="inp" value=${form.cals} onInput=${e=>setForm(prev => ({ ...prev, cals:e.target.value }))} placeholder="Kcal" />
                 <input class="inp" value=${form.prot} onInput=${e=>setForm(prev => ({ ...prev, prot:e.target.value }))} placeholder="P" />
