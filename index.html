@@ -1483,8 +1483,32 @@
         };
       };
 
+      const parseRecipeCountNoun = (text='') => {
+        const m = String(text).trim().match(/^(\d+(?:[.,]\d+)?)\s+(.+)$/i);
+        if(!m) return null;
+        return {
+          value: parseFloat(String(m[1]).replace(',', '.')),
+          noun: normalizeRecipeText(m[2] || '')
+        };
+      };
+
       const stripRecipeAmount = (text='') =>
         normalizeRecipeText(String(text).replace(/(\d+(?:[.,]\d+)?)\s*(kg|g|gramos?|porciones?|porcion|u|unidades?)/ig, ' '));
+
+      const singularizeWord = (word='') => {
+        const w = String(word || '').trim();
+        if(!w) return '';
+        if(w.endsWith('es') && w.length > 4) return w.slice(0, -2);
+        if(w.endsWith('s') && w.length > 3) return w.slice(0, -1);
+        return w;
+      };
+
+      const normalizeRecipeKey = (text='') =>
+        normalizeRecipeText(text)
+          .split(' ')
+          .filter(Boolean)
+          .map(singularizeWord)
+          .join(' ');
 
       const unitToGrams = (value, unit) => {
         const u = String(unit||'').toLowerCase();
@@ -1529,14 +1553,35 @@
         const raw = String(inputText || '').trim();
         const normalizedFull = normalizeRecipeText(raw);
         const normalizedNameOnly = stripRecipeAmount(raw);
+        const normalizedFullKey = normalizeRecipeKey(raw);
+        const normalizedNameKey = normalizeRecipeKey(normalizedNameOnly);
         const parsedAmount = parseRecipeAmount(raw);
+        const parsedCountNoun = parseRecipeCountNoun(raw);
+        const exactMatches = [];
+        const fuzzyMatches = [];
 
         for(const recipe of (recipes || [])) {
           const names = [recipe.recipe_name, ...((Array.isArray(recipe.aliases) ? recipe.aliases : []))]
             .filter(Boolean)
             .map(normalizeRecipeText);
-          const matches = names.includes(normalizedFull) || names.includes(normalizedNameOnly);
-          if(!matches) continue;
+          const keys = [recipe.recipe_name, ...((Array.isArray(recipe.aliases) ? recipe.aliases : []))]
+            .filter(Boolean)
+            .map(normalizeRecipeKey);
+          const exact =
+            names.includes(normalizedFull) ||
+            names.includes(normalizedNameOnly) ||
+            keys.includes(normalizedFullKey) ||
+            keys.includes(normalizedNameKey) ||
+            (parsedCountNoun && keys.includes(parsedCountNoun.noun));
+
+          const fuzzy =
+            !exact &&
+            (
+              keys.some(k => k && (normalizedFullKey.includes(k) || k.includes(normalizedFullKey) || normalizedNameKey.includes(k) || k.includes(normalizedNameKey))) ||
+              (parsedCountNoun && keys.some(k => k && (parsedCountNoun.noun.includes(k) || k.includes(parsedCountNoun.noun))))
+            );
+
+          if(!exact && !fuzzy) continue;
 
           let factor = 1;
           let qty = formatRecipeQty(recipe.base_qty || 1, recipe.base_unit || 'porcion');
@@ -1561,9 +1606,15 @@
               stockDelta = parsedAmount.value;
               stockDeltaUnit = normalizeStockUnit(parsedAmount.unit);
             }
+          } else if(parsedCountNoun?.value > 0 && (normalizeStockUnit(recipe.base_unit || '') === 'unidad' || normalizeStockUnit(recipe.stock_unit || '') === 'unidad')) {
+            const baseQty = parseFloat(recipe.base_qty) || 1;
+            factor = parsedCountNoun.value / baseQty;
+            qty = `${formatRecipeQty(parsedCountNoun.value, parsedCountNoun.value === 1 ? 'unidad' : 'unidades')} (${recipe.base_unit || 'unidad'})`;
+            stockDelta = parsedCountNoun.value;
+            stockDeltaUnit = 'unidad';
           }
 
-          return {
+          const result = {
             name: recipe.recipe_name,
             qty,
             nota: recipe.notes || 'Receta guardada',
@@ -1576,8 +1627,14 @@
             stock_delta_unit: stockDeltaUnit,
             ...scaleRecipeMacros(recipe, factor)
           };
+          if(exact) exactMatches.push(result);
+          else fuzzyMatches.push(result);
         }
 
+        if(exactMatches.length === 1) return { kind:'exact', item: exactMatches[0] };
+        if(exactMatches.length > 1) return { kind:'ambiguous', options: exactMatches.slice(0,3) };
+        if(fuzzyMatches.length === 1) return { kind:'fuzzy', item: fuzzyMatches[0] };
+        if(fuzzyMatches.length > 1) return { kind:'ambiguous', options: fuzzyMatches.slice(0,3) };
         return null;
       };
 
@@ -1623,8 +1680,20 @@
         try {
           try {
             const recipes = await getRecipes();
-            const recipeHit = findRecipeMatch(recipes, text);
+            const recipeSearch = findRecipeMatch(recipes, text);
+            if(recipeSearch?.kind === 'ambiguous') {
+              const optionsText = recipeSearch.options.map(op => op.name).join(', ');
+              const useLibrary = window.confirm(`Encontre varias opciones en tu biblioteca: ${optionsText}. ¿Querés usar la biblioteca en vez de calcularlo por internet?`);
+              if(!useLibrary) throw new Error('__USE_INTERNET__');
+            }
+
+            const recipeHit = recipeSearch?.item || (recipeSearch?.options ? recipeSearch.options[0] : null);
             if(recipeHit) {
+              const shouldUseLibrary = recipeSearch?.kind === 'exact'
+                ? true
+                : window.confirm(`Encontre "${recipeHit.name}" en tu biblioteca. ¿Querés usar ese valor guardado en vez de calcularlo por internet?`);
+              if(!shouldUseLibrary) throw new Error('__USE_INTERNET__');
+
               onAddItem(mealIndex, recipeHit);
               onMeal(mealIndex, 'aiDraft', '');
               if(recipeHit.stock_unit && recipeHit.stock_delta_unit && normalizeStockUnit(recipeHit.stock_unit) === normalizeStockUnit(recipeHit.stock_delta_unit)) {
@@ -1633,7 +1702,9 @@
               return;
             }
           } catch(recipeErr) {
-            console.warn('[RECIPES]', recipeErr.message);
+            if(recipeErr?.message !== '__USE_INTERNET__') {
+              console.warn('[RECIPES]', recipeErr.message);
+            }
           }
 
           const res = await fetch('/.netlify/functions/get-macros', {
@@ -2970,11 +3041,18 @@
             ${error && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
             <div style="display:flex;flex-direction:column;gap:8px;">
               <input class="inp" value=${form.recipe_name} onInput=${e=>setForm(prev => ({ ...prev, recipe_name:e.target.value }))} placeholder="Nombre: arroz con pollo casero, avena, banana..." />
+              <p style="margin:0;font-size:11px;color:#94A3B8;">Nombre: como lo vas a escribir despues en la comida. Puede ser singular o plural.</p>
               <input class="inp" value=${form.aliases} onInput=${e=>setForm(prev => ({ ...prev, aliases:e.target.value }))} placeholder="Alias separados por coma (opcional)" />
+              <p style="margin:0;font-size:11px;color:#94A3B8;">Alias: variantes que tambien querés que reconozca, por ejemplo huevo, huevos, maple de huevos.</p>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <input class="inp" value=${form.base_qty} onInput=${e=>setForm(prev => ({ ...prev, base_qty:e.target.value }))} placeholder="Cantidad base" />
-                <input class="inp" value=${form.base_unit} onInput=${e=>setForm(prev => ({ ...prev, base_unit:e.target.value }))} placeholder="Unidad base (g, porcion, unidad...)" />
+                <input class="inp" value=${form.base_unit} onInput=${e=>setForm(prev => ({
+                  ...prev,
+                  base_unit:e.target.value,
+                  stock_unit: (!prev.stock_unit || prev.stock_unit === prev.base_unit) ? e.target.value : prev.stock_unit
+                }))} placeholder="Unidad base (g, porcion, unidad...)" />
               </div>
+              <p style="margin:0;font-size:11px;color:#94A3B8;">Cantidad base + unidad base: la porcion sobre la que cargás los macros. Ejemplo: 1 unidad, 100 g, 1 porcion.</p>
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
                 <input class="inp" value=${form.stock_qty} onInput=${e=>setForm(prev => ({ ...prev, stock_qty:e.target.value }))} placeholder="Stock actual" />
                 <input class="inp" value=${form.stock_unit} onInput=${e=>setForm(prev => ({ ...prev, stock_unit:e.target.value }))} placeholder="Unidad stock" />
@@ -2983,14 +3061,18 @@
               <p style="margin:0;font-size:11px;color:#94A3B8;">
                 Stock actual: cuanto te queda en casa ahora mismo. Unidad stock: en que lo medis para descontar, por ejemplo g, porcion o unidad.
               </p>
+              <p style="margin:0;font-size:11px;color:#94A3B8;">Reponer <=: cuando el stock llegue a ese valor, la app te va a marcar que conviene reponer.</p>
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                 <input class="inp" value=${form.cals} onInput=${e=>setForm(prev => ({ ...prev, cals:e.target.value }))} placeholder="Kcal" />
                 <input class="inp" value=${form.prot} onInput=${e=>setForm(prev => ({ ...prev, prot:e.target.value }))} placeholder="P" />
                 <input class="inp" value=${form.carb} onInput=${e=>setForm(prev => ({ ...prev, carb:e.target.value }))} placeholder="C" />
                 <input class="inp" value=${form.fat} onInput=${e=>setForm(prev => ({ ...prev, fat:e.target.value }))} placeholder="G" />
               </div>
+              <p style="margin:0;font-size:11px;color:#94A3B8;">Macros: los valores conocidos para esa cantidad base.</p>
               <textarea value=${form.ingredients} onInput=${e=>setForm(prev => ({ ...prev, ingredients:e.target.value }))} placeholder="Ingredientes, una linea por item. Formato: cantidad | nombre" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
+              <p style="margin:0;font-size:11px;color:#94A3B8;">Ingredientes: útil si es una receta compuesta. Si es un ingrediente simple, lo podés dejar vacio.</p>
               <textarea value=${form.notes} onInput=${e=>setForm(prev => ({ ...prev, notes:e.target.value }))} placeholder="Nota opcional" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
+              <p style="margin:0;font-size:11px;color:#94A3B8;">Nota: aclaraciones tuyas, por ejemplo marca, cocido/crudo o donde lo comprás.</p>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <button onClick=${saveRecipe} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
                   ${saving ? 'GUARDANDO...' : (editingId ? 'GUARDAR CAMBIOS' : 'AGREGAR A LA BIBLIOTECA')}
