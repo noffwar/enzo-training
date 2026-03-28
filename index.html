@@ -3167,6 +3167,239 @@
 
       return html`
         <div style="display:flex;flex-direction:column;gap:12px;">
+          <${SectionAccordion}
+            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#10B981;display:inline-block;"></span>`}
+            title="Recetas e ingredientes"
+            isOpen=${recipesOpen}
+            onToggle=${()=>setRecipesOpen(v=>!v)}
+          >
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <p style="margin:0;font-size:12px;color:#64748b;">Carga comidas o ingredientes con macros conocidos. Si escribis ese nombre en una comida, la app lo usa antes que Gemini.</p>
+                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadRecipes}>
+                  <${ISync} s=${16}/>
+                </button>
+              </div>
+              ${error && html`<div style="padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <input class="inp" value=${form.recipe_name} onInput=${e=>setForm(prev => ({ ...prev, recipe_name:e.target.value }))} placeholder="Nombre: arroz con pollo casero, avena, banana..." />
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Nombre: como lo vas a escribir despues en la comida. Puede ser singular o plural.</p>
+                <input class="inp" value=${form.aliases} onInput=${e=>setForm(prev => ({ ...prev, aliases:e.target.value }))} placeholder="Alias separados por coma (opcional)" />
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Alias: variantes que tambien queres que reconozca, por ejemplo huevo, huevos o maple de huevos.</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <input class="inp" value=${form.base_qty} onInput=${e=>setForm(prev => ({ ...prev, base_qty:e.target.value }))} placeholder="Cantidad base" />
+                  <input class="inp" value=${form.base_unit} onInput=${e=>setForm(prev => ({
+                    ...prev,
+                    base_unit:e.target.value,
+                    stock_unit: (!prev.stock_unit || prev.stock_unit === prev.base_unit) ? e.target.value : prev.stock_unit
+                  }))} placeholder="Unidad base (g, porcion, unidad...)" />
+                </div>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Cantidad base + unidad base: la porcion sobre la que cargas los macros. Ejemplo: 1 unidad, 100 g, 1 porcion.</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                  <input class="inp" value=${form.stock_qty} onInput=${e=>setForm(prev => ({ ...prev, stock_qty:e.target.value }))} placeholder="Stock actual" />
+                  <input class="inp" value=${form.stock_unit} onInput=${e=>setForm(prev => ({ ...prev, stock_unit:e.target.value }))} placeholder="Unidad stock" />
+                  <input class="inp" value=${form.low_stock_threshold} onInput=${e=>setForm(prev => ({ ...prev, low_stock_threshold:e.target.value }))} placeholder="Minimo de reposicion" />
+                </div>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Stock actual: cuanto te queda en casa ahora mismo. Unidad stock: en que lo medis para descontar, por ejemplo g, porcion o unidad.</p>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Minimo de reposicion: cuando el stock llegue a ese valor, la app te va a marcar que conviene reponer.</p>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                  <input class="inp" value=${form.cals} onInput=${e=>setForm(prev => ({ ...prev, cals:e.target.value }))} placeholder="Kcal" />
+                  <input class="inp" value=${form.prot} onInput=${e=>setForm(prev => ({ ...prev, prot:e.target.value }))} placeholder="P" />
+                  <input class="inp" value=${form.carb} onInput=${e=>setForm(prev => ({ ...prev, carb:e.target.value }))} placeholder="C" />
+                  <input class="inp" value=${form.fat} onInput=${e=>setForm(prev => ({ ...prev, fat:e.target.value }))} placeholder="G" />
+                </div>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Macros: los valores conocidos para esa cantidad base.</p>
+                <textarea value=${form.ingredients} onInput=${e=>setForm(prev => ({ ...prev, ingredients:e.target.value }))} placeholder="Ingredientes, una linea por item. Formato: cantidad | nombre" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Ingredientes: util si es una receta compuesta. Si es un ingrediente simple, lo podes dejar vacio.</p>
+                <textarea value=${form.notes} onInput=${e=>setForm(prev => ({ ...prev, notes:e.target.value }))} placeholder="Nota opcional" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Nota: aclaraciones tuyas, por ejemplo marca, cocido/crudo o donde lo compras.</p>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button onClick=${saveRecipe} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                    ${saving ? 'GUARDANDO...' : (editingId ? 'GUARDAR CAMBIOS' : 'AGREGAR A LA BIBLIOTECA')}
+                  </button>
+                  ${editingId && html`
+                    <button onClick=${resetForm} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(100,116,139,0.35);background:rgba(100,116,139,0.12);color:#CBD5E1;font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                      CANCELAR
+                    </button>
+                  `}
+                </div>
+              </div>
+
+              <${Card}>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  <input class="inp" value=${search} onInput=${e=>setSearch(e.target.value)} placeholder="Buscar por nombre..." />
+                  <select class="inp" value=${typeFilter} onChange=${e=>setTypeFilter(e.target.value)}>
+                    <option value="all">Todo</option>
+                    <option value="ingrediente">Ingredientes</option>
+                    <option value="receta">Recetas</option>
+                  </select>
+                </div>
+              <//>
+
+              <${Card}>
+                <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Biblioteca</p>
+                ${loading ? html`<p style="margin:0;color:#64748b;font-size:12px;">Cargando...</p>` : filtered.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay elementos cargados.</p>` : html`
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    ${filtered.map(recipe => html`
+                      <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.85);border:1px solid #1E2D45;">
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                          <div style="flex:1;min-width:0;">
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                              <p style="margin:0;font-size:13px;font-weight:700;color:#E2E8F0;">${recipe.recipe_name}</p>
+                              <span style="font-size:10px;color=${classifyRecipe(recipe)==='receta'?'#10B981':'#F59E0B'};font-family:'JetBrains Mono',monospace;text-transform:uppercase;">
+                                ${classifyRecipe(recipe)}
+                              </span>
+                            </div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                              <span style="font-size:10px;color:#F59E0B;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.cals)||0)} kcal</span>
+                              <span style="font-size:10px;color:#10B981;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.prot)||0)}g P</span>
+                              <span style="font-size:10px;color:#6366F1;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.carb)||0)}g C</span>
+                              <span style="font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.fat)||0)}g G</span>
+                            </div>
+                            <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;">Base: ${recipe.base_qty || 1} ${recipe.base_unit || 'porcion'}</p>
+                            ${(recipe.stock_qty !== null && recipe.stock_qty !== undefined && recipe.stock_qty !== '') && html`
+                              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                                <span style="font-size:10px;color:#7DD3FC;font-family:'JetBrains Mono',monospace;">Stock: ${recipe.stock_qty} ${recipe.stock_unit || ''}</span>
+                                ${(recipe.low_stock_threshold !== null && recipe.low_stock_threshold !== undefined && recipe.low_stock_threshold !== '' && Number(recipe.stock_qty) <= Number(recipe.low_stock_threshold)) && html`
+                                  <span style="font-size:10px;color:#FCA5A5;font-family:'JetBrains Mono',monospace;">Reponer</span>
+                                `}
+                              </div>
+                            `}
+                            ${Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && html`
+                              <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;white-space:pre-wrap;">
+                                ${recipe.ingredients.map(it => `${it.qty || '1 porcion'} ${it.name || 'Ingrediente'}`).join(' · ')}
+                              </p>
+                            `}
+                            ${recipe.notes && html`<p style="margin:6px 0 0;font-size:10px;color:#64748b;">${recipe.notes}</p>`}
+                          </div>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                            <button onClick=${()=>hydrateForm(recipe)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              EDITAR
+                            </button>
+                            <button onClick=${()=>deleteRecipe(recipe.id)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              BORRAR
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    `)}
+                  </div>
+                `}
+              <//>
+            </div>
+          <//>
+
+          <${SectionAccordion}
+            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#F59E0B;display:inline-block;"></span>`}
+            title="Dulces y Salsas"
+            isOpen=${sweetsOpen}
+            onToggle=${()=>setSweetsOpen(v=>!v)}
+          >
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <p style="margin:0;font-size:12px;color:#64748b;">Stock de venta para saber cuantos te van quedando. Este bloque no se usa para las macros de comida.</p>
+                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadSweetsStock}>
+                  <${ISync} s=${16}/>
+                </button>
+              </div>
+              ${sweetsMsg && html`<div style="padding:8px 10px;border-radius:8px;background:${String(sweetsMsg).includes('guardado')?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)'};border:1px solid ${String(sweetsMsg).includes('guardado')?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'};color:${String(sweetsMsg).includes('guardado')?'#86EFAC':'#FCA5A5'};font-size:12px;">${sweetsMsg}</div>`}
+              ${sweetsLoading ? html`
+                <p style="margin:0;color:#64748b;font-size:12px;">Cargando stock...</p>
+              ` : html`
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                  <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Dulces</p>
+                  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                    ${[
+                      ['damasco','Damasco'],
+                      ['durazno','Durazno'],
+                      ['ciruela','Ciruela'],
+                      ['pera','Pera'],
+                      ['alcayota','Alcayota']
+                    ].map(([key,label]) => html`
+                      <label style="display:flex;flex-direction:column;gap:4px;">
+                        <span style="font-size:11px;color:#CBD5E1;">${label}</span>
+                        <input class="inp" value=${sweetsStock[key] || ''} onInput=${e=>updateSweetsField(key, e.target.value)} placeholder="Cantidad" />
+                      </label>
+                    `)}
+                  </div>
+                  <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+                    <label style="display:flex;flex-direction:column;gap:4px;">
+                      <span style="font-size:11px;color:#CBD5E1;">Otro dulce</span>
+                      <input class="inp" value=${sweetsStock.otro_dulce_nombre || ''} onInput=${e=>updateSweetsField('otro_dulce_nombre', e.target.value)} placeholder="Ej: higo, frutilla..." />
+                    </label>
+                    <label style="display:flex;flex-direction:column;gap:4px;">
+                      <span style="font-size:11px;color:#CBD5E1;">Stock</span>
+                      <input class="inp" value=${sweetsStock.otro_dulce_stock || ''} onInput=${e=>updateSweetsField('otro_dulce_stock', e.target.value)} placeholder="Cantidad" />
+                    </label>
+                  </div>
+                  <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Salsas</p>
+                  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                    ${[
+                      ['tomate_triturado','Tomate triturado'],
+                      ['tomate_entero','Tomate entero']
+                    ].map(([key,label]) => html`
+                      <label style="display:flex;flex-direction:column;gap:4px;">
+                        <span style="font-size:11px;color:#CBD5E1;">${label}</span>
+                        <input class="inp" value=${sweetsStock[key] || ''} onInput=${e=>updateSweetsField(key, e.target.value)} placeholder="Cantidad" />
+                      </label>
+                    `)}
+                  </div>
+                  <p style="margin:0;font-size:11px;color:#94A3B8;">Carga la cantidad que te queda de cada variedad. Si vendes otra mermelada o dulce, usa la casilla de Otro dulce.</p>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button onClick=${()=>setSoldOpen(v=>!v)} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                      ${soldOpen ? 'CERRAR VENTA' : 'VENDI'}
+                    </button>
+                    <button onClick=${saveSweetsStock} style="padding:8px 12px;border-radius:8px;border:none;background:#F59E0B;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                      ${sweetsSaving ? 'GUARDANDO...' : 'GUARDAR STOCK'}
+                    </button>
+                  </div>
+                  ${soldOpen && html`
+                    <div style="margin-top:6px;padding:10px;border-radius:8px;background:rgba(15,23,41,0.7);border:1px solid rgba(99,102,241,0.22);display:flex;flex-direction:column;gap:10px;">
+                      <p style="margin:0;font-size:11px;color:#C7D2FE;">Indica cuanto vendiste de cada uno. Si un campo queda vacio, cuenta como 0.</p>
+                      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                        ${[
+                          ['damasco','Damasco'],
+                          ['durazno','Durazno'],
+                          ['ciruela','Ciruela'],
+                          ['pera','Pera'],
+                          ['alcayota','Alcayota'],
+                          ['tomate_triturado','Tomate triturado'],
+                          ['tomate_entero','Tomate entero']
+                        ].map(([key,label]) => html`
+                          <label style="display:flex;flex-direction:column;gap:4px;">
+                            <span style="font-size:11px;color:#CBD5E1;">${label}</span>
+                            <input class="inp" value=${soldDraft[key] || ''} onInput=${e=>updateSoldField(key, e.target.value)} placeholder="Vendidos" />
+                          </label>
+                        `)}
+                      </div>
+                      ${sweetsStock.otro_dulce_nombre && html`
+                        <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+                          <div style="display:flex;flex-direction:column;gap:4px;">
+                            <span style="font-size:11px;color:#CBD5E1;">${sweetsStock.otro_dulce_nombre}</span>
+                            <span style="font-size:10px;color:#64748b;">Otro dulce cargado</span>
+                          </div>
+                          <label style="display:flex;flex-direction:column;gap:4px;">
+                            <span style="font-size:11px;color:#CBD5E1;">Vendidos</span>
+                            <input class="inp" value=${soldDraft.otro_dulce_stock || ''} onInput=${e=>updateSoldField('otro_dulce_stock', e.target.value)} placeholder="Vendidos" />
+                          </label>
+                        </div>
+                      `}
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <button onClick=${registerSoldSweets} style="padding:8px 12px;border-radius:8px;border:none;background:#6366F1;color:#F8FAFC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                          DESCONTAR VENTA
+                        </button>
+                      </div>
+                    </div>
+                  `}
+                </div>
+              `}
+            </div>
+          <//>
+        </div>
+      `;
+
+      return html`
+        <div style="display:flex;flex-direction:column;gap:12px;">
           <${Card} style="order:2;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:${sweetsOpen?'12px':'0'};">
               <div>
