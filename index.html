@@ -2035,7 +2035,7 @@
                                 </span>
                               `}
                               <span style="font-size:11px;font-weight:700;color:#6366F1;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${fn(item.prot)}g P</span>
-                              <button onClick=${()=>onRemoveItem(i, idx)} style="color:#EF4444;background:none;border:none;font-size:20px;cursor:pointer;padding:0;line-height:1;">×</button>
+                              <button onClick=${()=>onRemoveItem(i, idx, item)} style="color:#EF4444;background:none;border:none;font-size:20px;cursor:pointer;padding:0;line-height:1;">×</button>
                             </div>
                           </div>
                           ${item.nota && html`<p style="margin:1px 0 3px 8px;font-size:9px;color:#F59E0B;">⚠ ${item.nota}</p>`}
@@ -2863,6 +2863,18 @@
       try { localStorage.setItem(AI_DRAFTS_KEY, JSON.stringify(drafts || {})); } catch(_) {}
     };
 
+    const SWEETS_STOCK_DEFAULT = {
+      damasco: '',
+      durazno: '',
+      ciruela: '',
+      pera: '',
+      alcayota: '',
+      tomate_triturado: '',
+      tomate_entero: '',
+      otro_dulce_nombre: '',
+      otro_dulce_stock: ''
+    };
+
     const RecipesView = ({session}) => {
       const [rows, setRows] = useState([]);
       const [loading, setLoading] = useState(true);
@@ -2871,6 +2883,10 @@
       const [typeFilter, setTypeFilter] = useState('all');
       const [editingId, setEditingId] = useState(null);
       const [saving, setSaving] = useState(false);
+      const [sweetsStock, setSweetsStock] = useState(SWEETS_STOCK_DEFAULT);
+      const [sweetsLoading, setSweetsLoading] = useState(true);
+      const [sweetsSaving, setSweetsSaving] = useState(false);
+      const [sweetsMsg, setSweetsMsg] = useState('');
       const [form, setForm] = useState({
         recipe_name: '',
         aliases: '',
@@ -2905,6 +2921,26 @@
       }, []);
 
       useEffect(() => { loadRecipes(); }, [loadRecipes]);
+
+      const loadSweetsStock = useCallback(async () => {
+        setSweetsLoading(true);
+        setSweetsMsg('');
+        try {
+          const { data, error } = await supabase
+            .from('app_inventory')
+            .select('data')
+            .eq('key', 'sweets_sauces_stock')
+            .maybeSingle();
+          if(error) throw error;
+          setSweetsStock({ ...SWEETS_STOCK_DEFAULT, ...(data?.data || {}) });
+        } catch(e) {
+          setSweetsMsg(e.message || 'No se pudo cargar el stock de dulces y salsas.');
+        } finally {
+          setSweetsLoading(false);
+        }
+      }, []);
+
+      useEffect(() => { loadSweetsStock(); }, [loadSweetsStock]);
 
       const resetForm = () => {
         setEditingId(null);
@@ -3004,6 +3040,32 @@
         }
       };
 
+      const updateSweetsField = (key, value) => {
+        setSweetsStock(prev => ({ ...prev, [key]: value }));
+      };
+
+      const saveSweetsStock = async () => {
+        setSweetsSaving(true);
+        setSweetsMsg('');
+        try {
+          const payload = { ...SWEETS_STOCK_DEFAULT, ...sweetsStock };
+          const { error } = await supabase
+            .from('app_inventory')
+            .upsert({
+              key: 'sweets_sauces_stock',
+              data: payload,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+          if(error) throw error;
+          setSweetsMsg('Stock de dulces y salsas guardado.');
+          setTimeout(() => setSweetsMsg(''), 2500);
+        } catch(e) {
+          setSweetsMsg(e.message || 'No se pudo guardar el stock de dulces y salsas.');
+        } finally {
+          setSweetsSaving(false);
+        }
+      };
+
       const deleteRecipe = async (id) => {
         try {
           const { error } = await supabase.from('user_recipes').delete().eq('id', id);
@@ -3028,6 +3090,68 @@
 
       return html`
         <div style="display:flex;flex-direction:column;gap:12px;">
+          <${Card}>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
+              <div>
+                <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Dulces y Salsas</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Stock de venta para saber cuantos te van quedando.</p>
+              </div>
+              <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadSweetsStock}>
+                <${ISync} s=${16}/>
+              </button>
+            </div>
+            ${sweetsMsg && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:${String(sweetsMsg).includes('guardado')?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)'};border:1px solid ${String(sweetsMsg).includes('guardado')?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'};color:${String(sweetsMsg).includes('guardado')?'#86EFAC':'#FCA5A5'};font-size:12px;">${sweetsMsg}</div>`}
+            ${sweetsLoading ? html`
+              <p style="margin:0;color:#64748b;font-size:12px;">Cargando stock...</p>
+            ` : html`
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Dulces</p>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                  ${[
+                    ['damasco','Damasco'],
+                    ['durazno','Durazno'],
+                    ['ciruela','Ciruela'],
+                    ['pera','Pera'],
+                    ['alcayota','Alcayota']
+                  ].map(([key,label]) => html`
+                    <label style="display:flex;flex-direction:column;gap:4px;">
+                      <span style="font-size:11px;color:#CBD5E1;">${label}</span>
+                      <input class="inp" value=${sweetsStock[key] || ''} onInput=${e=>updateSweetsField(key, e.target.value)} placeholder="Cantidad" />
+                    </label>
+                  `)}
+                </div>
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+                  <label style="display:flex;flex-direction:column;gap:4px;">
+                    <span style="font-size:11px;color:#CBD5E1;">Otro dulce</span>
+                    <input class="inp" value=${sweetsStock.otro_dulce_nombre || ''} onInput=${e=>updateSweetsField('otro_dulce_nombre', e.target.value)} placeholder="Ej: higo, frutilla..." />
+                  </label>
+                  <label style="display:flex;flex-direction:column;gap:4px;">
+                    <span style="font-size:11px;color:#CBD5E1;">Stock</span>
+                    <input class="inp" value=${sweetsStock.otro_dulce_stock || ''} onInput=${e=>updateSweetsField('otro_dulce_stock', e.target.value)} placeholder="Cantidad" />
+                  </label>
+                </div>
+                <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Salsas</p>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                  ${[
+                    ['tomate_triturado','Tomate triturado'],
+                    ['tomate_entero','Tomate entero']
+                  ].map(([key,label]) => html`
+                    <label style="display:flex;flex-direction:column;gap:4px;">
+                      <span style="font-size:11px;color:#CBD5E1;">${label}</span>
+                      <input class="inp" value=${sweetsStock[key] || ''} onInput=${e=>updateSweetsField(key, e.target.value)} placeholder="Cantidad" />
+                    </label>
+                  `)}
+                </div>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Cargá la cantidad que te queda de cada variedad. Si vendés otra mermelada o dulce, usá la casilla de Otro dulce.</p>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button onClick=${saveSweetsStock} style="padding:8px 12px;border-radius:8px;border:none;background:#F59E0B;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                    ${sweetsSaving ? 'GUARDANDO...' : 'GUARDAR STOCK'}
+                  </button>
+                </div>
+              </div>
+            `}
+          <//>
+
           <${Card}>
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
               <div>
@@ -4711,6 +4835,15 @@
       const updateHabit = (f,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}));
       const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek()),bodyWeight:v}})); };
       const updateMed   = (med,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...w.tracker[activeDay].meds,[med]:v}}}}));
+      const normalizeInventoryUnit = (unit='') => {
+        const u = String(unit || '').trim().toLowerCase();
+        if(!u) return '';
+        if(['g','gramo','gramos'].includes(u)) return 'g';
+        if(u === 'kg') return 'kg';
+        if(['porcion','porciones'].includes(u)) return 'porcion';
+        if(['unidad','unidades','u'].includes(u)) return 'unidad';
+        return u;
+      };
       // updateMeal: solo para firstBite/lastBite (los macros vienen de items)
       const updateMeal  = (i,f,v) => upd(w=>{const meals=[...w.tracker[activeDay].meals];meals[i]={...meals[i],[f]:v};return{...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meals}}};});
 
@@ -4720,11 +4853,35 @@
         return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
       });
 
-      const removeMealItem = (mealIndex, itemIndex) => upd(w => {
-        const meals = [...w.tracker[activeDay].meals];
-        meals[mealIndex] = { ...meals[mealIndex], items: (meals[mealIndex].items||[]).filter((_,i)=>i!==itemIndex) };
-        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
-      });
+      const removeMealItem = (mealIndex, itemIndex, removedItem=null) => {
+        upd(w => {
+          const meals = [...w.tracker[activeDay].meals];
+          meals[mealIndex] = { ...meals[mealIndex], items: (meals[mealIndex].items||[]).filter((_,i)=>i!==itemIndex) };
+          return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+        });
+
+        if(!removedItem?.recipe_id) return;
+        const stockUnit = normalizeInventoryUnit(removedItem.stock_unit || '');
+        const deltaUnit = normalizeInventoryUnit(removedItem.stock_delta_unit || '');
+        const delta = parseFloat(removedItem.stock_delta);
+        if(!stockUnit || !deltaUnit || stockUnit !== deltaUnit || !(delta > 0)) return;
+
+        supabase
+          .from('user_recipes')
+          .select('id, stock_qty')
+          .eq('id', removedItem.recipe_id)
+          .single()
+          .then(({ data, error }) => {
+            if(error || !data) throw error || new Error('No se pudo leer el stock.');
+            const nextQty = (parseFloat(data.stock_qty) || 0) + delta;
+            return supabase
+              .from('user_recipes')
+              .update({ stock_qty: nextQty, updated_at: new Date().toISOString() })
+              .eq('id', removedItem.recipe_id);
+          })
+          .then(()=>{})
+          .catch((e)=>console.warn('[STOCK_RESTORE]', e?.message || e));
+      };
 
       const handleRoutineChange = v => {
         upd(w=>{
