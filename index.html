@@ -2862,6 +2862,7 @@
     const saveThoughtDrafts = (drafts) => {
       try { localStorage.setItem(AI_DRAFTS_KEY, JSON.stringify(drafts || {})); } catch(_) {}
     };
+    const SWEETS_STOCK_KEY = 'enzo_sweets_sauces_stock_v1';
 
     const SWEETS_STOCK_DEFAULT = {
       damasco: '',
@@ -2872,6 +2873,16 @@
       tomate_triturado: '',
       tomate_entero: '',
       otro_dulce_nombre: '',
+      otro_dulce_stock: ''
+    };
+    const SWEETS_SOLD_DEFAULT = {
+      damasco: '',
+      durazno: '',
+      ciruela: '',
+      pera: '',
+      alcayota: '',
+      tomate_triturado: '',
+      tomate_entero: '',
       otro_dulce_stock: ''
     };
 
@@ -2887,6 +2898,10 @@
       const [sweetsLoading, setSweetsLoading] = useState(true);
       const [sweetsSaving, setSweetsSaving] = useState(false);
       const [sweetsMsg, setSweetsMsg] = useState('');
+      const [recipesOpen, setRecipesOpen] = useState(true);
+      const [sweetsOpen, setSweetsOpen] = useState(false);
+      const [soldOpen, setSoldOpen] = useState(false);
+      const [soldDraft, setSoldDraft] = useState(SWEETS_SOLD_DEFAULT);
       const [form, setForm] = useState({
         recipe_name: '',
         aliases: '',
@@ -2926,15 +2941,28 @@
         setSweetsLoading(true);
         setSweetsMsg('');
         try {
+          const local = JSON.parse(localStorage.getItem(SWEETS_STOCK_KEY) || 'null');
           const { data, error } = await supabase
             .from('app_inventory')
             .select('data')
             .eq('key', 'sweets_sauces_stock')
             .maybeSingle();
-          if(error) throw error;
-          setSweetsStock({ ...SWEETS_STOCK_DEFAULT, ...(data?.data || {}) });
+          if(error) {
+            setSweetsStock({ ...SWEETS_STOCK_DEFAULT, ...(local || {}) });
+            setSweetsMsg('Stock local cargado. El guardado remoto está restringido por permisos.');
+            return;
+          }
+          const merged = { ...SWEETS_STOCK_DEFAULT, ...(local || {}), ...(data?.data || {}) };
+          setSweetsStock(merged);
+          try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(merged)); } catch(_) {}
         } catch(e) {
-          setSweetsMsg(e.message || 'No se pudo cargar el stock de dulces y salsas.');
+          try {
+            const local = JSON.parse(localStorage.getItem(SWEETS_STOCK_KEY) || 'null');
+            setSweetsStock({ ...SWEETS_STOCK_DEFAULT, ...(local || {}) });
+            setSweetsMsg('Stock local cargado.');
+          } catch(_) {
+            setSweetsMsg(e.message || 'No se pudo cargar el stock de dulces y salsas.');
+          }
         } finally {
           setSweetsLoading(false);
         }
@@ -3043,12 +3071,32 @@
       const updateSweetsField = (key, value) => {
         setSweetsStock(prev => ({ ...prev, [key]: value }));
       };
+      const updateSoldField = (key, value) => {
+        setSoldDraft(prev => ({ ...prev, [key]: value }));
+      };
+      const persistSweetsPayload = async (payload, okMsg) => {
+        try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(payload)); } catch(_) {}
+        const { error } = await supabase
+          .from('app_inventory')
+          .upsert({
+            key: 'sweets_sauces_stock',
+            data: payload,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'key' });
+        if(error) {
+          setSweetsMsg(`${okMsg} Guardado local porque el remoto está restringido por permisos.`);
+        } else {
+          setSweetsMsg(okMsg);
+        }
+        setTimeout(() => setSweetsMsg(''), 2500);
+      };
 
       const saveSweetsStock = async () => {
         setSweetsSaving(true);
         setSweetsMsg('');
         try {
           const payload = { ...SWEETS_STOCK_DEFAULT, ...sweetsStock };
+          try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(payload)); } catch(_) {}
           const { error } = await supabase
             .from('app_inventory')
             .upsert({
@@ -3056,11 +3104,40 @@
               data: payload,
               updated_at: new Date().toISOString()
             }, { onConflict: 'key' });
-          if(error) throw error;
-          setSweetsMsg('Stock de dulces y salsas guardado.');
+          if(error) {
+            setSweetsMsg('Stock guardado en este dispositivo. El guardado remoto está restringido por permisos.');
+          } else {
+            setSweetsMsg('Stock de dulces y salsas guardado.');
+          }
           setTimeout(() => setSweetsMsg(''), 2500);
         } catch(e) {
-          setSweetsMsg(e.message || 'No se pudo guardar el stock de dulces y salsas.');
+          setSweetsMsg('Stock guardado en este dispositivo.');
+        } finally {
+          setSweetsSaving(false);
+        }
+      };
+
+      const registerSoldSweets = async () => {
+        setSweetsSaving(true);
+        setSweetsMsg('');
+        try {
+          const next = { ...sweetsStock };
+          ['damasco','durazno','ciruela','pera','alcayota','tomate_triturado','tomate_entero'].forEach((key) => {
+            const sold = parseFloat(String(soldDraft[key] || '').replace(',', '.')) || 0;
+            const current = parseFloat(String(sweetsStock[key] || '').replace(',', '.')) || 0;
+            next[key] = String(Math.max(0, current - sold));
+          });
+          const otherSold = parseFloat(String(soldDraft.otro_dulce_stock || '').replace(',', '.')) || 0;
+          const otherCurrent = parseFloat(String(sweetsStock.otro_dulce_stock || '').replace(',', '.')) || 0;
+          next.otro_dulce_stock = String(Math.max(0, otherCurrent - otherSold));
+          setSweetsStock(next);
+          try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify({ ...SWEETS_STOCK_DEFAULT, ...next })); } catch(_) {}
+          setSweetsMsg('Venta descontada del stock.');
+          setTimeout(() => setSweetsMsg(''), 2500);
+          setSoldDraft(SWEETS_SOLD_DEFAULT);
+          setSoldOpen(false);
+        } catch(e) {
+          setSweetsMsg('No se pudo descontar la venta.');
         } finally {
           setSweetsSaving(false);
         }
@@ -3144,10 +3221,51 @@
                 </div>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Cargá la cantidad que te queda de cada variedad. Si vendés otra mermelada o dulce, usá la casilla de Otro dulce.</p>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button onClick=${()=>setSoldOpen(v=>!v)} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                    ${soldOpen ? 'CERRAR VENTA' : 'VENDI'}
+                  </button>
                   <button onClick=${saveSweetsStock} style="padding:8px 12px;border-radius:8px;border:none;background:#F59E0B;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
                     ${sweetsSaving ? 'GUARDANDO...' : 'GUARDAR STOCK'}
                   </button>
                 </div>
+                ${soldOpen && html`
+                  <div style="margin-top:6px;padding:10px;border-radius:8px;background:rgba(15,23,41,0.7);border:1px solid rgba(99,102,241,0.22);display:flex;flex-direction:column;gap:10px;">
+                    <p style="margin:0;font-size:11px;color:#C7D2FE;">Indicá cuánto vendiste de cada uno. Si un campo queda vacío, cuenta como 0.</p>
+                    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                      ${[
+                        ['damasco','Damasco'],
+                        ['durazno','Durazno'],
+                        ['ciruela','Ciruela'],
+                        ['pera','Pera'],
+                        ['alcayota','Alcayota'],
+                        ['tomate_triturado','Tomate triturado'],
+                        ['tomate_entero','Tomate entero']
+                      ].map(([key,label]) => html`
+                        <label style="display:flex;flex-direction:column;gap:4px;">
+                          <span style="font-size:11px;color:#CBD5E1;">${label}</span>
+                          <input class="inp" value=${soldDraft[key] || ''} onInput=${e=>updateSoldField(key, e.target.value)} placeholder="Vendidos" />
+                        </label>
+                      `)}
+                    </div>
+                    ${sweetsStock.otro_dulce_nombre && html`
+                      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;">
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                          <span style="font-size:11px;color:#CBD5E1;">${sweetsStock.otro_dulce_nombre}</span>
+                          <span style="font-size:10px;color:#64748b;">Otro dulce cargado</span>
+                        </div>
+                        <label style="display:flex;flex-direction:column;gap:4px;">
+                          <span style="font-size:11px;color:#CBD5E1;">Vendidos</span>
+                          <input class="inp" value=${soldDraft.otro_dulce_stock || ''} onInput=${e=>updateSoldField('otro_dulce_stock', e.target.value)} placeholder="Vendidos" />
+                        </label>
+                      </div>
+                    `}
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                      <button onClick=${registerSoldSweets} style="padding:8px 12px;border-radius:8px;border:none;background:#6366F1;color:#F8FAFC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                        DESCONTAR VENTA
+                      </button>
+                    </div>
+                  </div>
+                `}
               </div>
             `}
           <//>
