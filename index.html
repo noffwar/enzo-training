@@ -4376,6 +4376,10 @@
                         <p style="margin:0;font-size:12px;color:#E2E8F0;">
                           ${entry.type === 'daily_combo'
                             ? 'Toma diaria: -1 Roaccutan y -1 Minoxidil/Finasteride'
+                            : entry.type === 'habit_toggle'
+                              ? `Check diario: ${entry.med === 'roacuttan'
+                                  ? `Roaccutan ${entry.delta_roaccutan > 0 ? '+' : ''}${entry.delta_roaccutan}`
+                                  : `Combo noche ${entry.delta_combo > 0 ? '+' : ''}${entry.delta_combo}`}`
                             : entry.type === 'restock'
                               ? `Reposicion: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} +${entry.delta}`
                               : `Ajuste: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} ${entry.delta}`
@@ -6022,7 +6026,75 @@
 
       const updateHabit = (f,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}));
       const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek()),bodyWeight:v}})); };
-      const updateMed   = (med,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...w.tracker[activeDay].meds,[med]:v}}}}));
+      const syncMedsInventoryFromToggle = async (med, nextVal) => {
+        const selectedDate = getDayDate(currentWk, parseInt(activeDay, 10));
+        const todayDate = new Date().toISOString().slice(0,10);
+        if(selectedDate !== todayDate) return;
+
+        const prevMeds = tracker?.meds || {};
+        const prevVal = !!prevMeds[med];
+        const normalizedNext = !!nextVal;
+        if(prevVal === normalizedNext) return;
+
+        const nextMeds = { ...prevMeds, [med]: normalizedNext };
+        const prevCombo = !!prevMeds.finasteride && !!prevMeds.minoxidil;
+        const nextCombo = !!nextMeds.finasteride && !!nextMeds.minoxidil;
+        let deltaRoaccutan = 0;
+        let deltaCombo = 0;
+
+        if(med === 'roacuttan') {
+          deltaRoaccutan = normalizedNext ? -1 : 1;
+        }
+        if(med === 'finasteride' || med === 'minoxidil') {
+          if(!prevCombo && nextCombo) deltaCombo = -1;
+          if(prevCombo && !nextCombo) deltaCombo = 1;
+        }
+        if(!deltaRoaccutan && !deltaCombo) return;
+
+        try {
+          const local = JSON.parse(localStorage.getItem(MEDS_STOCK_KEY) || 'null');
+          const { data, error } = await supabase
+            .from('app_inventory')
+            .select('data')
+            .eq('key', 'meds_stock')
+            .maybeSingle();
+          const base = {
+            ...MEDS_STOCK_DEFAULT,
+            ...(local || {}),
+            ...(error ? {} : (data?.data || {}))
+          };
+          const nextPayload = {
+            ...base,
+            roaccutan: Math.max(0, pn(base.roaccutan) + deltaRoaccutan),
+            minoxidil_finasteride: Math.max(0, pn(base.minoxidil_finasteride) + deltaCombo),
+            last_taken_at: normalizedNext ? new Date().toISOString() : base.last_taken_at,
+            history: [
+              {
+                at: new Date().toISOString(),
+                type: 'habit_toggle',
+                med,
+                delta_roaccutan: deltaRoaccutan,
+                delta_combo: deltaCombo
+              },
+              ...(Array.isArray(base.history) ? base.history : [])
+            ].slice(0, 30)
+          };
+          try { localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(nextPayload)); } catch(_) {}
+          await supabase
+            .from('app_inventory')
+            .upsert({
+              key: 'meds_stock',
+              data: nextPayload,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+        } catch(e) {
+          console.warn('[MEDS_SYNC]', e.message || e);
+        }
+      };
+      const updateMed = (med,v) => {
+        upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...w.tracker[activeDay].meds,[med]:v}}}}));
+        syncMedsInventoryFromToggle(med, v);
+      };
       const normalizeInventoryUnit = (unit='') => {
         const u = String(unit || '').trim().toLowerCase();
         if(!u) return '';
