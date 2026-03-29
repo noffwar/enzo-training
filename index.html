@@ -2874,7 +2874,8 @@
       tomate_triturado: '',
       tomate_entero: '',
       otro_dulce_nombre: '',
-      otro_dulce_stock: ''
+      otro_dulce_stock: '',
+      sales_history: []
     };
     const SWEETS_SOLD_DEFAULT = {
       damasco: '',
@@ -3123,18 +3124,28 @@
         setSweetsMsg('');
         try {
           const next = { ...sweetsStock };
+          const soldEntries = [];
           ['damasco','durazno','ciruela','pera','alcayota','tomate_triturado','tomate_entero'].forEach((key) => {
             const sold = parseFloat(String(soldDraft[key] || '').replace(',', '.')) || 0;
             const current = parseFloat(String(sweetsStock[key] || '').replace(',', '.')) || 0;
             next[key] = String(Math.max(0, current - sold));
+            if(sold > 0) soldEntries.push({ key, qty: sold });
           });
           const otherSold = parseFloat(String(soldDraft.otro_dulce_stock || '').replace(',', '.')) || 0;
           const otherCurrent = parseFloat(String(sweetsStock.otro_dulce_stock || '').replace(',', '.')) || 0;
           next.otro_dulce_stock = String(Math.max(0, otherCurrent - otherSold));
+          if(otherSold > 0 && sweetsStock.otro_dulce_nombre) {
+            soldEntries.push({ key: sweetsStock.otro_dulce_nombre, qty: otherSold });
+          }
+          next.sales_history = [
+            {
+              at: new Date().toISOString(),
+              items: soldEntries
+            },
+            ...((Array.isArray(sweetsStock.sales_history) ? sweetsStock.sales_history : []))
+          ].slice(0, 20);
           setSweetsStock(next);
-          try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify({ ...SWEETS_STOCK_DEFAULT, ...next })); } catch(_) {}
-          setSweetsMsg('Venta descontada del stock.');
-          setTimeout(() => setSweetsMsg(''), 2500);
+          await persistSweetsPayload({ ...SWEETS_STOCK_DEFAULT, ...next }, 'Venta descontada del stock.');
           setSoldDraft(SWEETS_SOLD_DEFAULT);
           setSoldOpen(false);
         } catch(e) {
@@ -3392,6 +3403,23 @@
                       </div>
                     </div>
                   `}
+                  <div style="margin-top:6px;padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:8px;">
+                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Historial de ventas</p>
+                    ${!(Array.isArray(sweetsStock.sales_history) && sweetsStock.sales_history.length) ? html`
+                      <p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay ventas registradas.</p>
+                    ` : html`
+                      <div style="display:flex;flex-direction:column;gap:6px;">
+                        ${(sweetsStock.sales_history || []).slice(0, 8).map(entry => html`
+                          <div style="padding:8px 10px;border-radius:8px;background:rgba(15,23,41,0.7);border:1px solid rgba(99,102,241,0.18);">
+                            <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${entry.at ? new Date(entry.at).toLocaleString('es-AR') : ''}</p>
+                            <p style="margin:0;font-size:12px;color:#E2E8F0;white-space:pre-wrap;">
+                              ${(entry.items || []).map(item => `${item.key}: ${item.qty}`).join(' · ') || 'Venta sin detalle'}
+                            </p>
+                          </div>
+                        `)}
+                      </div>
+                    `}
+                  </div>
                 </div>
               `}
             </div>
@@ -4364,14 +4392,26 @@
       `;
     };
 
-    const TodayDashboard = ({session, onOpenTasks}) => {
-      const [summary, setSummary] = useState({ pending:0, dueToday:0, notes:0, high:0, nextTask:null });
+    const TodayDashboard = ({session, onOpenTasks, onOpenStudy, onOpenBooks, onOpenHealth, onOpenRecipes}) => {
+      const [summary, setSummary] = useState({
+        pending:0, dueToday:0, notes:0, high:0, nextTask:null,
+        studyPending:0, studyDone:0, studySubjects:0,
+        book:null, bookPct:0,
+        meds:null, medsLow:false,
+        pantryLow:0
+      });
       const [loading, setLoading] = useState(true);
 
       const loadSummary = useCallback(async () => {
         setLoading(true);
         try {
-          const [{ data: taskRows, error: taskErr }, { data: noteRows, error: noteErr }] = await Promise.all([
+          const [
+            { data: taskRows, error: taskErr },
+            { data: noteRows, error: noteErr },
+            { data: invRows, error: invErr },
+            { data: studyRows, error: studyErr },
+            { data: recipeRows, error: recipeErr }
+          ] = await Promise.all([
             supabase.from('tasks')
               .select('id,title,due_at,priority,status,category')
               .eq('user_id', session.user.id)
@@ -4379,13 +4419,27 @@
             supabase.from('notes')
               .select('id,kind,content,created_at')
               .eq('user_id', session.user.id)
-              .order('created_at', { ascending: false })
+              .order('created_at', { ascending: false }),
+            supabase.from('app_inventory')
+              .select('key,data')
+              .in('key', ['meds_stock', 'reading_progress', 'sweets_sauces_stock']),
+            supabase.from('study_plan')
+              .select('subject,topics')
+              .order('subject', { ascending: true }),
+            supabase.from('user_recipes')
+              .select('recipe_name,stock_qty,low_stock_threshold')
           ]);
           if(taskErr) throw taskErr;
           if(noteErr) throw noteErr;
+          if(invErr) throw invErr;
+          if(studyErr) throw studyErr;
+          if(recipeErr) throw recipeErr;
 
           const tasks = taskRows || [];
           const notes = (noteRows || []).filter(n => n.kind !== 'converted');
+          const inventory = Object.fromEntries((invRows || []).map(row => [row.key, row.data || {}]));
+          const study = studyRows || [];
+          const recipes = recipeRows || [];
           const now = new Date();
           const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
           const pending = tasks.filter(t => t.status !== 'done');
@@ -4393,16 +4447,41 @@
           const nextTask = pending
             .filter(t => t.due_at)
             .sort((a,b)=>new Date(a.due_at)-new Date(b.due_at))[0] || pending[0] || null;
+          const meds = { ...MEDS_STOCK_DEFAULT, ...(inventory.meds_stock || {}) };
+          const book = { ...BOOK_DEFAULT, ...(inventory.reading_progress || {}) };
+          const bookPct = Math.max(0, Math.min(100, Math.round((pn(book.current_page) / Math.max(1, pn(book.total_pages))) * 100) || 0));
+          const studyTopics = study.flatMap(row => Array.isArray(row.topics) ? row.topics : []);
+          const studyPending = studyTopics.filter(topic => !topic?.done).length;
+          const studyDone = studyTopics.filter(topic => !!topic?.done).length;
+          const pantryLow = recipes.filter(row => {
+            const qty = pn(row.stock_qty);
+            const threshold = pn(row.low_stock_threshold);
+            return qty > 0 && threshold > 0 && qty <= threshold;
+          }).length;
 
           setSummary({
             pending: pending.length,
             dueToday: dueToday.length,
             notes: notes.length,
             high: pending.filter(t => (t.priority || 'normal') === 'high').length,
-            nextTask
+            nextTask,
+            studyPending,
+            studyDone,
+            studySubjects: study.length,
+            book,
+            bookPct,
+            meds,
+            medsLow: pn(meds.roaccutan) <= 2 || pn(meds.minoxidil_finasteride) <= 2,
+            pantryLow
           });
         } catch(_) {
-          setSummary({ pending:0, dueToday:0, notes:0, high:0, nextTask:null });
+          setSummary({
+            pending:0, dueToday:0, notes:0, high:0, nextTask:null,
+            studyPending:0, studyDone:0, studySubjects:0,
+            book:null, bookPct:0,
+            meds:null, medsLow:false,
+            pantryLow:0
+          });
         } finally {
           setLoading(false);
         }
@@ -4434,6 +4513,28 @@
                 <p style=${`margin:4px 0 0;font-size:17px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${item.color};`}>${loading ? '...' : item.val}</p>
               </div>
             `)}
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+            <button onClick=${onOpenStudy} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.08);cursor:pointer;">
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;font-weight:700;">Estudio</p>
+              <p style="margin:0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${loading ? '...' : summary.studyPending}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">Pendientes de ${summary.studySubjects} materias · ${summary.studyDone} hechos</p>
+            </button>
+            <button onClick=${onOpenBooks} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.08);cursor:pointer;">
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#FCD34D;font-weight:700;">Libro actual</p>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${summary.book?.title || 'Sin libro'}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">Pag ${pn(summary.book?.current_page)} / ${pn(summary.book?.total_pages)} · ${summary.bookPct}%</p>
+            </button>
+            <button onClick=${onOpenHealth} style=${`text-align:left;padding:10px 12px;border-radius:10px;border:1px solid ${summary.medsLow ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)'};background:${summary.medsLow ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'};cursor:pointer;`}>
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:${summary.medsLow ? '#FCA5A5' : '#86EFAC'};font-weight:700;">Salud</p>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">R ${pn(summary.meds?.roaccutan)} · M ${pn(summary.meds?.minoxidil_finasteride)}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.medsLow ? 'Reponer pronto' : 'Stock controlado'}</p>
+            </button>
+            <button onClick=${onOpenRecipes} style=${`text-align:left;padding:10px 12px;border-radius:10px;border:1px solid ${summary.pantryLow > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(56,189,248,0.25)'};background:${summary.pantryLow > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(56,189,248,0.08)'};cursor:pointer;`}>
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:${summary.pantryLow > 0 ? '#FCD34D' : '#7DD3FC'};font-weight:700;">Biblioteca</p>
+              <p style="margin:0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${loading ? '...' : summary.pantryLow}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.pantryLow > 0 ? 'Items con stock bajo' : 'Sin alertas de stock'}</p>
+            </button>
           </div>
           <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
             <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Siguiente foco</p>
@@ -6330,7 +6431,14 @@
                   </select>
                 </div>
 
-                <${TodayDashboard} session=${session} onOpenTasks=${()=>navigateTo('tasks')}/>
+                <${TodayDashboard}
+                  session=${session}
+                  onOpenTasks=${()=>navigateTo('tasks')}
+                  onOpenStudy=${()=>navigateTo('study')}
+                  onOpenBooks=${()=>navigateTo('books')}
+                  onOpenHealth=${()=>navigateTo('health')}
+                  onOpenRecipes=${()=>navigateTo('recipes')}
+                />
 
                 <${HabitsPanel} tracker=${tracker} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem}/>
 
