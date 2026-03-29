@@ -2903,6 +2903,8 @@
       const [recipesOpen, setRecipesOpen] = useState(true);
       const [sweetsOpen, setSweetsOpen] = useState(false);
       const [soldOpen, setSoldOpen] = useState(false);
+      const [salesRange, setSalesRange] = useState('all');
+      const [editingSaleAt, setEditingSaleAt] = useState('');
       const [soldDraft, setSoldDraft] = useState(SWEETS_SOLD_DEFAULT);
       const [form, setForm] = useState({
         recipe_name: '',
@@ -3076,6 +3078,34 @@
       const updateSoldField = (key, value) => {
         setSoldDraft(prev => ({ ...prev, [key]: value }));
       };
+      const normalizeSaleDraft = (draft, currentStock) => {
+        const soldEntries = [];
+        ['damasco','durazno','ciruela','pera','alcayota','tomate_triturado','tomate_entero'].forEach((key) => {
+          const sold = parseFloat(String(draft[key] || '').replace(',', '.')) || 0;
+          if(sold > 0) soldEntries.push({ key, qty: sold });
+        });
+        const otherSold = parseFloat(String(draft.otro_dulce_stock || '').replace(',', '.')) || 0;
+        if(otherSold > 0 && currentStock.otro_dulce_nombre) {
+          soldEntries.push({ key: currentStock.otro_dulce_nombre, qty: otherSold });
+        }
+        return soldEntries;
+      };
+      const stockAfterRemovingSale = (baseStock, target) => {
+        const next = { ...baseStock };
+        (target?.items || []).forEach(item => {
+          const key = String(item?.key || '').trim();
+          const qty = pn(item?.qty);
+          if(!(qty > 0) || !key) return;
+          if(['damasco','durazno','ciruela','pera','alcayota','tomate_triturado','tomate_entero'].includes(key)) {
+            next[key] = String((pn(next[key]) || 0) + qty);
+            return;
+          }
+          if(String(next.otro_dulce_nombre || '').trim().toLowerCase() === key.toLowerCase()) {
+            next.otro_dulce_stock = String((pn(next.otro_dulce_stock) || 0) + qty);
+          }
+        });
+        return next;
+      };
       const persistSweetsPayload = async (payload, okMsg) => {
         try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(payload)); } catch(_) {}
         const { error } = await supabase
@@ -3123,33 +3153,89 @@
         setSweetsSaving(true);
         setSweetsMsg('');
         try {
-          const next = { ...sweetsStock };
-          const soldEntries = [];
+          const history = Array.isArray(sweetsStock.sales_history) ? sweetsStock.sales_history : [];
+          const previousEntry = editingSaleAt ? history.find(entry => entry?.at === editingSaleAt) : null;
+          const base = previousEntry ? stockAfterRemovingSale(sweetsStock, previousEntry) : { ...sweetsStock };
+          const next = { ...base };
+          const soldEntries = normalizeSaleDraft(soldDraft, base);
           ['damasco','durazno','ciruela','pera','alcayota','tomate_triturado','tomate_entero'].forEach((key) => {
             const sold = parseFloat(String(soldDraft[key] || '').replace(',', '.')) || 0;
-            const current = parseFloat(String(sweetsStock[key] || '').replace(',', '.')) || 0;
+            const current = parseFloat(String(base[key] || '').replace(',', '.')) || 0;
             next[key] = String(Math.max(0, current - sold));
-            if(sold > 0) soldEntries.push({ key, qty: sold });
           });
           const otherSold = parseFloat(String(soldDraft.otro_dulce_stock || '').replace(',', '.')) || 0;
-          const otherCurrent = parseFloat(String(sweetsStock.otro_dulce_stock || '').replace(',', '.')) || 0;
+          const otherCurrent = parseFloat(String(base.otro_dulce_stock || '').replace(',', '.')) || 0;
           next.otro_dulce_stock = String(Math.max(0, otherCurrent - otherSold));
-          if(otherSold > 0 && sweetsStock.otro_dulce_nombre) {
-            soldEntries.push({ key: sweetsStock.otro_dulce_nombre, qty: otherSold });
-          }
           next.sales_history = [
             {
-              at: new Date().toISOString(),
+              at: editingSaleAt || new Date().toISOString(),
               items: soldEntries
             },
-            ...((Array.isArray(sweetsStock.sales_history) ? sweetsStock.sales_history : []))
+            ...history.filter(entry => entry?.at !== editingSaleAt)
           ].slice(0, 20);
           setSweetsStock(next);
-          await persistSweetsPayload({ ...SWEETS_STOCK_DEFAULT, ...next }, 'Venta descontada del stock.');
+          await persistSweetsPayload({ ...SWEETS_STOCK_DEFAULT, ...next }, editingSaleAt ? 'Venta actualizada.' : 'Venta descontada del stock.');
           setSoldDraft(SWEETS_SOLD_DEFAULT);
+          setEditingSaleAt('');
           setSoldOpen(false);
         } catch(e) {
           setSweetsMsg('No se pudo descontar la venta.');
+        } finally {
+          setSweetsSaving(false);
+        }
+      };
+
+      const editSalesEntry = (entry) => {
+        const nextDraft = { ...SWEETS_SOLD_DEFAULT };
+        (entry?.items || []).forEach(item => {
+          const key = String(item?.key || '').trim();
+          const qty = item?.qty == null ? '' : String(item.qty);
+          if(['damasco','durazno','ciruela','pera','alcayota','tomate_triturado','tomate_entero'].includes(key)) {
+            nextDraft[key] = qty;
+            return;
+          }
+          if(String(sweetsStock.otro_dulce_nombre || '').trim().toLowerCase() === key.toLowerCase()) {
+            nextDraft.otro_dulce_stock = qty;
+          }
+        });
+        setSoldDraft(nextDraft);
+        setEditingSaleAt(entry?.at || '');
+        setSoldOpen(true);
+      };
+
+      const deleteSalesEntry = async (entryAt) => {
+        if(!entryAt) return;
+        setSweetsSaving(true);
+        setSweetsMsg('');
+        try {
+          const history = Array.isArray(sweetsStock.sales_history) ? sweetsStock.sales_history : [];
+          const target = history.find(entry => entry?.at === entryAt);
+          if(!target) return;
+
+          const next = { ...sweetsStock };
+          (target.items || []).forEach(item => {
+            const key = String(item?.key || '').trim();
+            const qty = pn(item?.qty);
+            if(!(qty > 0) || !key) return;
+
+            if(['damasco','durazno','ciruela','pera','alcayota','tomate_triturado','tomate_entero'].includes(key)) {
+              next[key] = String((pn(next[key]) || 0) + qty);
+              return;
+            }
+            if(String(next.otro_dulce_nombre || '').trim().toLowerCase() === key.toLowerCase()) {
+              next.otro_dulce_stock = String((pn(next.otro_dulce_stock) || 0) + qty);
+            }
+          });
+
+          next.sales_history = history.filter(entry => entry?.at !== entryAt);
+          setSweetsStock(next);
+          await persistSweetsPayload({ ...SWEETS_STOCK_DEFAULT, ...next }, 'Venta borrada y stock repuesto.');
+          if(editingSaleAt === entryAt) {
+            setEditingSaleAt('');
+            setSoldDraft(SWEETS_SOLD_DEFAULT);
+          }
+        } catch(e) {
+          setSweetsMsg('No se pudo borrar la venta.');
         } finally {
           setSweetsSaving(false);
         }
@@ -3176,6 +3262,40 @@
         if(search.trim() && !hay.includes(search.trim().toLowerCase())) return false;
         return true;
       });
+      const salesHistory = Array.isArray(sweetsStock.sales_history) ? sweetsStock.sales_history : [];
+      const now = new Date();
+      const startOfToday = new Date(now); startOfToday.setHours(0,0,0,0);
+      const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7)); startOfWeek.setHours(0,0,0,0);
+      const sumSales = (entries) => entries.reduce((acc, entry) => {
+        const items = Array.isArray(entry?.items) ? entry.items : [];
+        acc.movements += 1;
+        acc.units += items.reduce((a, item) => a + (pn(item?.qty) || 0), 0);
+        return acc;
+      }, { movements:0, units:0 });
+      const todaySales = sumSales(salesHistory.filter(entry => {
+        const at = entry?.at ? new Date(entry.at) : null;
+        return at && !Number.isNaN(at.getTime()) && at >= startOfToday;
+      }));
+      const weekSales = sumSales(salesHistory.filter(entry => {
+        const at = entry?.at ? new Date(entry.at) : null;
+        return at && !Number.isNaN(at.getTime()) && at >= startOfWeek;
+      }));
+      const filteredSalesHistory = salesHistory.filter(entry => {
+        const at = entry?.at ? new Date(entry.at) : null;
+        if(!at || Number.isNaN(at.getTime())) return false;
+        if(salesRange === 'today') return at >= startOfToday;
+        if(salesRange === 'week') return at >= startOfWeek;
+        return true;
+      });
+      const topSellerMap = filteredSalesHistory.reduce((acc, entry) => {
+        (entry.items || []).forEach(item => {
+          const key = String(item?.key || '').trim();
+          if(!key) return;
+          acc[key] = (acc[key] || 0) + (pn(item?.qty) || 0);
+        });
+        return acc;
+      }, {});
+      const topSeller = Object.entries(topSellerMap).sort((a,b) => b[1] - a[1])[0] || null;
 
       return html`
         <div style="display:flex;flex-direction:column;gap:12px;">
@@ -3367,7 +3487,7 @@
                   </div>
                   ${soldOpen && html`
                     <div style="margin-top:6px;padding:10px;border-radius:8px;background:rgba(15,23,41,0.7);border:1px solid rgba(99,102,241,0.22);display:flex;flex-direction:column;gap:10px;">
-                      <p style="margin:0;font-size:11px;color:#C7D2FE;">Indica cuanto vendiste de cada uno. Si un campo queda vacio, cuenta como 0.</p>
+                      <p style="margin:0;font-size:11px;color:#C7D2FE;">${editingSaleAt ? 'Edita la venta y al guardar se reajusta el stock.' : 'Indica cuanto vendiste de cada uno. Si un campo queda vacio, cuenta como 0.'}</p>
                       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
                         ${[
                           ['damasco','Damasco'],
@@ -3398,23 +3518,65 @@
                       `}
                       <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button onClick=${registerSoldSweets} style="padding:8px 12px;border-radius:8px;border:none;background:#6366F1;color:#F8FAFC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
-                          DESCONTAR VENTA
+                          ${editingSaleAt ? 'GUARDAR CAMBIOS' : 'DESCONTAR VENTA'}
                         </button>
+                        ${editingSaleAt && html`
+                          <button onClick=${()=>{ setEditingSaleAt(''); setSoldDraft(SWEETS_SOLD_DEFAULT); setSoldOpen(false); }} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+                            CANCELAR
+                          </button>
+                        `}
                       </div>
                     </div>
                   `}
+                  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+                    ${[
+                      { label:'Hoy', movements: todaySales.movements, units: todaySales.units, color:'#10B981' },
+                      { label:'Semana', movements: weekSales.movements, units: weekSales.units, color:'#38BDF8' }
+                    ].map(block => html`
+                      <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.72);border:1px solid #1E2D45;">
+                        <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Ventas ${block.label}</p>
+                        <p style=${`margin:0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:${block.color};`}>${block.units}</p>
+                        <p style="margin:4px 0 0;font-size:11px;color:#64748b;">${block.movements} movimiento(s)</p>
+                      </div>
+                    `)}
+                  </div>
                   <div style="margin-top:6px;padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:8px;">
-                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Historial de ventas</p>
-                    ${!(Array.isArray(sweetsStock.sales_history) && sweetsStock.sales_history.length) ? html`
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                      <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Historial de ventas</p>
+                      <select class="inp" value=${salesRange} onChange=${e=>setSalesRange(e.target.value)} style="max-width:140px;">
+                        <option value="all">Todo</option>
+                        <option value="today">Hoy</option>
+                        <option value="week">Semana</option>
+                      </select>
+                    </div>
+                    <div style="padding:8px 10px;border-radius:8px;background:rgba(15,23,41,0.7);border:1px solid rgba(56,189,248,0.18);">
+                      <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Mas vendido</p>
+                      <p style="margin:4px 0 0;font-size:13px;color:#E2E8F0;font-weight:700;">
+                        ${topSeller ? `${topSeller[0]} · ${topSeller[1]}` : 'Sin ventas en este rango'}
+                      </p>
+                    </div>
+                    ${!(filteredSalesHistory.length) ? html`
                       <p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay ventas registradas.</p>
                     ` : html`
                       <div style="display:flex;flex-direction:column;gap:6px;">
-                        ${(sweetsStock.sales_history || []).slice(0, 8).map(entry => html`
+                        ${filteredSalesHistory.slice(0, 8).map(entry => html`
                           <div style="padding:8px 10px;border-radius:8px;background:rgba(15,23,41,0.7);border:1px solid rgba(99,102,241,0.18);">
-                            <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${entry.at ? new Date(entry.at).toLocaleString('es-AR') : ''}</p>
-                            <p style="margin:0;font-size:12px;color:#E2E8F0;white-space:pre-wrap;">
-                              ${(entry.items || []).map(item => `${item.key}: ${item.qty}`).join(' · ') || 'Venta sin detalle'}
-                            </p>
+                            <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                              <div style="flex:1;">
+                                <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${entry.at ? new Date(entry.at).toLocaleString('es-AR') : ''}</p>
+                                <p style="margin:0;font-size:12px;color:#E2E8F0;white-space:pre-wrap;">
+                                  ${(entry.items || []).map(item => `${item.key}: ${item.qty}`).join(' · ') || 'Venta sin detalle'}
+                                </p>
+                              </div>
+                              <div style="display:flex;flex-direction:column;gap:6px;">
+                                <button onClick=${()=>editSalesEntry(entry)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                  EDITAR
+                                </button>
+                                <button onClick=${()=>deleteSalesEntry(entry.at)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                  BORRAR
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         `)}
                       </div>
@@ -3965,6 +4127,7 @@
       const [noteDraft, setNoteDraft] = useState('');
       const [chatDraft, setChatDraft] = useState('');
       const [chatLoading, setChatLoading] = useState(false);
+      const [summaryLoading, setSummaryLoading] = useState(false);
       const [pomodoroActive, setPomodoroActive] = useState(false);
       const [pomodoroLeft, setPomodoroLeft] = useState(25 * 60);
 
@@ -4056,6 +4219,32 @@
         }
       };
 
+      const passBookDraftToTask = async () => {
+        const text = String(noteDraft || '').trim();
+        if(!text) return;
+        setError('');
+        try {
+          const snippet = text.length > 56 ? `${text.slice(0, 56)}...` : text;
+          const payload = {
+            user_id: session.user.id,
+            title: `Lectura - ${book.title || BOOK_DEFAULT.title}: ${snippet || 'nota'}`,
+            details: text,
+            priority: 'normal',
+            status: 'pending',
+            category: 'estudio',
+            due_at: null,
+            auto_email_reminder: false
+          };
+          const { error } = await supabase.from('tasks').insert(payload);
+          if(error) throw error;
+          setNoteDraft('');
+          setNotice('Borrador pasado a TAREAS.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo pasar el borrador a TAREAS.');
+        }
+      };
+
       const deleteBookNote = async (id) => {
         setError('');
         try {
@@ -4064,6 +4253,30 @@
           setNotes(prev => prev.filter(n => n.id !== id));
         } catch(e) {
           setError(e.message || 'No se pudo borrar la nota.');
+        }
+      };
+
+      const passBookNoteToTask = async (note) => {
+        setError('');
+        try {
+          const text = String(note.answer || note.question || '').trim();
+          const snippet = text.length > 56 ? `${text.slice(0, 56)}...` : text;
+          const payload = {
+            user_id: session.user.id,
+            title: `Lectura - ${book.title || BOOK_DEFAULT.title}: ${snippet || 'nota'}`,
+            details: text || 'Nota del modulo LIBROS',
+            priority: 'normal',
+            status: 'pending',
+            category: 'estudio',
+            due_at: null,
+            auto_email_reminder: false
+          };
+          const { error } = await supabase.from('tasks').insert(payload);
+          if(error) throw error;
+          setNotice('Nota pasada a TAREAS.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo pasar la nota a TAREAS.');
         }
       };
 
@@ -4103,6 +4316,41 @@
           setError(e.message || 'No se pudo consultar a Gemini.');
         } finally {
           setChatLoading(false);
+        }
+      };
+
+      const summarizeBookSafe = async () => {
+        setSummaryLoading(true);
+        setError('');
+        try {
+          const res = await fetch('/.netlify/functions/book-summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: book.title || BOOK_DEFAULT.title,
+              author: book.author || BOOK_DEFAULT.author,
+              current_page: Math.max(1, parseInt(book.current_page || 1, 10) || 1)
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+          const payload = {
+            book_title: book.title || BOOK_DEFAULT.title,
+            current_page: Math.max(1, parseInt(book.current_page || 1, 10) || 1),
+            question: 'Resumen seguro de lo leido',
+            answer: data.reply || '',
+            kind: 'summary'
+          };
+          const { data: saved, error } = await supabase.from('book_notes').insert(payload).select().single();
+          if(error) throw error;
+          setNotes(prev => [saved, ...prev]);
+          setNotice('Resumen seguro guardado en LIBROS.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo generar el resumen seguro.');
+        } finally {
+          setSummaryLoading(false);
         }
       };
 
@@ -4147,6 +4395,9 @@
                     <button onClick=${()=>saveBook(book)} style="padding:8px 12px;border-radius:8px;border:none;background:#38BDF8;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                       ${saving ? 'GUARDANDO...' : 'GUARDAR PROGRESO'}
                     </button>
+                    <button onClick=${summarizeBookSafe} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#BAE6FD;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                      ${summaryLoading ? 'RESUMIENDO...' : 'RESUMEN SEGURO'}
+                    </button>
                   </div>
                 </div>
 
@@ -4171,6 +4422,9 @@
                   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
                     <button onClick=${addBookNote} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                       GUARDAR NOTA
+                    </button>
+                    <button onClick=${passBookDraftToTask} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                      PASAR A TAREA
                     </button>
                   </div>
                   <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
@@ -5628,6 +5882,43 @@
         ? new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=')
         : null
       );
+      const [moduleAlerts, setModuleAlerts] = useState({ study:0, health:false, books:false, recipes:0 });
+
+      const refreshModuleAlerts = useCallback(async () => {
+        try {
+          const [
+            { data: invRows, error: invErr },
+            { data: studyRows, error: studyErr },
+            { data: recipeRows, error: recipeErr }
+          ] = await Promise.all([
+            supabase.from('app_inventory').select('key,data').in('key', ['meds_stock', 'reading_progress']),
+            supabase.from('study_plan').select('subject,topics'),
+            supabase.from('user_recipes').select('stock_qty,low_stock_threshold')
+          ]);
+          if(invErr) throw invErr;
+          if(studyErr) throw studyErr;
+          if(recipeErr) throw recipeErr;
+
+          const inventory = Object.fromEntries((invRows || []).map(row => [row.key, row.data || {}]));
+          const meds = { ...MEDS_STOCK_DEFAULT, ...(inventory.meds_stock || {}) };
+          const book = { ...BOOK_DEFAULT, ...(inventory.reading_progress || {}) };
+          const studyPending = (studyRows || [])
+            .flatMap(row => Array.isArray(row.topics) ? row.topics : [])
+            .filter(topic => !topic?.done).length;
+          const recipesLow = (recipeRows || []).filter(row => {
+            const qty = pn(row.stock_qty);
+            const threshold = pn(row.low_stock_threshold);
+            return qty > 0 && threshold > 0 && qty <= threshold;
+          }).length;
+
+          setModuleAlerts({
+            study: studyPending,
+            health: pn(meds.roaccutan) <= 2 || pn(meds.minoxidil_finasteride) <= 2,
+            books: pn(book.current_page) > 0 && pn(book.current_page) < pn(book.total_pages),
+            recipes: recipesLow
+          });
+        } catch(_) {}
+      }, []);
 
       // ── Auto-sync al arrancar: usa bootstrapRemoteState (no selects directos)
       const fetchCloudData = useCallback(async () => {
@@ -6023,6 +6314,14 @@
       const yesterdayFastMsg = getYesterdayFast(allWeeks, currentWk, activeDay);
       const routineId  = wd.dayMapping[activeDay];
       const routineInfo = routineId ? routineData[routineId] : null;
+      const navBadges = {
+        study: moduleAlerts.study > 0 ? (moduleAlerts.study > 9 ? '9+' : String(moduleAlerts.study)) : '',
+        health: moduleAlerts.health ? '!' : '',
+        books: moduleAlerts.books ? '•' : '',
+        recipes: moduleAlerts.recipes > 0 ? (moduleAlerts.recipes > 9 ? '9+' : String(moduleAlerts.recipes)) : ''
+      };
+
+      useEffect(() => { refreshModuleAlerts(); }, [refreshModuleAlerts, view]);
 
       const updateHabit = (f,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}));
       const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek()),bodyWeight:v}})); };
@@ -6595,7 +6894,12 @@
                 {id:'routines', icon:html`<${IEdit} s=${20}/>`, label:'RUTINAS'},
               ].map(tab => html`
                 <button key=${tab.id} onClick=${()=>navigateTo(tab.id)}
-                  style=${`flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0 7px;gap:2px;border:none;background:transparent;cursor:pointer;color:${view===tab.id?'#10B981':'#374151'};`}>
+                  style=${`flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0 7px;gap:2px;border:none;background:transparent;cursor:pointer;color:${view===tab.id?'#10B981':'#374151'};`}>
+                  ${navBadges[tab.id] && html`
+                    <span style=${`position:absolute;top:6px;right:10px;min-width:${navBadges[tab.id].length > 1 ? '18px' : '14px'};height:14px;padding:0 4px;border-radius:999px;background:${tab.id==='health' ? '#EF4444' : tab.id==='books' ? '#38BDF8' : '#F59E0B'};color:${tab.id==='books' ? '#041018' : '#fff'};font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;line-height:1;`}>
+                      ${navBadges[tab.id]}
+                    </span>
+                  `}
                   ${tab.icon}
                   <span style="font-size:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.1em;">${tab.label}</span>
                   ${view===tab.id && html`<div style="width:14px;height:2px;border-radius:1px;background:#10B981;"></div>`}
