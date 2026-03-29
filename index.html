@@ -2096,88 +2096,6 @@
                 </div>
                 <${ProteinProgress} current=${macros.prot}/>
               </div>
-
-              <div style="padding-top:10px;border-top:1px solid #1E2D45;display:flex;flex-direction:column;gap:8px;">
-                <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Mis recetas</p>
-                ${recipesError && html`<p style="margin:0;font-size:10px;color:#FCA5A5;font-family:'JetBrains Mono',monospace;">${recipesError}</p>`}
-                ${recipesLoading ? html`
-                  <p style="margin:0;font-size:11px;color:#64748b;">Cargando recetas...</p>
-                ` : savedRecipes.length === 0 ? html`
-                  <p style="margin:0;font-size:11px;color:#64748b;">Todavia no guardaste recetas.</p>
-                ` : html`
-                  <div style="display:flex;flex-direction:column;gap:8px;">
-                    ${savedRecipes.map(recipe => html`
-                      <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.85);border:1px solid #1E2D45;">
-                        ${editingRecipeId === recipe.id ? html`
-                          <div style="display:flex;flex-direction:column;gap:8px;">
-                            <input class="inp" value=${editingRecipeName} onInput=${e=>setEditingRecipeName(e.target.value)} placeholder="Nombre de receta" />
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                              <input class="inp" value=${editingRecipeBaseQty} onInput=${e=>setEditingRecipeBaseQty(e.target.value)} placeholder="Base qty" />
-                              <input class="inp" value=${editingRecipeBaseUnit} onInput=${e=>setEditingRecipeBaseUnit(e.target.value)} placeholder="Unidad base" />
-                            </div>
-                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
-                              <input class="inp" value=${editingRecipeCals} onInput=${e=>setEditingRecipeCals(e.target.value)} placeholder="Kcal" />
-                              <input class="inp" value=${editingRecipeProt} onInput=${e=>setEditingRecipeProt(e.target.value)} placeholder="P" />
-                              <input class="inp" value=${editingRecipeCarb} onInput=${e=>setEditingRecipeCarb(e.target.value)} placeholder="C" />
-                              <input class="inp" value=${editingRecipeFat} onInput=${e=>setEditingRecipeFat(e.target.value)} placeholder="G" />
-                            </div>
-                            <textarea
-                              value=${editingRecipeIngredients}
-                              onInput=${e=>setEditingRecipeIngredients(e.target.value)}
-                              placeholder="Una linea por ingrediente. Formato: cantidad | nombre"
-                              style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:80px;"></textarea>
-                            <textarea
-                              value=${editingRecipeNotes}
-                              onInput=${e=>setEditingRecipeNotes(e.target.value)}
-                              placeholder="Notas opcionales"
-                              style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
-                            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                              <button onClick=${()=>saveRecipeEdit(recipe.id)}
-                                style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                                ${editingRecipeSaving ? 'GUARDANDO...' : 'GUARDAR'}
-                              </button>
-                              <button onClick=${cancelEditRecipe}
-                                style="padding:6px 10px;border-radius:8px;border:1px solid rgba(100,116,139,0.35);background:rgba(100,116,139,0.12);color:#CBD5E1;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                                CANCELAR
-                              </button>
-                            </div>
-                          </div>
-                        ` : html`
-                          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-                            <div style="flex:1;min-width:0;">
-                              <p style="margin:0;font-size:13px;font-weight:700;color:#E2E8F0;">${recipe.recipe_name}</p>
-                              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-                                <span style="font-size:10px;color:#F59E0B;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.cals)||0)} kcal</span>
-                                <span style="font-size:10px;color:#10B981;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.prot)||0)}g P</span>
-                                <span style="font-size:10px;color:#6366F1;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.carb)||0)}g C</span>
-                                <span style="font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.fat)||0)}g G</span>
-                              </div>
-                              ${Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && html`
-                                <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;white-space:pre-wrap;">
-                                  ${recipe.ingredients.map(it => `${it.qty || '1 porcion'} ${it.name || 'Ingrediente'}`).join(' · ')}
-                                </p>
-                              `}
-                              ${recipe.notes && html`
-                                <p style="margin:6px 0 0;font-size:10px;color:#64748b;">${recipe.notes}</p>
-                              `}
-                            </div>
-                            <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
-                              <button onClick=${()=>startEditRecipe(recipe)}
-                                style="padding:4px 8px;border-radius:6px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                                EDITAR
-                              </button>
-                              <button onClick=${()=>deleteRecipe(recipe)}
-                                style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                                BORRAR
-                              </button>
-                            </div>
-                          </div>
-                        `}
-                      </div>
-                    `)}
-                  </div>
-                `}
-              </div>
             </div>
             <div style="display:grid;gap:12px;">
               <!-- Suplementos -->
@@ -2345,6 +2263,9 @@
       const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } = getRC();
       const sessions = weekData?.sessions || {};
       const tracker  = weekData?.tracker  || {};
+      const weeklyGymGoal = 4;
+      const canRenderBarCharts = !!(BarChart && Bar && XAxis && YAxis && CartesianGrid && Tooltip && ResponsiveContainer);
+      const canRenderVolumeChart = canRenderBarCharts && ReferenceLine;
 
       // ── Métricas base
       const totalSteps = Object.values(tracker).reduce((a,d)=>a+(d?.walked&&d?.steps?pn(d.steps):0),0);
@@ -2401,7 +2322,7 @@
             <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">📋 Resumen Semanal</p>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
               ${[
-                {icon:'💪',label:'Días gym',value:trainingDays,unit:'/7',color:'#6366F1'},
+                {icon:'💪',label:'Dias gym',value:trainingDays,unit:`/${weeklyGymGoal}`,color:'#6366F1'},
                 {icon:'🚶',label:'Pasos',value:fn(totalSteps),unit:'',color:'#10B981'},
                 {icon:'💧',label:'Agua',value:(totalWater/1000).toFixed(1),unit:'L',color:'#38BDF8'},
               ].map(({icon,label,value,unit,color})=>html`
@@ -2460,7 +2381,7 @@
                 </div>
               `)}
             </div>
-            ${BarChart && html`
+            ${canRenderBarCharts && html`
               <div style="height:130px;">
                 <${ResponsiveContainer} width="100%" height="100%">
                   <${BarChart} data=${macByDay} margin=${{top:0,right:0,left:-20,bottom:0}}>
@@ -2508,7 +2429,7 @@
                 </div>
               `)}
             </div>
-            ${BarChart && html`
+            ${canRenderVolumeChart && html`
               <div style="height:220px;">
                 <${ResponsiveContainer} width="100%" height="100%">
                   <${BarChart}
@@ -2521,14 +2442,14 @@
                       formatter=${(v,n)=>[v+' series', n==='dir'?'Directas':'Indirectas']}/>
                     <${Bar} dataKey="dir" name="dir" stackId="a" fill="#10B981" radius=${[0,0,0,0]}/>
                     <${Bar} dataKey="ind" name="ind" stackId="a" fill="#6366F1" radius=${[3,3,0,0]}/>
-                    ${ReferenceLine && html`<${ReferenceLine} y=${4}  stroke="#EF4444" strokeDasharray="4 3" strokeWidth=${1.5} label=${{value:'MEV',fill:'#EF4444',fontSize:8,position:'insideTopRight'}}/>`}
-                    ${ReferenceLine && html`<${ReferenceLine} y=${10} stroke="#10B981" strokeDasharray="4 3" strokeWidth=${1.5} label=${{value:'MAV',fill:'#10B981',fontSize:8,position:'insideTopRight'}}/>`}
-                    ${ReferenceLine && html`<${ReferenceLine} y=${20} stroke="#F59E0B" strokeDasharray="4 3" strokeWidth=${1.5} label=${{value:'MRV',fill:'#F59E0B',fontSize:8,position:'insideTopRight'}}/>`}
+                    ${ReferenceLine && html`<${ReferenceLine} y=${4}  stroke="#EF4444" strokeDasharray="4 3" strokeWidth=${1.5}/>`}
+                    ${ReferenceLine && html`<${ReferenceLine} y=${10} stroke="#10B981" strokeDasharray="4 3" strokeWidth=${1.5}/>`}
+                    ${ReferenceLine && html`<${ReferenceLine} y=${20} stroke="#F59E0B" strokeDasharray="4 3" strokeWidth=${1.5}/>`}
                   <//>
                 <//>
               </div>
             `}
-            ${!BarChart && html`
+            ${!canRenderVolumeChart && html`
               <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
                 ${Object.entries(vol).map(([m,v]) => html`
                   <div style="background:rgba(10,15,30,0.6);border:1px solid #1E2D45;border-radius:10px;padding:10px;">
@@ -2550,11 +2471,15 @@
     //  PROGRESO
     // ═══════════════════════════════════════════════════
     const ProgressView = ({allWeeks, onMount}) => {
-      const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = getRC();
+      const { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } = getRC();
       const [selEx,      setSelEx]      = useState('');
       const [loadingAll, setLoadingAll] = useState(false);
       const [filterYear, setFilterYear] = useState('');
       const [filterMonth,setFilterMonth]= useState('');
+      const weeklyGymGoal = 4;
+      const weeklyCaloriesTarget = TARGETS.kcal * weeklyGymGoal;
+      const canRenderLineChart = !!(LineChart && Line && XAxis && YAxis && CartesianGrid && Tooltip && ResponsiveContainer);
+      const canRenderBarChart = !!(BarChart && Bar && XAxis && YAxis && CartesianGrid && Tooltip && ResponsiveContainer);
 
       // Carga el historial completo la primera vez que se abre la tab
       useEffect(()=>{
@@ -2699,7 +2624,7 @@
               <option value="">Seleccionar ejercicio...</option>
               ${allExercises.map(e=>html`<option>${e}</option>`)}
             </select>
-            ${selEx && exHistory.length>0 && LineChart && html`
+            ${selEx && exHistory.length>0 && canRenderLineChart && html`
               <div style="height:200px;">
                 <${ResponsiveContainer} width="100%" height="100%">
                   <${LineChart} data=${exHistory} margin=${{top:5,right:5,left:-20,bottom:0}}>
@@ -2739,9 +2664,10 @@
             <//>
           `}
 
-          ${macHistory.length>1 && BarChart && html`
+          ${macHistory.length>1 && canRenderBarChart && html`
             <${Card}>
-              <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">Calorías por Semana</p>
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">Calorias por Semana</p>
+              <p style="margin:0 0 10px;font-size:11px;color:#64748b;">Objetivo base: ${fn(weeklyCaloriesTarget)} kcal por 4 dias de gym.</p>
               <div style="height:160px;">
                 <${ResponsiveContainer} width="100%" height="100%">
                   <${BarChart} data=${macHistory} margin=${{top:5,right:5,left:-20,bottom:0}}>
@@ -2750,6 +2676,7 @@
                     <${YAxis} tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false}/>
                     <${Tooltip} contentStyle=${tooltipStyle}/>
                     <${Bar} dataKey="cals" name="Kcal" fill="#F59E0B" radius=${[4,4,0,0]}/>
+                    ${ReferenceLine && html`<${ReferenceLine} y=${weeklyCaloriesTarget} stroke="#6366F1" strokeDasharray="4 3" strokeWidth=${1.5}/>`}
                   <//>
                 <//>
               </div>
@@ -2757,7 +2684,7 @@
           `}
 
           <!-- PESO CORPORAL -->
-          ${weightHistory.length > 0 && LineChart && html`
+          ${weightHistory.length > 0 && canRenderLineChart && html`
             <${Card}>
               <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#38BDF8;">⚖️ Evolución de Peso Corporal</p>
               <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
@@ -4114,6 +4041,8 @@
       roaccutan: 10,
       minoxidil_finasteride: 5,
       last_taken_at: '',
+      last_roaccutan_at: '',
+      last_dinner_meds_at: '',
       history: []
     };
 
@@ -4463,7 +4392,7 @@
       `;
     };
 
-    const HealthView = ({session}) => {
+    const HealthView = ({session, onSyncDailyMeds}) => {
       const [stock, setStock] = useState(MEDS_STOCK_DEFAULT);
       const [loading, setLoading] = useState(true);
       const [saving, setSaving] = useState(false);
@@ -4531,37 +4460,65 @@
         setStock(prev => ({ ...prev, [key]: value }));
       };
 
-      const registerDailyTake = async () => {
+      const syncTodayChecks = async (partial) => {
+        if(typeof onSyncDailyMeds === 'function') {
+          await onSyncDailyMeds(partial);
+        }
+      };
+
+      const registerRoaccutanTake = async () => {
         const now = new Date();
         const next = {
           ...stock,
           roaccutan: Math.max(0, (parseInt(stock.roaccutan || 0, 10) || 0) - 1),
-          minoxidil_finasteride: Math.max(0, (parseInt(stock.minoxidil_finasteride || 0, 10) || 0) - 1),
           last_taken_at: now.toISOString(),
+          last_roaccutan_at: now.toISOString(),
           history: [{
             at: now.toISOString(),
-            type: 'daily_combo',
-            roaccutan: 1,
+            type: 'roaccutan_take',
+            roaccutan: 1
+          }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
+        };
+        await persistHealth(next, 'Roaccutan del mediodia registrado.');
+        await syncTodayChecks({ roacuttan: true });
+      };
+
+      const registerDinnerTake = async () => {
+        const now = new Date();
+        const next = {
+          ...stock,
+          minoxidil_finasteride: Math.max(0, (parseInt(stock.minoxidil_finasteride || 0, 10) || 0) - 1),
+          last_taken_at: now.toISOString(),
+          last_dinner_meds_at: now.toISOString(),
+          history: [{
+            at: now.toISOString(),
+            type: 'dinner_combo_take',
             minoxidil_finasteride: 1
           }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
         };
-        await persistHealth(next, 'Toma diaria registrada.');
+        await persistHealth(next, 'Meds de la cena registradas.');
+        await syncTodayChecks({ finasteride: true, minoxidil: true });
       };
 
       const adjustStock = async (field, delta) => {
+        const nowIso = new Date().toISOString();
         const current = parseInt(stock[field] || 0, 10) || 0;
         const nextVal = Math.max(0, current + delta);
         const next = {
           ...stock,
           [field]: nextVal,
           history: [{
-            at: new Date().toISOString(),
+            at: nowIso,
             type: delta > 0 ? 'restock' : 'manual_adjust',
             field,
             delta
           }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
         };
         await persistHealth(next, delta > 0 ? 'Stock repuesto.' : 'Stock ajustado.');
+        if(delta < 0) {
+          if(field === 'roaccutan') await syncTodayChecks({ roacuttan: true });
+          if(field === 'minoxidil_finasteride') await syncTodayChecks({ finasteride: true, minoxidil: true });
+        }
       };
 
       const roaccutanCount = parseInt(stock.roaccutan || 0, 10) || 0;
@@ -4610,13 +4567,28 @@
 
                 <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
-                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Toma diaria</p>
+                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Tomas del dia</p>
                     <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;">${stock.last_taken_at ? new Date(stock.last_taken_at).toLocaleString('es-AR') : 'Sin registro'}</span>
                   </div>
-                  <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Este boton descuenta 1 unidad de Roaccutan y 1 de Minoxidil/Finasteride, y guarda la hora exacta.</p>
-                  <button onClick=${registerDailyTake} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                    ${saving ? 'GUARDANDO...' : 'REGISTRAR TOMA DEL DIA'}
-                  </button>
+                  <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Roaccutan va al mediodia. Minoxidil y Finasteride van con la cena. Si descontas -1, tambien se marca el check del dia.</p>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                      <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#F59E0B;">Mediodia</p>
+                      <p style="margin:0 0 8px;font-size:12px;color:#CBD5E1;">Roaccutan</p>
+                      <p style="margin:0 0 8px;font-size:10px;color:#64748b;">Ultimo registro: ${stock.last_roaccutan_at ? new Date(stock.last_roaccutan_at).toLocaleString('es-AR') : 'Sin registro'}</p>
+                      <button onClick=${registerRoaccutanTake} style="padding:8px 12px;border-radius:8px;border:none;background:#F59E0B;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                        ${saving ? 'GUARDANDO...' : 'REGISTRAR ROACCUTAN'}
+                      </button>
+                    </div>
+                    <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                      <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#10B981;">Cena</p>
+                      <p style="margin:0 0 8px;font-size:12px;color:#CBD5E1;">Minoxidil + Finasteride</p>
+                      <p style="margin:0 0 8px;font-size:10px;color:#64748b;">Ultimo registro: ${stock.last_dinner_meds_at ? new Date(stock.last_dinner_meds_at).toLocaleString('es-AR') : 'Sin registro'}</p>
+                      <button onClick=${registerDinnerTake} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                        ${saving ? 'GUARDANDO...' : 'REGISTRAR MEDS CENA'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
@@ -4628,8 +4600,10 @@
                       <div style="padding:8px 10px;border-radius:8px;background:rgba(8,13,26,0.5);border:1px solid #1E2D45;">
                         <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${entry.at ? new Date(entry.at).toLocaleString('es-AR') : ''}</p>
                         <p style="margin:0;font-size:12px;color:#E2E8F0;">
-                          ${entry.type === 'daily_combo'
-                            ? 'Toma diaria: -1 Roaccutan y -1 Minoxidil/Finasteride'
+                          ${entry.type === 'roaccutan_take'
+                            ? 'Toma mediodia: -1 Roaccutan'
+                            : entry.type === 'dinner_combo_take'
+                              ? 'Toma cena: -1 Minoxidil/Finasteride'
                             : entry.type === 'habit_toggle'
                               ? `Check diario: ${entry.med === 'roacuttan'
                                   ? `Roaccutan ${entry.delta_roaccutan > 0 ? '+' : ''}${entry.delta_roaccutan}`
@@ -6325,6 +6299,40 @@
 
       const updateHabit = (f,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}));
       const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek()),bodyWeight:v}})); };
+      const syncTodayMedsFromHealth = useCallback(async (partialMeds) => {
+        const now = new Date();
+        const todayWk = getWeekKey(now);
+        const todayIdx = String(now.getDay());
+        const todayDate = getDayDate(todayWk, parseInt(todayIdx, 10));
+        let nextDayState = null;
+
+        setHasUnsaved(true);
+        setAllWeeks(prev => {
+          const wk = prev[todayWk] || newWeek();
+          const baseDay = wk.tracker?.[todayIdx] || newDay();
+          nextDayState = {
+            ...baseDay,
+            meds: { ...(baseDay.meds || {}), ...partialMeds },
+            _updatedAt: new Date().toISOString()
+          };
+          try { lsDaySave(todayDate, nextDayState); } catch(_) {}
+          return {
+            ...prev,
+            [todayWk]: {
+              ...wk,
+              tracker: { ...wk.tracker, [todayIdx]: nextDayState }
+            }
+          };
+        });
+
+        if(nextDayState) {
+          try {
+            await saveDayRemote(todayDate, nextDayState, null, nextDayState._revision || null);
+          } catch(e) {
+            console.warn('[HEALTH_MED_SYNC]', e.message || e);
+          }
+        }
+      }, []);
       const syncMedsInventoryFromToggle = async (med, nextVal) => {
         const selectedDate = getDayDate(currentWk, parseInt(activeDay, 10));
         const todayDate = new Date().toISOString().slice(0,10);
@@ -6367,6 +6375,8 @@
             roaccutan: Math.max(0, pn(base.roaccutan) + deltaRoaccutan),
             minoxidil_finasteride: Math.max(0, pn(base.minoxidil_finasteride) + deltaCombo),
             last_taken_at: normalizedNext ? new Date().toISOString() : base.last_taken_at,
+            last_roaccutan_at: med === 'roacuttan' && normalizedNext ? new Date().toISOString() : base.last_roaccutan_at,
+            last_dinner_meds_at: (med === 'finasteride' || med === 'minoxidil') && nextCombo ? new Date().toISOString() : base.last_dinner_meds_at,
             history: [
               {
                 at: new Date().toISOString(),
@@ -6866,7 +6876,7 @@
             ${view==='tasks'    && html`<${ProductivityView} session=${session}/>`}
             ${view==='recipes'  && html`<${RecipesView} session=${session}/>`}
             ${view==='study'    && html`<${StudyView} session=${session}/>`}
-            ${view==='health'   && html`<${HealthView} session=${session}/>`}
+            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth}/>`}
             ${view==='books'    && html`<${BooksView} session=${session}/>`}
             ${view==='notif'    && html`<${NotifView}/>`}
             ${view==='routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
