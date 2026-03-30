@@ -383,6 +383,25 @@
     const MUSCLES = ["Pecho","Espalda","Hombros","Tríceps","Bíceps","Trapecio","Cuádriceps","Femorales","Glúteos","Pantorrillas","Lumbares","Aductores"];
     const DAYS = [{key:"1",label:"Lun",abbr:"L"},{key:"2",label:"Mar",abbr:"M"},{key:"3",label:"Mié",abbr:"X"},{key:"4",label:"Jue",abbr:"J"},{key:"5",label:"Vie",abbr:"V"},{key:"6",label:"Sáb",abbr:"S"},{key:"0",label:"Dom",abbr:"D"}];
 
+    const normalizeExerciseKey = (text='') =>
+      String(text || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+    const resolveMuscleInfo = (exerciseName='') => {
+      if(muscleMap[exerciseName]) return muscleMap[exerciseName];
+      const target = normalizeExerciseKey(exerciseName);
+      if(!target) return null;
+      for (const [name, info] of Object.entries(muscleMap)) {
+        const key = normalizeExerciseKey(name);
+        if(key === target || key.includes(target) || target.includes(key)) return info;
+      }
+      return null;
+    };
+
     // Objetivos nutricionales diarios
     const TARGETS = { prot: 165, carb: 180, fat: 70, kcal: 2000 };
 
@@ -2176,10 +2195,10 @@
             <div style="border-radius:10px;overflow:hidden;border:1px solid #1E2D45;margin-bottom:10px;">
               <div style="padding:8px 12px;background:rgba(22,32,53,0.7);border-left:3px solid var(--green);">
                 <p style="margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:white;letter-spacing:0.04em;">${ei+1}. ${ex.name}</p>
-                ${muscleMap[ex.name] && html`
+                ${resolveMuscleInfo(ex.name) && html`
                   <p style="margin:2px 0 0;font-size:10px;color:#475569;">
-                    ${muscleMap[ex.name].direct.join(', ')}
-                    ${muscleMap[ex.name].indirect.length>0 ? ' · '+muscleMap[ex.name].indirect.join(', ') : ''}
+                    ${resolveMuscleInfo(ex.name).direct.join(', ')}
+                    ${resolveMuscleInfo(ex.name).indirect.length>0 ? ' · '+resolveMuscleInfo(ex.name).indirect.join(', ') : ''}
                   </p>
                 `}
               </div>
@@ -2296,7 +2315,14 @@
 
       // ── Volumen muscular
       const vol = {}; MUSCLES.forEach(m=>vol[m]={direct:0,indirect:0});
-      Object.values(sessions).forEach(s=>s&&s.forEach(ex=>{const done=ex.sets.filter(s=>s.completed).length;if(done>0&&muscleMap[ex.name]){muscleMap[ex.name].direct.forEach(m=>{if(vol[m])vol[m].direct+=done;});muscleMap[ex.name].indirect.forEach(m=>{if(vol[m])vol[m].indirect+=done;});}}));
+      Object.values(sessions).forEach(s=>s&&s.forEach(ex=>{
+        const done=ex.sets.filter(s=>s.completed).length;
+        const muscles = resolveMuscleInfo(ex.name);
+        if(done>0 && muscles){
+          muscles.direct.forEach(m=>{if(vol[m])vol[m].direct+=done;});
+          muscles.indirect.forEach(m=>{if(vol[m])vol[m].indirect+=done;});
+        }
+      }));
       const volumeData = Object.entries(vol).map(([m,v])=>({name:m.slice(0,4), fullName:m, dir:v.direct, ind:v.indirect, total:v.direct + v.indirect}));
       const hasVolumeData = volumeData.some(row => row.total > 0);
 
