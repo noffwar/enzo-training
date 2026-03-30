@@ -2879,6 +2879,14 @@
       if(recurrence === 'weekly') next.setDate(next.getDate() + 7);
       return next.toISOString();
     };
+    const TASK_ALERTS_KEY = 'enzo_task_alerts_v1';
+    const loadTaskAlerts = () => {
+      try { return JSON.parse(localStorage.getItem(TASK_ALERTS_KEY) || '{}') || {}; }
+      catch(_) { return {}; }
+    };
+    const saveTaskAlerts = (value) => {
+      try { localStorage.setItem(TASK_ALERTS_KEY, JSON.stringify(value || {})); } catch(_) {}
+    };
     const AI_THREADS_KEY = 'enzo_ai_thought_threads_v1';
 
     const loadThoughtThreads = () => {
@@ -4935,6 +4943,7 @@
       const [aiReplies, setAiReplies] = useState(()=>loadThoughtThreads());
       const [aiLoadingNoteId, setAiLoadingNoteId] = useState(null);
       const [aiNotice, setAiNotice] = useState('');
+      const [taskNotice, setTaskNotice] = useState('');
       const aiDraftTimersRef = useRef({});
 
       useEffect(() => { saveThoughtThreads(aiReplies); }, [aiReplies]);
@@ -5482,10 +5491,12 @@
       const activeNotes = filteredNotes;
       const now = new Date();
       const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
+      const endOfTomorrow = new Date(now); endOfTomorrow.setDate(now.getDate() + 1); endOfTomorrow.setHours(23,59,59,999);
       const endOfWeek = new Date(now); endOfWeek.setDate(now.getDate() + 7); endOfWeek.setHours(23,59,59,999);
       const groupedPending = {
         today: pendingTasks.filter(t => t.due_at && new Date(t.due_at) <= endOfToday),
-        week: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfToday && new Date(t.due_at) <= endOfWeek),
+        tomorrow: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfToday && new Date(t.due_at) <= endOfTomorrow),
+        week: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfTomorrow && new Date(t.due_at) <= endOfWeek),
         later: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfWeek),
         someday: pendingTasks.filter(t => !t.due_at)
       };
@@ -5495,6 +5506,46 @@
         ...cat,
         count: tasks.filter(t => t.status !== 'done' && (t.category || 'personal') === cat.value).length
       }));
+
+      useEffect(() => {
+        const runTaskReminderCheck = () => {
+          const pending = tasks.filter(t => t.status !== 'done' && t.due_at);
+          if(pending.length === 0) return;
+          const now = Date.now();
+          const alerts = loadTaskAlerts();
+          const candidate = pending
+            .map(task => ({ task, dueMs: new Date(task.due_at).getTime() }))
+            .filter(item => !Number.isNaN(item.dueMs))
+            .sort((a,b) => a.dueMs - b.dueMs)
+            .find(item => item.dueMs <= (now + 15 * 60000));
+          if(!candidate) return;
+          const key = `${candidate.task.id}:${candidate.task.due_at}`;
+          if(alerts[key]) return;
+          alerts[key] = new Date().toISOString();
+          saveTaskAlerts(alerts);
+          const diffMin = Math.round((candidate.dueMs - now) / 60000);
+          const timing = diffMin <= 0 ? 'ya vencio' : diffMin === 1 ? 'vence en 1 minuto' : `vence en ${diffMin} minutos`;
+          const message = `Tarea: ${candidate.task.title} - ${timing}.`;
+          setTaskNotice(message);
+          setTimeout(() => setTaskNotice(''), 6000);
+          if(typeof Notification !== 'undefined' && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(reg => {
+              if(reg?.showNotification) {
+                reg.showNotification('Tarea cercana', {
+                  body: message,
+                  icon: './icon-192.png',
+                  badge: './icon-192.png',
+                  tag: `task-${candidate.task.id}`,
+                  requireInteraction: false
+                });
+              }
+            }).catch(() => {});
+          }
+        };
+        runTaskReminderCheck();
+        const timer = setInterval(runTaskReminderCheck, 60000);
+        return () => clearInterval(timer);
+      }, [tasks]);
 
       return html`
         <div style="display:flex;flex-direction:column;gap:12px;">
@@ -5508,6 +5559,7 @@
                 <${ISync} s=${16}/>
               </button>
             </div>
+            ${taskNotice && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#FCD34D;font-size:12px;">${taskNotice}</div>`}
             ${aiNotice && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);color:#7DD3FC;font-size:12px;">${aiNotice}</div>`}
             ${error && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
@@ -5613,6 +5665,7 @@
               <div style="display:flex;flex-direction:column;gap:12px;">
                 ${[
                   ['Hoy', groupedPending.today],
+                  ['Manana', groupedPending.tomorrow],
                   ['Esta semana', groupedPending.week],
                   ['Mas adelante', groupedPending.later],
                   ['Sin fecha', groupedPending.someday]
