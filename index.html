@@ -4392,7 +4392,7 @@
       `;
     };
 
-    const HealthView = ({session, onSyncDailyMeds}) => {
+    const HealthView = ({session, onSyncDailyMeds, bodyWeight, onBodyWeight}) => {
       const [stock, setStock] = useState(MEDS_STOCK_DEFAULT);
       const [loading, setLoading] = useState(true);
       const [saving, setSaving] = useState(false);
@@ -4548,6 +4548,19 @@
                     <p style="margin:0;font-size:12px;color:#FCA5A5;font-weight:700;">Reponer: alguno de los stocks esta en 2 o menos.</p>
                   </div>
                 `}
+                <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                  <div>
+                    <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Peso corporal (semana)</p>
+                    <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Registralo aca una vez por semana.</p>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <input type="number" step="0.1" placeholder="kg"
+                      value=${bodyWeight || ''}
+                      onInput=${e=>onBodyWeight && onBodyWeight(e.target.value)}
+                      style="width:86px;background:#0F1729;border:1px solid #2A3F5F;border-radius:8px;padding:7px 10px;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;text-align:center;"/>
+                    ${(bodyWeight || '') && html`<span style="font-size:13px;color:#10B981;font-weight:700;">kg</span>`}
+                  </div>
+                </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                   ${[
                     ['roaccutan', 'Roaccutan', roaccutanCount],
@@ -6823,21 +6836,6 @@
 
                 <${HabitsPanel} tracker=${tracker} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem}/>
 
-                <!-- Peso corporal semanal -->
-                <div class="glass-card" style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                  <div>
-                    <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">⚖️ Peso corporal (semana)</p>
-                    <p style="margin:2px 0 0;font-size:10px;color:#374151;">Solo se registra una vez por semana</p>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:6px;">
-                    <input type="number" step="0.1" placeholder="kg"
-                      value=${wd.bodyWeight||''}
-                      onInput=${e=>updateBodyWeight(e.target.value)}
-                      style="width:72px;background:#0F1729;border:1px solid #2A3F5F;border-radius:8px;padding:7px 10px;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;text-align:center;"/>
-                    ${wd.bodyWeight && html`<span style="font-size:13px;color:#10B981;font-weight:700;">kg</span>`}
-                  </div>
-                </div>
-
                 <!-- Water + Macros elásticos del día + Asistente nutricional -->
                 <div class="glass-card" style="padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
                   ${[
@@ -6876,7 +6874,7 @@
             ${view==='tasks'    && html`<${ProductivityView} session=${session}/>`}
             ${view==='recipes'  && html`<${RecipesView} session=${session}/>`}
             ${view==='study'    && html`<${StudyView} session=${session}/>`}
-            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth}/>`}
+            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight}/>`}
             ${view==='books'    && html`<${BooksView} session=${session}/>`}
             ${view==='notif'    && html`<${NotifView}/>`}
             ${view==='routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
