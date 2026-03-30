@@ -2323,7 +2323,16 @@
           muscles.indirect.forEach(m=>{if(vol[m])vol[m].indirect+=done;});
         }
       }));
-      const volumeData = Object.entries(vol).map(([m,v])=>({name:m.slice(0,4), fullName:m, dir:v.direct, ind:v.indirect, total:v.direct + v.indirect}));
+      const volumeScaleMax = Math.max(20, ...Object.values(vol).map(v => (v.direct + v.indirect)), 0);
+      const volumeData = Object.entries(vol).map(([m,v])=>({
+        name:m.slice(0,4),
+        fullName:m,
+        dir:v.direct,
+        ind:v.indirect,
+        total:v.direct + v.indirect,
+        dirPct: volumeScaleMax > 0 ? (v.direct / volumeScaleMax) * 100 : 0,
+        indPct: volumeScaleMax > 0 ? (v.indirect / volumeScaleMax) * 100 : 0
+      }));
       const hasVolumeData = volumeData.some(row => row.total > 0);
 
       const tooltipStyle = {background:'#0F1729',border:'1px solid #1E2D45',borderRadius:'8px',fontFamily:'JetBrains Mono,monospace',fontSize:'11px'};
@@ -2458,39 +2467,29 @@
                 </div>
               `)}
             </div>
-            ${canRenderVolumeChart && hasVolumeData && html`
-              <div style="height:220px;">
-                <${ResponsiveContainer} width="100%" height="100%">
-                  <${BarChart}
-                    data=${volumeData}
-                    margin=${{top:5,right:5,left:-25,bottom:0}}>
-                    <${CartesianGrid} strokeDasharray="3 3" stroke="#1E2D45" vertical=${false}/>
-                    <${XAxis} dataKey="name" tick=${{fill:'#64748b',fontSize:8}} axisLine=${false} tickLine=${false}/>
-                    <${YAxis} tick=${{fill:'#64748b',fontSize:8}} axisLine=${false} tickLine=${false} domain=${[0,'auto']}/>
-                    <${Tooltip} contentStyle=${tooltipStyle}
-                      formatter=${(v,n)=>[v+' series', n==='dir'?'Directas':'Indirectas']}/>
-                    <${Bar} dataKey="dir" name="dir" stackId="a" fill="#10B981" radius=${[0,0,0,0]}/>
-                    <${Bar} dataKey="ind" name="ind" stackId="a" fill="#6366F1" radius=${[3,3,0,0]}/>
-                    ${ReferenceLine && html`<${ReferenceLine} y=${4}  stroke="#EF4444" strokeDasharray="4 3" strokeWidth=${1.5}/>`}
-                    ${ReferenceLine && html`<${ReferenceLine} y=${10} stroke="#10B981" strokeDasharray="4 3" strokeWidth=${1.5}/>`}
-                    ${ReferenceLine && html`<${ReferenceLine} y=${20} stroke="#F59E0B" strokeDasharray="4 3" strokeWidth=${1.5}/>`}
-                  <//>
-                <//>
-              </div>
-            `}
-            ${(!canRenderVolumeChart || !hasVolumeData) && html`
+            ${!hasVolumeData && html`
               ${!hasVolumeData && html`
                 <div style="margin-bottom:10px;padding:10px;border-radius:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);">
                   <p style="margin:0;font-size:12px;color:#C7D2FE;">Todavia no hay series efectivas registradas esta semana. Marca series como completadas en GIMNASIO para ver el volumen por musculo.</p>
                 </div>
               `}
-              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-                ${volumeData.map(row => html`
-                  <div style="background:rgba(10,15,30,0.6);border:1px solid #1E2D45;border-radius:10px;padding:10px;">
-                    <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:white;">${row.fullName}</p>
-                    <div style="display:flex;justify-content:space-around;">
-                      <div style="text-align:center;"><p style="margin:0;font-size:9px;color:#10B981;">Dir</p><p style="margin:0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#10B981;">${row.dir}</p></div>
-                      <div style="text-align:center;"><p style="margin:0;font-size:9px;color:#F59E0B;">Ind</p><p style="margin:0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#F59E0B;">${row.ind}</p></div>
+            `}
+            ${hasVolumeData && html`
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${volumeData.filter(row => row.total > 0).sort((a,b) => b.total - a.total).map(row => html`
+                  <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.6);border:1px solid #1E2D45;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                      <p style="margin:0;font-size:12px;font-weight:600;color:white;">${row.fullName}</p>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#E2E8F0;">${row.total} series</span>
+                    </div>
+                    <div style="height:12px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;display:flex;">
+                      <div style=${`width:${row.dirPct}%;background:#10B981;min-width:${row.dir > 0 ? '6px' : '0'};`}></div>
+                      <div style=${`width:${row.indPct}%;background:#6366F1;min-width:${row.ind > 0 ? '6px' : '0'};`}></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:10px;color:#94A3B8;">
+                      <span>Directas: <span style="color:#10B981;font-family:'JetBrains Mono',monospace;">${row.dir}</span></span>
+                      <span>Indirectas: <span style="color:#6366F1;font-family:'JetBrains Mono',monospace;">${row.ind}</span></span>
+                      <span>Escala MRV: <span style="color:${row.total >= 20 ? '#F59E0B' : row.total >= 10 ? '#10B981' : row.total >= 4 ? '#EF4444' : '#64748b'};font-family:'JetBrains Mono',monospace;">${row.total}/${volumeScaleMax}</span></span>
                     </div>
                   </div>
                 `)}
