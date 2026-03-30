@@ -2844,6 +2844,22 @@
       { value:'trabajo', label:'Trabajo', color:'#EF4444' }
     ];
     const categoryMeta = (value) => CATEGORY_OPTIONS.find(c => c.value === value) || CATEGORY_OPTIONS[0];
+    const RECURRENCE_OPTIONS = [
+      { value:'none', label:'No repetir' },
+      { value:'daily', label:'Diaria' },
+      { value:'weekly', label:'Semanal' }
+    ];
+    const recurrenceLabel = (value) => (RECURRENCE_OPTIONS.find(r => r.value === value)?.label || 'No repetir');
+    const computeNextRecurringDueAt = (task) => {
+      const recurrence = task?.recurrence || 'none';
+      if(recurrence === 'none') return null;
+      const base = task?.due_at ? new Date(task.due_at) : new Date();
+      if(Number.isNaN(base.getTime())) return null;
+      const next = new Date(base);
+      if(recurrence === 'daily') next.setDate(next.getDate() + 1);
+      if(recurrence === 'weekly') next.setDate(next.getDate() + 7);
+      return next.toISOString();
+    };
     const AI_THREADS_KEY = 'enzo_ai_thought_threads_v1';
 
     const loadThoughtThreads = () => {
@@ -4883,6 +4899,7 @@
       const [categoryFilter, setCategoryFilter] = useState('all');
       const [taskAutoEmail, setTaskAutoEmail] = useState(true);
       const [taskCategory, setTaskCategory] = useState('personal');
+      const [taskRecurrence, setTaskRecurrence] = useState('none');
       const [editingTaskId, setEditingTaskId] = useState(null);
       const [editingTaskTitle, setEditingTaskTitle] = useState('');
       const [editingTaskDetails, setEditingTaskDetails] = useState('');
@@ -4890,6 +4907,7 @@
       const [editingTaskPriority, setEditingTaskPriority] = useState('normal');
       const [editingTaskAutoEmail, setEditingTaskAutoEmail] = useState(true);
       const [editingTaskCategory, setEditingTaskCategory] = useState('personal');
+      const [editingTaskRecurrence, setEditingTaskRecurrence] = useState('none');
       const [editingNoteId, setEditingNoteId] = useState(null);
       const [editingNoteContent, setEditingNoteContent] = useState('');
       const [aiOpenNoteId, setAiOpenNoteId] = useState(null);
@@ -4968,6 +4986,7 @@
             title: taskTitle.trim(),
             priority: taskPriority,
             category: taskCategory,
+            recurrence: taskRecurrence,
             status: 'pending',
             auto_email_reminder: taskAutoEmail,
             due_at: taskDue || null
@@ -4978,6 +4997,7 @@
           setTaskDue('');
           setTaskPriority('normal');
           setTaskCategory('personal');
+          setTaskRecurrence('none');
           setTaskAutoEmail(true);
         } catch(e) {
           setError(e.message || 'No se pudo guardar la tarea.');
@@ -5011,18 +5031,42 @@
 
       const updateTaskStatus = async (task, status) => {
         try {
+          const basePatch = {
+            status,
+            email_reminder_sent_at: status === 'pending' ? null : task.email_reminder_sent_at || null,
+            updated_at: new Date().toISOString()
+          };
           const { data, error } = await supabase.from('tasks')
             .update({
-              status,
-              email_reminder_sent_at: status === 'pending' ? null : task.email_reminder_sent_at || null,
-              updated_at: new Date().toISOString()
+              ...basePatch
             })
             .eq('id', task.id)
             .eq('user_id', session.user.id)
             .select()
             .single();
           if(error) throw error;
-          setTasks(prev => prev.map(t => t.id === task.id ? data : t));
+          let spawnedTask = null;
+          if(status === 'done' && (task.recurrence || 'none') !== 'none'){
+            const nextDueAt = computeNextRecurringDueAt(task);
+            const { data: nextTask, error: nextErr } = await supabase.from('tasks').insert({
+              user_id: session.user.id,
+              title: task.title,
+              details: task.details || null,
+              priority: task.priority || 'normal',
+              category: task.category || 'personal',
+              recurrence: task.recurrence || 'none',
+              status: 'pending',
+              auto_email_reminder: task.auto_email_reminder !== false,
+              due_at: nextDueAt,
+              email_reminder_sent_at: null
+            }).select().single();
+            if(nextErr) throw nextErr;
+            spawnedTask = nextTask;
+          }
+          setTasks(prev => {
+            const next = prev.map(t => t.id === task.id ? data : t);
+            return spawnedTask ? [spawnedTask, ...next] : next;
+          });
         } catch(e) {
           setError(e.message || 'No se pudo actualizar la tarea.');
         }
@@ -5036,6 +5080,7 @@
         setEditingTaskPriority(task.priority || 'normal');
         setEditingTaskCategory(task.category || 'personal');
         setEditingTaskAutoEmail(task.auto_email_reminder !== false);
+        setEditingTaskRecurrence(task.recurrence || 'none');
       };
 
       const saveTaskEdit = async (task) => {
@@ -5050,6 +5095,7 @@
               due_at: editingTaskDue || null,
               priority: editingTaskPriority,
               category: editingTaskCategory,
+              recurrence: editingTaskRecurrence,
               auto_email_reminder: editingTaskAutoEmail,
               email_reminder_sent_at: null,
               updated_at: new Date().toISOString()
@@ -5488,9 +5534,12 @@
               <select class="inp" value=${taskCategory} onChange=${e=>setTaskCategory(e.target.value)}>
                 ${CATEGORY_OPTIONS.map(cat => html`<option value=${cat.value}>${cat.label}</option>`)}
               </select>
+              <select class="inp" value=${taskRecurrence} onChange=${e=>setTaskRecurrence(e.target.value)}>
+                ${RECURRENCE_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
+              </select>
               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
                 <input type="checkbox" checked=${taskAutoEmail} onChange=${e=>setTaskAutoEmail(e.target.checked)} />
-                <span>Enviar recordatorio automático por email cuando venza</span>
+                <span>Enviar recordatorio automatico por email cuando venza</span>
               </label>
               <button onClick=${addTask}
                 style="width:100%;padding:10px;border-radius:10px;border:none;background:#10B981;color:#041018;font-size:13px;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;cursor:pointer;">
@@ -5548,9 +5597,12 @@
                               <select class="inp" value=${editingTaskCategory} onChange=${e=>setEditingTaskCategory(e.target.value)}>
                                 ${CATEGORY_OPTIONS.map(cat => html`<option value=${cat.value}>${cat.label}</option>`)}
                               </select>
+                              <select class="inp" value=${editingTaskRecurrence} onChange=${e=>setEditingTaskRecurrence(e.target.value)}>
+                                ${RECURRENCE_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
+                              </select>
                               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
                                 <input type="checkbox" checked=${editingTaskAutoEmail} onChange=${e=>setEditingTaskAutoEmail(e.target.checked)} />
-                                <span>Recordatorio automático por email</span>
+                                <span>Recordatorio automatico por email</span>
                               </label>
                               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <button onClick=${()=>saveTaskEdit(task)}
@@ -5571,6 +5623,7 @@
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
                                   <span style=${`font-size:10px;color:${priorityColor(task.priority)};font-family:'JetBrains Mono',monospace;`}>${(task.priority || 'normal').toUpperCase()}</span>
                                   <span style=${`font-size:10px;color:${categoryMeta(task.category || 'personal').color};font-family:'JetBrains Mono',monospace;`}>${categoryMeta(task.category || 'personal').label.toUpperCase()}</span>
+                                  ${(task.recurrence || 'none') !== 'none' && html`<span style="font-size:10px;color:#7DD3FC;font-family:'JetBrains Mono',monospace;">${recurrenceLabel(task.recurrence).toUpperCase()}</span>`}
                                   <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.due_at)}</span>
                                 </div>
                               </div>
