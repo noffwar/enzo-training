@@ -2851,6 +2851,15 @@
       { value:'duda', label:'Duda', color:'#EF4444' }
     ];
     const noteKindMeta = (value) => NOTE_KIND_OPTIONS.find(k => k.value === value) || NOTE_KIND_OPTIONS[0];
+    const classifyThoughtKind = (text='') => {
+      const raw = String(text || '').trim();
+      const lower = raw.toLowerCase();
+      if(!lower) return 'idea';
+      if(raw.includes('?') || /^(que|qué|como|cómo|por que|por qué|cuando|cuándo|donde|dónde|quien|quién)\b/.test(lower)) return 'pregunta';
+      if(/(no entiendo|dudo|duda|sera|será|quiz[aá]s|capaz|me cuesta|no se si|no sé si)/.test(lower)) return 'duda';
+      if(/(pienso|siento|aprendi|aprendí|reflexion|reflexión|me di cuenta|conclusion|conclusión|me pasa)/.test(lower)) return 'reflexion';
+      return 'idea';
+    };
     const RECURRENCE_OPTIONS = [
       { value:'none', label:'No repetir' },
       { value:'daily', label:'Diaria' },
@@ -4927,6 +4936,7 @@
       const [taskPriority, setTaskPriority] = useState('normal');
       const [noteText, setNoteText] = useState('');
       const [noteKind, setNoteKind] = useState('idea');
+      const [noteKindLocked, setNoteKindLocked] = useState(false);
       const [saving, setSaving] = useState('');
       const [taskSearch, setTaskSearch] = useState('');
       const [priorityFilter, setPriorityFilter] = useState('all');
@@ -4948,6 +4958,7 @@
       const [editingNoteId, setEditingNoteId] = useState(null);
       const [editingNoteContent, setEditingNoteContent] = useState('');
       const [editingNoteKind, setEditingNoteKind] = useState('idea');
+      const [editingNoteKindLocked, setEditingNoteKindLocked] = useState(false);
       const [aiOpenNoteId, setAiOpenNoteId] = useState(null);
       const [aiDrafts, setAiDrafts] = useState(()=>loadThoughtDrafts());
       const [aiReplies, setAiReplies] = useState(()=>loadThoughtThreads());
@@ -5064,6 +5075,7 @@
           setNotes(prev => [data, ...prev]);
           setNoteText('');
           setNoteKind('idea');
+          setNoteKindLocked(false);
         } catch(e) {
           setError(e.message || 'No se pudo guardar el pensamiento.');
         } finally {
@@ -5240,6 +5252,7 @@
         setEditingNoteId(note.id);
         setEditingNoteContent(note.content || '');
         setEditingNoteKind(note.kind || 'idea');
+        setEditingNoteKindLocked(false);
       };
 
       const saveNoteEdit = async (note) => {
@@ -5260,6 +5273,7 @@
           if(error) throw error;
           setNotes(prev => prev.map(n => n.id === note.id ? data : n));
           setEditingNoteId(null);
+          setEditingNoteKindLocked(false);
         } catch(e) {
           setError(e.message || 'No se pudo editar el pensamiento.');
         } finally {
@@ -5667,14 +5681,15 @@
           <${Card}>
             <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Pensamiento rapido</p>
             <div style="display:flex;flex-direction:column;gap:8px;">
-              <select class="inp" value=${noteKind} onChange=${e=>setNoteKind(e.target.value)}>
+              <select class="inp" value=${noteKind} onChange=${e=>{ setNoteKind(e.target.value); setNoteKindLocked(true); }}>
                 ${NOTE_KIND_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
               </select>
               <textarea
                 value=${noteText}
-                onInput=${e=>setNoteText(e.target.value)}
+                onInput=${e=>{ const value = e.target.value; setNoteText(value); if(!noteKindLocked) setNoteKind(classifyThoughtKind(value)); }}
                 placeholder="Ej: idea, pendiente, algo que no quiero olvidarme..."
                 style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
+              <p style="margin:0;font-size:11px;color:#64748b;">Categoria sugerida automaticamente segun lo que escribis. Si cambias el selector, se respeta tu eleccion.</p>
               <button onClick=${addNote}
                 style="width:100%;padding:10px;border-radius:10px;border:none;background:#F59E0B;color:#080D1A;font-size:13px;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;cursor:pointer;">
                 ${saving === 'note' ? 'GUARDANDO...' : 'GUARDAR PENSAMIENTO'}
@@ -5805,12 +5820,12 @@
                   <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid ${note.pinned?'rgba(245,158,11,0.35)':'#1E2D45'};">
                     ${editingNoteId === note.id ? html`
                       <div style="display:flex;flex-direction:column;gap:8px;">
-                        <select class="inp" value=${editingNoteKind} onChange=${e=>setEditingNoteKind(e.target.value)}>
+                        <select class="inp" value=${editingNoteKind} onChange=${e=>{ setEditingNoteKind(e.target.value); setEditingNoteKindLocked(true); }}>
                           ${NOTE_KIND_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
                         </select>
                         <textarea
                           value=${editingNoteContent}
-                          onInput=${e=>setEditingNoteContent(e.target.value)}
+                          onInput=${e=>{ const value = e.target.value; setEditingNoteContent(value); if(!editingNoteKindLocked) setEditingNoteKind(classifyThoughtKind(value)); }}
                           style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
                           <button onClick=${()=>saveNoteEdit(note)}
