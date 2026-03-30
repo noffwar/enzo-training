@@ -2297,6 +2297,8 @@
       // ── Volumen muscular
       const vol = {}; MUSCLES.forEach(m=>vol[m]={direct:0,indirect:0});
       Object.values(sessions).forEach(s=>s&&s.forEach(ex=>{const done=ex.sets.filter(s=>s.completed).length;if(done>0&&muscleMap[ex.name]){muscleMap[ex.name].direct.forEach(m=>{if(vol[m])vol[m].direct+=done;});muscleMap[ex.name].indirect.forEach(m=>{if(vol[m])vol[m].indirect+=done;});}}));
+      const volumeData = Object.entries(vol).map(([m,v])=>({name:m.slice(0,4), fullName:m, dir:v.direct, ind:v.indirect, total:v.direct + v.indirect}));
+      const hasVolumeData = volumeData.some(row => row.total > 0);
 
       const tooltipStyle = {background:'#0F1729',border:'1px solid #1E2D45',borderRadius:'8px',fontFamily:'JetBrains Mono,monospace',fontSize:'11px'};
 
@@ -2430,11 +2432,11 @@
                 </div>
               `)}
             </div>
-            ${canRenderVolumeChart && html`
+            ${canRenderVolumeChart && hasVolumeData && html`
               <div style="height:220px;">
                 <${ResponsiveContainer} width="100%" height="100%">
                   <${BarChart}
-                    data=${Object.entries(vol).map(([m,v])=>({name:m.slice(0,4), dir:v.direct, ind:v.indirect}))}
+                    data=${volumeData}
                     margin=${{top:5,right:5,left:-25,bottom:0}}>
                     <${CartesianGrid} strokeDasharray="3 3" stroke="#1E2D45" vertical=${false}/>
                     <${XAxis} dataKey="name" tick=${{fill:'#64748b',fontSize:8}} axisLine=${false} tickLine=${false}/>
@@ -2450,14 +2452,19 @@
                 <//>
               </div>
             `}
-            ${!canRenderVolumeChart && html`
+            ${(!canRenderVolumeChart || !hasVolumeData) && html`
+              ${!hasVolumeData && html`
+                <div style="margin-bottom:10px;padding:10px;border-radius:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);">
+                  <p style="margin:0;font-size:12px;color:#C7D2FE;">Todavia no hay series efectivas registradas esta semana. Marca series como completadas en GIMNASIO para ver el volumen por musculo.</p>
+                </div>
+              `}
               <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-                ${Object.entries(vol).map(([m,v]) => html`
+                ${volumeData.map(row => html`
                   <div style="background:rgba(10,15,30,0.6);border:1px solid #1E2D45;border-radius:10px;padding:10px;">
-                    <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:white;">${m}</p>
+                    <p style="margin:0 0 6px;font-size:12px;font-weight:600;color:white;">${row.fullName}</p>
                     <div style="display:flex;justify-content:space-around;">
-                      <div style="text-align:center;"><p style="margin:0;font-size:9px;color:#10B981;">Dir</p><p style="margin:0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#10B981;">${v.direct}</p></div>
-                      <div style="text-align:center;"><p style="margin:0;font-size:9px;color:#F59E0B;">Ind</p><p style="margin:0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#F59E0B;">${v.indirect}</p></div>
+                      <div style="text-align:center;"><p style="margin:0;font-size:9px;color:#10B981;">Dir</p><p style="margin:0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#10B981;">${row.dir}</p></div>
+                      <div style="text-align:center;"><p style="margin:0;font-size:9px;color:#F59E0B;">Ind</p><p style="margin:0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#F59E0B;">${row.ind}</p></div>
                     </div>
                   </div>
                 `)}
