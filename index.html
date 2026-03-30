@@ -2600,6 +2600,12 @@
         ...row,
         pct: caloriesScaleMax > 0 ? (row.cals / caloriesScaleMax) * 100 : 0
       }));
+      const exerciseScaleMax = Math.max(...exHistory.map(row => row.weight || 0), 1);
+      const exerciseRows = exHistory.map(row => ({ ...row, pct: exerciseScaleMax > 0 ? (row.weight / exerciseScaleMax) * 100 : 0 }));
+      const weightScaleMax = Math.max(...weightHistory.map(row => row.kg || 0), 1);
+      const weightScaleMin = Math.min(...weightHistory.map(row => row.kg || 0), weightScaleMax);
+      const weightRange = Math.max(1, weightScaleMax - weightScaleMin);
+      const weightRows = weightHistory.map(row => ({ ...row, pct: ((row.kg - weightScaleMin) / weightRange) * 100 }));
 
       // PRs: máximo de TODO el historial (no filtrado — son records históricos)
       const personalRecords = useMemo(()=>{
@@ -2662,7 +2668,26 @@
               <option value="">Seleccionar ejercicio...</option>
               ${allExercises.map(e=>html`<option>${e}</option>`)}
             </select>
-            ${selEx && exHistory.length>0 && canRenderLineChart && html`
+            ${selEx && exHistory.length>0 && html`
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${exerciseRows.map(row => html`
+                  <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.6);border:1px solid #1E2D45;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                      <span style="font-size:11px;color:#CBD5E1;font-weight:700;">${row.week} · serie ${row.set}</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#10B981;">${row.weight} kg</span>
+                    </div>
+                    <div style="height:10px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;">
+                      <div style=${`width:${row.pct}%;height:100%;background:#10B981;min-width:${row.weight > 0 ? '6px' : '0'};`}></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:10px;color:#94A3B8;">
+                      <span>RPE: <span style="color:#F59E0B;font-family:'JetBrains Mono',monospace;">${row.rpe ?? '-'}</span></span>
+                      <span>Max: <span style="color:#10B981;font-family:'JetBrains Mono',monospace;">${exerciseScaleMax} kg</span></span>
+                    </div>
+                  </div>
+                `)}
+              </div>
+            `}
+            ${false && selEx && exHistory.length>0 && canRenderLineChart && html`
               <div style="height:200px;">
                 <${ResponsiveContainer} width="100%" height="100%">
                   <${LineChart} data=${exHistory} margin=${{top:5,right:5,left:-20,bottom:0}}>
@@ -2728,7 +2753,7 @@
           `}
 
           <!-- PESO CORPORAL -->
-          ${weightHistory.length > 0 && canRenderLineChart && html`
+          ${weightHistory.length > 0 && html`
             <${Card}>
               <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#38BDF8;">⚖️ Evolución de Peso Corporal</p>
               <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
@@ -2744,16 +2769,18 @@
                   </span>
                 </div>
               </div>
-              <div style="height:160px;">
-                <${ResponsiveContainer} width="100%" height="100%">
-                  <${LineChart} data=${weightHistory} margin=${{top:5,right:5,left:-20,bottom:0}}>
-                    <${CartesianGrid} strokeDasharray="3 3" stroke="#1E2D45"/>
-                    <${XAxis} dataKey="week" tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false}/>
-                    <${YAxis} tick=${{fill:'#64748b',fontSize:9}} axisLine=${false} tickLine=${false} unit="kg" domain=${['auto','auto']}/>
-                    <${Tooltip} contentStyle=${tooltipStyle} formatter=${v=>[v+'kg','Peso']}/>
-                    <${Line} type="monotone" dataKey="kg" name="Peso" stroke="#38BDF8" strokeWidth=${2} dot=${{fill:'#38BDF8',r:4}} connectNulls/>
-                  <//>
-                <//>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${weightRows.map(row => html`
+                  <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.6);border:1px solid #1E2D45;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                      <span style="font-size:11px;color:#CBD5E1;font-weight:700;">${row.week}</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#38BDF8;">${row.kg} kg</span>
+                    </div>
+                    <div style="height:10px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;">
+                      <div style=${`width:${row.pct}%;height:100%;background:#38BDF8;min-width:6px;`}></div>
+                    </div>
+                  </div>
+                `)}
               </div>
             <//>
           `}
