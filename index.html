@@ -1138,7 +1138,26 @@
       const [timers]    = useState({});
       const [backupBusy,setBackupBusy]= useState(false);
       const [backupMsg, setBackupMsg] = useState('');
+      const [backupMeta,setBackupMeta]= useState(() => {
+        const lastBackupAt = metaGet('last_backup_at');
+        const hours = lastBackupAt ? Math.floor((Date.now() - new Date(lastBackupAt).getTime()) / 3600000) : null;
+        return {
+          lastBackupAt,
+          hoursSince: hours,
+          due: !lastBackupAt || hours >= 72
+        };
+      });
       const importInputRef = useRef(null);
+
+      const refreshBackupMeta = useCallback(() => {
+        const lastBackupAt = metaGet('last_backup_at');
+        const hours = lastBackupAt ? Math.floor((Date.now() - new Date(lastBackupAt).getTime()) / 3600000) : null;
+        setBackupMeta({
+          lastBackupAt,
+          hoursSince: hours,
+          due: !lastBackupAt || hours >= 72
+        });
+      }, []);
 
       // Obtener estado del SW al montar
       useEffect(() => {
@@ -1298,6 +1317,8 @@
           a.click();
           a.remove();
           setTimeout(() => URL.revokeObjectURL(url), 1000);
+          metaSet('last_backup_at', new Date().toISOString());
+          refreshBackupMeta();
           setBackupMsg('Backup exportado correctamente.');
         } catch(e) {
           setBackupMsg(e.message || 'No se pudo exportar el backup.');
@@ -1407,6 +1428,8 @@
             });
           }
 
+          metaSet('last_backup_at', new Date().toISOString());
+          refreshBackupMeta();
           setBackupMsg('Backup importado correctamente. Recomendado: recargar la app.');
         } catch(e) {
           setBackupMsg(e.message || 'No se pudo importar el backup.');
@@ -1503,6 +1526,34 @@
                   ${backupBusy ? 'EXPORTANDO...' : 'EXPORTAR BACKUP'}
                 </button>
               </div>
+            </div>
+            <div style=${{
+              marginBottom:'10px',
+              padding:'10px 12px',
+              borderRadius:'10px',
+              background: backupMeta.due ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)',
+              border: backupMeta.due ? '1px solid rgba(245,158,11,0.25)' : '1px solid rgba(16,185,129,0.25)'
+            }}>
+              <p style=${{
+                margin:'0 0 4px',
+                fontSize:'11px',
+                fontWeight:'700',
+                textTransform:'uppercase',
+                letterSpacing:'0.08em',
+                color: backupMeta.due ? '#FCD34D' : '#86EFAC'
+              }}>
+                ${backupMeta.due ? 'Backup recomendado' : 'Backup al dia'}
+              </p>
+              <p style="margin:0;font-size:12px;color:#CBD5E1;">
+                ${!backupMeta.lastBackupAt
+                  ? 'Todavia no hiciste un backup manual desde la app.'
+                  : `Ultimo backup: ${new Date(backupMeta.lastBackupAt).toLocaleString('es-AR')} (${backupMeta.hoursSince}h)` }
+              </p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">
+                ${backupMeta.due
+                  ? 'Si pasaron 72 horas o mas, conviene exportar uno nuevo.'
+                  : 'Todavia estas dentro de la ventana recomendada de 72 horas.'}
+              </p>
             </div>
             <input
               ref=${importInputRef}
@@ -4993,7 +5044,9 @@
         meds:null, medsLow:false,
         pantryLow:0,
         medNextLabel:'Sin datos de salud',
-        medNextDetail:''
+        medNextDetail:'',
+        backupDue:false,
+        backupLabel:''
       });
       const [loading, setLoading] = useState(true);
 
@@ -5066,6 +5119,15 @@
             const threshold = pn(row.low_stock_threshold);
             return qty > 0 && threshold > 0 && qty <= threshold;
           }).length;
+          const lastBackupAt = metaGet('last_backup_at');
+          const lastBackupMs = lastBackupAt ? new Date(lastBackupAt).getTime() : 0;
+          const hoursSinceBackup = lastBackupMs ? Math.floor((Date.now() - lastBackupMs) / 3600000) : null;
+          const backupDue = !lastBackupMs || hoursSinceBackup >= 72;
+          const backupLabel = !lastBackupMs
+            ? 'Nunca hiciste backup manual'
+            : backupDue
+              ? `Ultimo backup hace ${hoursSinceBackup}h`
+              : `Ultimo backup hace ${hoursSinceBackup}h`;
 
           setSummary({
             pending: pending.length,
@@ -5082,7 +5144,9 @@
             medsLow: pn(meds.roaccutan) <= 2 || pn(meds.minoxidil_finasteride) <= 2,
             pantryLow,
             medNextLabel,
-            medNextDetail
+            medNextDetail,
+            backupDue,
+            backupLabel
           });
         } catch(_) {
           setSummary({
@@ -5092,7 +5156,9 @@
             meds:null, medsLow:false,
             pantryLow:0,
             medNextLabel:'Sin datos de salud',
-            medNextDetail:''
+            medNextDetail:'',
+            backupDue:false,
+            backupLabel:''
           });
         } finally {
           setLoading(false);
@@ -5160,6 +5226,13 @@
               <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (summary.nextTask?.due_at ? formatTaskDate(summary.nextTask.due_at) : 'Sin tareas cerca')}</p>
             </button>
           </div>
+          ${summary.backupDue && html`
+            <button onClick=${onOpenRecipes ? (()=>window.location.hash='') : undefined} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);cursor:default;">
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#FCD34D;font-weight:700;">Backup recomendado</p>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">Hace backup desde ALERTAS</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.backupLabel || 'Pasaron mas de 72 horas sin backup manual.'}</p>
+            </button>
+          `}
           <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
             <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Siguiente foco</p>
             <p style="margin:6px 0 0;font-size:13px;color:#E2E8F0;font-weight:700;">
