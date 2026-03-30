@@ -2844,6 +2844,13 @@
       { value:'trabajo', label:'Trabajo', color:'#EF4444' }
     ];
     const categoryMeta = (value) => CATEGORY_OPTIONS.find(c => c.value === value) || CATEGORY_OPTIONS[0];
+    const NOTE_KIND_OPTIONS = [
+      { value:'idea', label:'Idea', color:'#F59E0B' },
+      { value:'pregunta', label:'Pregunta', color:'#38BDF8' },
+      { value:'reflexion', label:'Reflexion', color:'#A78BFA' },
+      { value:'duda', label:'Duda', color:'#EF4444' }
+    ];
+    const noteKindMeta = (value) => NOTE_KIND_OPTIONS.find(k => k.value === value) || NOTE_KIND_OPTIONS[0];
     const RECURRENCE_OPTIONS = [
       { value:'none', label:'No repetir' },
       { value:'daily', label:'Diaria' },
@@ -4919,11 +4926,13 @@
       const [taskDue, setTaskDue] = useState('');
       const [taskPriority, setTaskPriority] = useState('normal');
       const [noteText, setNoteText] = useState('');
+      const [noteKind, setNoteKind] = useState('idea');
       const [saving, setSaving] = useState('');
       const [taskSearch, setTaskSearch] = useState('');
       const [priorityFilter, setPriorityFilter] = useState('all');
       const [statusFilter, setStatusFilter] = useState('all');
       const [categoryFilter, setCategoryFilter] = useState('all');
+      const [noteKindFilter, setNoteKindFilter] = useState('all');
       const [taskAutoEmail, setTaskAutoEmail] = useState(true);
       const [taskCategory, setTaskCategory] = useState('personal');
       const [taskRecurrence, setTaskRecurrence] = useState('none');
@@ -4938,6 +4947,7 @@
       const [editingTaskRecurrence, setEditingTaskRecurrence] = useState('none');
       const [editingNoteId, setEditingNoteId] = useState(null);
       const [editingNoteContent, setEditingNoteContent] = useState('');
+      const [editingNoteKind, setEditingNoteKind] = useState('idea');
       const [aiOpenNoteId, setAiOpenNoteId] = useState(null);
       const [aiDrafts, setAiDrafts] = useState(()=>loadThoughtDrafts());
       const [aiReplies, setAiReplies] = useState(()=>loadThoughtThreads());
@@ -5045,7 +5055,7 @@
           const { data, error } = await supabase.from('notes').insert({
             user_id: session.user.id,
             content: noteText.trim(),
-            kind: 'thought',
+            kind: noteKind,
             pinned: false,
             ai_thread: [],
             ai_draft: ''
@@ -5053,6 +5063,7 @@
           if(error) throw error;
           setNotes(prev => [data, ...prev]);
           setNoteText('');
+          setNoteKind('idea');
         } catch(e) {
           setError(e.message || 'No se pudo guardar el pensamiento.');
         } finally {
@@ -5228,6 +5239,7 @@
       const startEditNote = (note) => {
         setEditingNoteId(note.id);
         setEditingNoteContent(note.content || '');
+        setEditingNoteKind(note.kind || 'idea');
       };
 
       const saveNoteEdit = async (note) => {
@@ -5238,6 +5250,7 @@
           const { data, error } = await supabase.from('notes')
             .update({
               content: editingNoteContent.trim(),
+              kind: editingNoteKind,
               updated_at: new Date().toISOString()
             })
             .eq('id', note.id)
@@ -5483,10 +5496,12 @@
       });
       const filteredNotes = notes.filter(note => {
         if(note.kind === 'converted') return false;
+        if(noteKindFilter !== 'all' && (note.kind || 'idea') !== noteKindFilter) return false;
         if(!searchNeedle) return true;
         return String(note.content || '').toLowerCase().includes(searchNeedle);
       });
-      const pendingTasks = filteredTasks.filter(t => t.status !== 'done');
+      const archivedTasks = filteredTasks.filter(t => t.status === 'archived');
+      const pendingTasks = filteredTasks.filter(t => t.status !== 'done' && t.status !== 'archived');
       const doneTasks = filteredTasks.filter(t => t.status === 'done');
       const activeNotes = filteredNotes;
       const now = new Date();
@@ -5500,16 +5515,16 @@
         later: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfWeek),
         someday: pendingTasks.filter(t => !t.due_at)
       };
-      const todayFocus = tasks.filter(t => t.status !== 'done' && t.due_at && new Date(t.due_at) <= endOfToday);
-      const urgentCount = tasks.filter(t => t.status !== 'done' && (t.priority || 'normal') === 'high').length;
+      const todayFocus = tasks.filter(t => t.status !== 'done' && t.status !== 'archived' && t.due_at && new Date(t.due_at) <= endOfToday);
+      const urgentCount = tasks.filter(t => t.status !== 'done' && t.status !== 'archived' && (t.priority || 'normal') === 'high').length;
       const byCategory = CATEGORY_OPTIONS.map(cat => ({
         ...cat,
-        count: tasks.filter(t => t.status !== 'done' && (t.category || 'personal') === cat.value).length
+        count: tasks.filter(t => t.status !== 'done' && t.status !== 'archived' && (t.category || 'personal') === cat.value).length
       }));
 
       useEffect(() => {
         const runTaskReminderCheck = () => {
-          const pending = tasks.filter(t => t.status !== 'done' && t.due_at);
+          const pending = tasks.filter(t => t.status !== 'done' && t.status !== 'archived' && t.due_at);
           if(pending.length === 0) return;
           const now = Date.now();
           const alerts = loadTaskAlerts();
@@ -5609,8 +5624,13 @@
                   <option value="all">Todos los estados</option>
                   <option value="pending">Pendientes</option>
                   <option value="done">Hechas</option>
+                  <option value="archived">Archivadas</option>
                 </select>
               </div>
+              <select class="inp" value=${noteKindFilter} onChange=${e=>setNoteKindFilter(e.target.value)}>
+                <option value="all">Todos los pensamientos</option>
+                ${NOTE_KIND_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
+              </select>
             </div>
           <//>
 
@@ -5647,6 +5667,9 @@
           <${Card}>
             <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Pensamiento rapido</p>
             <div style="display:flex;flex-direction:column;gap:8px;">
+              <select class="inp" value=${noteKind} onChange=${e=>setNoteKind(e.target.value)}>
+                ${NOTE_KIND_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
+              </select>
               <textarea
                 value=${noteText}
                 onInput=${e=>setNoteText(e.target.value)}
@@ -5746,6 +5769,9 @@
                                 <button class="btn-icon" style="background:#162035;border:1px solid rgba(16,185,129,0.35);" onClick=${()=>updateTaskStatus(task,'done')}>
                                   <${ICheck} s=${16} c="text-green"/>
                                 </button>
+                                <button class="btn-icon" style="background:#162035;border:1px solid rgba(148,163,184,0.35);color:#CBD5E1;" onClick=${()=>updateTaskStatus(task,'archived')}>
+                                  A
+                                </button>
                                 <button class="btn-icon" style="background:#162035;border:1px solid rgba(239,68,68,0.35);color:#F87171;" onClick=${()=>deleteTask(task)}>
                                   X
                                 </button>
@@ -5779,6 +5805,9 @@
                   <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid ${note.pinned?'rgba(245,158,11,0.35)':'#1E2D45'};">
                     ${editingNoteId === note.id ? html`
                       <div style="display:flex;flex-direction:column;gap:8px;">
+                        <select class="inp" value=${editingNoteKind} onChange=${e=>setEditingNoteKind(e.target.value)}>
+                          ${NOTE_KIND_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
+                        </select>
                         <textarea
                           value=${editingNoteContent}
                           onInput=${e=>setEditingNoteContent(e.target.value)}
@@ -5797,9 +5826,12 @@
                     ` : html`
                       <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.content}</p>
                       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                        <span style="font-size:10px;color:${note.pinned?'#FBBF24':'#64748b'};font-family:'JetBrains Mono',monospace;">
-                          ${note.pinned ? 'FIJADO' : formatTaskDate(note.created_at)}
-                        </span>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                          <span style=${`font-size:10px;color:${noteKindMeta(note.kind || 'idea').color};font-family:'JetBrains Mono',monospace;`}>${noteKindMeta(note.kind || 'idea').label.toUpperCase()}</span>
+                          <span style="font-size:10px;color:${note.pinned?'#FBBF24':'#64748b'};font-family:'JetBrains Mono',monospace;">
+                            ${note.pinned ? 'FIJADO' : formatTaskDate(note.created_at)}
+                          </span>
+                        </div>
                         <div style="display:flex;gap:6px;flex-wrap:wrap;">
                           <button onClick=${()=>startEditNote(note)}
                             style="padding:6px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
@@ -5887,6 +5919,25 @@
                       <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.updated_at)}</p>
                     </div>
                     <button class="btn-icon" style="background:#162035;border:1px solid rgba(245,158,11,0.35);color:#FBBF24;" onClick=${()=>updateTaskStatus(task,'pending')}>
+                      ↺
+                    </button>
+                  </div>
+                `)}
+              </div>
+            <//>
+          `}
+
+          ${archivedTasks.length > 0 && html`
+            <${Card}>
+              <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">Archivadas</p>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                ${archivedTasks.slice(0,8).map(task => html`
+                  <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.35);border:1px solid rgba(148,163,184,0.2);display:flex;justify-content:space-between;gap:10px;">
+                    <div>
+                      <p style="margin:0;font-size:13px;color:#94A3B8;">${task.title}</p>
+                      <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.updated_at)}</p>
+                    </div>
+                    <button class="btn-icon" style="background:#162035;border:1px solid rgba(99,102,241,0.35);color:#A5B4FC;" onClick=${()=>updateTaskStatus(task,'pending')}>
                       ↺
                     </button>
                   </div>
