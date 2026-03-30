@@ -2850,6 +2850,25 @@
       { value:'weekly', label:'Semanal' }
     ];
     const recurrenceLabel = (value) => (RECURRENCE_OPTIONS.find(r => r.value === value)?.label || 'No repetir');
+    const normalizeSubtasks = (value) => {
+      if(Array.isArray(value)){
+        return value
+          .map(item => {
+            if(typeof item === 'string') return { text:item.trim(), done:false };
+            const text = String(item?.text || '').trim();
+            if(!text) return null;
+            return { text, done: !!item?.done };
+          })
+          .filter(Boolean);
+      }
+      return [];
+    };
+    const subtasksToEditorText = (subtasks=[]) => normalizeSubtasks(subtasks).map(item => item.text).join('\n');
+    const editorTextToSubtasks = (text='') => String(text || '')
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => ({ text: line, done:false }));
     const computeNextRecurringDueAt = (task) => {
       const recurrence = task?.recurrence || 'none';
       if(recurrence === 'none') return null;
@@ -4903,6 +4922,7 @@
       const [editingTaskId, setEditingTaskId] = useState(null);
       const [editingTaskTitle, setEditingTaskTitle] = useState('');
       const [editingTaskDetails, setEditingTaskDetails] = useState('');
+      const [editingTaskSubtasksText, setEditingTaskSubtasksText] = useState('');
       const [editingTaskDue, setEditingTaskDue] = useState('');
       const [editingTaskPriority, setEditingTaskPriority] = useState('normal');
       const [editingTaskAutoEmail, setEditingTaskAutoEmail] = useState(true);
@@ -4984,6 +5004,8 @@
           const { data, error } = await supabase.from('tasks').insert({
             user_id: session.user.id,
             title: taskTitle.trim(),
+            details: null,
+            subtasks: [],
             priority: taskPriority,
             category: taskCategory,
             recurrence: taskRecurrence,
@@ -5052,6 +5074,7 @@
               user_id: session.user.id,
               title: task.title,
               details: task.details || null,
+              subtasks: normalizeSubtasks(task.subtasks || []),
               priority: task.priority || 'normal',
               category: task.category || 'personal',
               recurrence: task.recurrence || 'none',
@@ -5076,6 +5099,7 @@
         setEditingTaskId(task.id);
         setEditingTaskTitle(task.title || '');
         setEditingTaskDetails(task.details || '');
+        setEditingTaskSubtasksText(subtasksToEditorText(task.subtasks || []));
         setEditingTaskDue(task.due_at ? String(task.due_at).slice(0,16) : '');
         setEditingTaskPriority(task.priority || 'normal');
         setEditingTaskCategory(task.category || 'personal');
@@ -5092,6 +5116,7 @@
             .update({
               title: editingTaskTitle.trim(),
               details: editingTaskDetails.trim() || null,
+              subtasks: editorTextToSubtasks(editingTaskSubtasksText),
               due_at: editingTaskDue || null,
               priority: editingTaskPriority,
               category: editingTaskCategory,
@@ -5124,6 +5149,25 @@
           setTasks(prev => prev.filter(t => t.id !== task.id));
         } catch(e) {
           setError(e.message || 'No se pudo borrar la tarea.');
+        }
+      };
+
+      const toggleSubtask = async (task, subtaskIndex) => {
+        try {
+          const subtasks = normalizeSubtasks(task.subtasks || []).map((item, idx) => idx === subtaskIndex ? { ...item, done: !item.done } : item);
+          const { data, error } = await supabase.from('tasks')
+            .update({
+              subtasks,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', task.id)
+            .eq('user_id', session.user.id)
+            .select()
+            .single();
+          if(error) throw error;
+          setTasks(prev => prev.map(t => t.id === task.id ? data : t));
+        } catch(e) {
+          setError(e.message || 'No se pudo actualizar la subtarea.');
         }
       };
 
@@ -5586,6 +5630,11 @@
                                 onInput=${e=>setEditingTaskDetails(e.target.value)}
                                 placeholder="Detalle opcional"
                                 style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:72px;"></textarea>
+                              <textarea
+                                value=${editingTaskSubtasksText}
+                                onInput=${e=>setEditingTaskSubtasksText(e.target.value)}
+                                placeholder="Subtareas, una por linea"
+                                style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
                               <div style="display:grid;grid-template-columns:1fr 120px;gap:8px;">
                                 <input class="inp" type="datetime-local" value=${editingTaskDue} onInput=${e=>setEditingTaskDue(e.target.value)} />
                                 <select class="inp" value=${editingTaskPriority} onChange=${e=>setEditingTaskPriority(e.target.value)}>
@@ -5620,6 +5669,16 @@
                               <div style="flex:1;">
                                 <p style="margin:0;font-size:14px;color:#E2E8F0;font-weight:700;">${task.title}</p>
                                 ${task.details && task.details !== task.title && html`<p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">${task.details}</p>`}
+                                ${normalizeSubtasks(task.subtasks || []).length > 0 && html`
+                                  <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                                    ${normalizeSubtasks(task.subtasks || []).map((subtask, idx) => html`
+                                      <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#CBD5E1;cursor:pointer;">
+                                        <input type="checkbox" checked=${!!subtask.done} onChange=${()=>toggleSubtask(task, idx)} />
+                                        <span style=${`line-height:1.35;${subtask.done ? 'text-decoration:line-through;color:#64748B;' : ''}`}>${subtask.text}</span>
+                                      </label>
+                                    `)}
+                                  </div>
+                                `}
                                 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
                                   <span style=${`font-size:10px;color:${priorityColor(task.priority)};font-family:'JetBrains Mono',monospace;`}>${(task.priority || 'normal').toUpperCase()}</span>
                                   <span style=${`font-size:10px;color:${categoryMeta(task.category || 'personal').color};font-family:'JetBrains Mono',monospace;`}>${categoryMeta(task.category || 'personal').label.toUpperCase()}</span>
