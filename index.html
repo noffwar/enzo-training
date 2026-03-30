@@ -1130,12 +1130,15 @@
       return defaultNotifs;
     };
 
-    const NotifView = () => {
+    const NotifView = ({session}) => {
       const [notifs,    setNotifs]    = useState(() => loadNotifsLocal());
       const [perm,      setPerm]      = useState(typeof Notification!=='undefined'?Notification.permission:'denied');
       const [syncMsg,   setSyncMsg]   = useState('');
       const [swInfo,    setSwInfo]    = useState({ ready: false, controlling: false, authValid: false, schedCount: 0 });
       const [timers]    = useState({});
+      const [backupBusy,setBackupBusy]= useState(false);
+      const [backupMsg, setBackupMsg] = useState('');
+      const importInputRef = useRef(null);
 
       // Obtener estado del SW al montar
       useEffect(() => {
@@ -1233,6 +1236,187 @@
         }
       };
 
+      const exportBackup = async () => {
+        if(!session?.user?.id) return;
+        setBackupBusy(true);
+        setBackupMsg('');
+        try {
+          const [
+            { data: tasksRows, error: tasksErr },
+            { data: notesRows, error: notesErr },
+            { data: recipeRows, error: recipeErr },
+            { data: studyRows, error: studyErr },
+            { data: bookRows, error: bookErr },
+            { data: invRows, error: invErr },
+            { data: routineRows, error: routineErr },
+            { data: dailyRows, error: dailyErr },
+            { data: weeklyRows, error: weeklyErr }
+          ] = await Promise.all([
+            supabase.from('tasks').select('*').eq('user_id', session.user.id).order('created_at', { ascending:false }),
+            supabase.from('notes').select('*').eq('user_id', session.user.id).order('created_at', { ascending:false }),
+            supabase.from('user_recipes').select('*').order('updated_at', { ascending:false }),
+            supabase.from('study_plan').select('*').order('subject', { ascending:true }),
+            supabase.from('book_notes').select('*').order('created_at', { ascending:false }),
+            supabase.from('app_inventory').select('*').order('key', { ascending:true }),
+            supabase.from('routines').select('*').order('routine_id', { ascending:true }),
+            supabase.from('daily_logs_v2').select('*').order('date', { ascending:false }),
+            supabase.from('weekly_configs_v2').select('*').order('week_key', { ascending:false })
+          ]);
+          const firstError = tasksErr || notesErr || recipeErr || studyErr || bookErr || invErr || routineErr || dailyErr || weeklyErr;
+          if(firstError) throw firstError;
+
+          const localRoutines = Object.fromEntries(lsAllRoutineKeys().map(id => [id, lsRoutineLoad(id)]).filter(([,v]) => !!v));
+          const backup = {
+            app: 'enzo-training',
+            exported_at: new Date().toISOString(),
+            device_id: DEVICE_ID,
+            user_id: session.user.id,
+            user_email: session.user.email || '',
+            remote: {
+              tasks: tasksRows || [],
+              notes: notesRows || [],
+              user_recipes: recipeRows || [],
+              study_plan: studyRows || [],
+              book_notes: bookRows || [],
+              app_inventory: invRows || [],
+              routines: routineRows || [],
+              daily_logs_v2: dailyRows || [],
+              weekly_configs_v2: weeklyRows || []
+            },
+            local: {
+              notification_settings: lsNotifLoad(DEVICE_ID) || [],
+              routines: localRoutines
+            }
+          };
+
+          const blob = new Blob([JSON.stringify(backup, null, 2)], { type:'application/json;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `enzo-backup-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          setBackupMsg('Backup exportado correctamente.');
+        } catch(e) {
+          setBackupMsg(e.message || 'No se pudo exportar el backup.');
+        } finally {
+          setBackupBusy(false);
+          setTimeout(() => setBackupMsg(''), 3500);
+        }
+      };
+
+      const importBackup = async (file) => {
+        if(!file || !session?.user?.id) return;
+        setBackupBusy(true);
+        setBackupMsg('');
+        try {
+          const raw = await file.text();
+          const parsed = JSON.parse(raw);
+          if(parsed?.app !== 'enzo-training' || !parsed?.remote) throw new Error('El archivo no parece un backup valido de Enzo Training.');
+          const ok = window.confirm('Esto va a restaurar datos desde el backup y puede sobrescribir informacion actual. Queres continuar?');
+          if(!ok) {
+            setBackupBusy(false);
+            return;
+          }
+
+          const remote = parsed.remote || {};
+          const userId = session.user.id;
+          const sanitizeRows = (rows) => Array.isArray(rows) ? rows : [];
+
+          const tasksRows = sanitizeRows(remote.tasks).map(row => ({ ...row, user_id: userId }));
+          const notesRows = sanitizeRows(remote.notes).map(row => ({ ...row, user_id: userId }));
+          const recipeRows = sanitizeRows(remote.user_recipes);
+          const studyRows = sanitizeRows(remote.study_plan);
+          const bookRows = sanitizeRows(remote.book_notes);
+          const inventoryRows = sanitizeRows(remote.app_inventory);
+          const routineRows = sanitizeRows(remote.routines);
+          const dailyRows = sanitizeRows(remote.daily_logs_v2);
+          const weeklyRows = sanitizeRows(remote.weekly_configs_v2);
+
+          const wipeAndInsert = async (table, deleteFilter, rows) => {
+            const delQuery = deleteFilter(supabase.from(table).delete());
+            const { error: delErr } = await delQuery;
+            if(delErr) throw delErr;
+            if(rows.length === 0) return;
+            const { error: insErr } = await supabase.from(table).insert(rows);
+            if(insErr) throw insErr;
+          };
+
+          await wipeAndInsert('tasks', q => q.eq('user_id', userId), tasksRows);
+          await wipeAndInsert('notes', q => q.eq('user_id', userId), notesRows);
+          await wipeAndInsert('book_notes', q => q.neq('id', '00000000-0000-0000-0000-000000000000'), bookRows);
+          await wipeAndInsert('user_recipes', q => q.neq('id', '00000000-0000-0000-0000-000000000000'), recipeRows);
+          await wipeAndInsert('study_plan', q => q.neq('id', '00000000-0000-0000-0000-000000000000'), studyRows);
+
+          if(inventoryRows.length){
+            const { error } = await supabase.from('app_inventory').upsert(inventoryRows, { onConflict:'key' });
+            if(error) throw error;
+          }
+          if(routineRows.length){
+            const normalized = routineRows.map(row => ({
+              routine_id: row.routine_id,
+              data: row.data,
+              updated_at: row.updated_at,
+              revision: row.revision,
+              device_id: row.device_id,
+              created_at: row.created_at
+            }));
+            const { error } = await supabase.from('routines').upsert(normalized, { onConflict:'routine_id' });
+            if(error) throw error;
+          }
+          if(dailyRows.length){
+            const normalized = dailyRows.map(row => ({
+              date: row.date,
+              tracker: row.tracker,
+              session: row.session,
+              updated_at: row.updated_at,
+              revision: row.revision,
+              device_id: row.device_id,
+              created_at: row.created_at
+            }));
+            const { error } = await supabase.from('daily_logs_v2').upsert(normalized, { onConflict:'date' });
+            if(error) throw error;
+          }
+          if(weeklyRows.length){
+            const normalized = weeklyRows.map(row => ({
+              week_key: row.week_key,
+              body_weight: row.body_weight,
+              day_mapping: row.day_mapping,
+              updated_at: row.updated_at,
+              revision: row.revision,
+              device_id: row.device_id,
+              created_at: row.created_at
+            }));
+            const { error } = await supabase.from('weekly_configs_v2').upsert(normalized, { onConflict:'week_key' });
+            if(error) throw error;
+          }
+
+          if(parsed?.local?.notification_settings){
+            const importedNotifs = Array.isArray(parsed.local.notification_settings) ? parsed.local.notification_settings : (parsed.local.notification_settings.notifs || []);
+            if(importedNotifs.length){
+              lsNotifSave(DEVICE_ID, importedNotifs);
+              setNotifs(importedNotifs);
+              scheduleAll(importedNotifs);
+            }
+          }
+          if(parsed?.local?.routines && typeof parsed.local.routines === 'object'){
+            Object.entries(parsed.local.routines).forEach(([id, data]) => {
+              if(data) lsRoutineSave(id, data);
+            });
+          }
+
+          setBackupMsg('Backup importado correctamente. Recomendado: recargar la app.');
+        } catch(e) {
+          setBackupMsg(e.message || 'No se pudo importar el backup.');
+        } finally {
+          setBackupBusy(false);
+          if(importInputRef.current) importInputRef.current.value = '';
+          setTimeout(() => setBackupMsg(''), 5000);
+        }
+      };
+
       const toggle  = (id)   => persistAndSync(notifs.map(n => n.id===id ? { ...n, enabled:!n.enabled } : n));
       const setTime = (id,t) => persistAndSync(notifs.map(n => n.id===id ? { ...n, time:t } : n));
 
@@ -1301,6 +1485,33 @@
                 </div>
               `)}
             </div>
+          <//>
+
+          <${Card}>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+              <div>
+                <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Backup manual</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">Descarga un JSON con tus datos remotos y la configuracion local del dispositivo.</p>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                <button onClick=${()=>importInputRef.current?.click()}
+                  style="padding:8px 12px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                  ${backupBusy ? 'IMPORTANDO...' : 'IMPORTAR BACKUP'}
+                </button>
+                <button onClick=${exportBackup}
+                  style="padding:8px 12px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                  ${backupBusy ? 'EXPORTANDO...' : 'EXPORTAR BACKUP'}
+                </button>
+              </div>
+            </div>
+            <input
+              ref=${importInputRef}
+              type="file"
+              accept="application/json,.json"
+              style="display:none;"
+              onChange=${e=>importBackup(e.target.files?.[0])}
+            />
+            ${backupMsg && html`<div style="padding:8px 10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);color:#86EFAC;font-size:12px;">${backupMsg}</div>`}
           <//>
         </div>
       `;
@@ -2851,6 +3062,13 @@
       { value:'duda', label:'Duda', color:'#EF4444' }
     ];
     const noteKindMeta = (value) => NOTE_KIND_OPTIONS.find(k => k.value === value) || NOTE_KIND_OPTIONS[0];
+    const noteDisplayTitle = (note) => {
+      const custom = String(note?.note_title || '').trim();
+      if(custom) return custom;
+      const content = String(note?.content || '').trim();
+      if(!content) return 'Pensamiento';
+      return content.length > 56 ? `${content.slice(0, 56)}...` : content;
+    };
     const classifyThoughtKind = (text='') => {
       const raw = String(text || '').trim();
       const lower = raw.toLowerCase();
@@ -4773,7 +4991,9 @@
         studyPending:0, studyDone:0, studySubjects:0,
         book:null, bookPct:0,
         meds:null, medsLow:false,
-        pantryLow:0
+        pantryLow:0,
+        medNextLabel:'Sin datos de salud',
+        medNextDetail:''
       });
       const [loading, setLoading] = useState(true);
 
@@ -4825,6 +5045,19 @@
           const meds = { ...MEDS_STOCK_DEFAULT, ...(inventory.meds_stock || {}) };
           const book = { ...BOOK_DEFAULT, ...(inventory.reading_progress || {}) };
           const bookPct = Math.max(0, Math.min(100, Math.round((pn(book.current_page) / Math.max(1, pn(book.total_pages))) * 100) || 0));
+          const todayKey = new Date().toDateString();
+          const roaccutanToday = meds.last_roaccutan_at && new Date(meds.last_roaccutan_at).toDateString() === todayKey;
+          const dinnerToday = meds.last_dinner_meds_at && new Date(meds.last_dinner_meds_at).toDateString() === todayKey;
+          const medNextLabel = !roaccutanToday
+            ? 'Roaccutan pendiente'
+            : !dinnerToday
+              ? 'Meds de cena pendientes'
+              : 'Tomas del dia completas';
+          const medNextDetail = !roaccutanToday
+            ? 'Mediodia'
+            : !dinnerToday
+              ? 'Cena'
+              : `Ultimos registros: R ${meds.last_roaccutan_at ? new Date(meds.last_roaccutan_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '-'} · C ${meds.last_dinner_meds_at ? new Date(meds.last_dinner_meds_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '-'}`;
           const studyTopics = study.flatMap(row => Array.isArray(row.topics) ? row.topics : []);
           const studyPending = studyTopics.filter(topic => !topic?.done).length;
           const studyDone = studyTopics.filter(topic => !!topic?.done).length;
@@ -4847,7 +5080,9 @@
             bookPct,
             meds,
             medsLow: pn(meds.roaccutan) <= 2 || pn(meds.minoxidil_finasteride) <= 2,
-            pantryLow
+            pantryLow,
+            medNextLabel,
+            medNextDetail
           });
         } catch(_) {
           setSummary({
@@ -4855,7 +5090,9 @@
             studyPending:0, studyDone:0, studySubjects:0,
             book:null, bookPct:0,
             meds:null, medsLow:false,
-            pantryLow:0
+            pantryLow:0,
+            medNextLabel:'Sin datos de salud',
+            medNextDetail:''
           });
         } finally {
           setLoading(false);
@@ -4893,22 +5130,34 @@
             <button onClick=${onOpenStudy} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.08);cursor:pointer;">
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;font-weight:700;">Estudio</p>
               <p style="margin:0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${loading ? '...' : summary.studyPending}</p>
-              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">Pendientes de ${summary.studySubjects} materias · ${summary.studyDone} hechos</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">Pendientes de ${summary.studySubjects} materias - ${summary.studyDone} hechos</p>
             </button>
             <button onClick=${onOpenBooks} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(245,158,11,0.25);background:rgba(245,158,11,0.08);cursor:pointer;">
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#FCD34D;font-weight:700;">Libro actual</p>
               <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${summary.book?.title || 'Sin libro'}</p>
-              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">Pag ${pn(summary.book?.current_page)} / ${pn(summary.book?.total_pages)} · ${summary.bookPct}%</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">Pag ${pn(summary.book?.current_page)} / ${pn(summary.book?.total_pages)} - ${summary.bookPct}%</p>
             </button>
             <button onClick=${onOpenHealth} style=${`text-align:left;padding:10px 12px;border-radius:10px;border:1px solid ${summary.medsLow ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)'};background:${summary.medsLow ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'};cursor:pointer;`}>
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:${summary.medsLow ? '#FCA5A5' : '#86EFAC'};font-weight:700;">Salud</p>
-              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">R ${pn(summary.meds?.roaccutan)} · M ${pn(summary.meds?.minoxidil_finasteride)}</p>
-              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.medsLow ? 'Reponer pronto' : 'Stock controlado'}</p>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">R ${pn(summary.meds?.roaccutan)} - M ${pn(summary.meds?.minoxidil_finasteride)}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.medsLow ? 'Reponer pronto' : summary.medNextLabel}</p>
             </button>
             <button onClick=${onOpenRecipes} style=${`text-align:left;padding:10px 12px;border-radius:10px;border:1px solid ${summary.pantryLow > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(56,189,248,0.25)'};background:${summary.pantryLow > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(56,189,248,0.08)'};cursor:pointer;`}>
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:${summary.pantryLow > 0 ? '#FCD34D' : '#7DD3FC'};font-weight:700;">Biblioteca</p>
               <p style="margin:0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${loading ? '...' : summary.pantryLow}</p>
               <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.pantryLow > 0 ? 'Items con stock bajo' : 'Sin alertas de stock'}</p>
+            </button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+            <button onClick=${onOpenHealth} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.08);cursor:pointer;">
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#86EFAC;font-weight:700;">Proxima medicacion</p>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : summary.medNextLabel}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (summary.medNextDetail || 'Sin detalles')}</p>
+            </button>
+            <button onClick=${onOpenTasks} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.08);cursor:pointer;">
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;font-weight:700;">Proximo vencimiento</p>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : (summary.nextTask?.title || 'Nada urgente')}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (summary.nextTask?.due_at ? formatTaskDate(summary.nextTask.due_at) : 'Sin tareas cerca')}</p>
             </button>
           </div>
           <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
@@ -4934,6 +5183,7 @@
       const [taskTitle, setTaskTitle] = useState('');
       const [taskDue, setTaskDue] = useState('');
       const [taskPriority, setTaskPriority] = useState('normal');
+      const [noteTitle, setNoteTitle] = useState('');
       const [noteText, setNoteText] = useState('');
       const [noteKind, setNoteKind] = useState('idea');
       const [noteKindLocked, setNoteKindLocked] = useState(false);
@@ -4956,6 +5206,7 @@
       const [editingTaskCategory, setEditingTaskCategory] = useState('personal');
       const [editingTaskRecurrence, setEditingTaskRecurrence] = useState('none');
       const [editingNoteId, setEditingNoteId] = useState(null);
+      const [editingNoteTitle, setEditingNoteTitle] = useState('');
       const [editingNoteContent, setEditingNoteContent] = useState('');
       const [editingNoteKind, setEditingNoteKind] = useState('idea');
       const [editingNoteKindLocked, setEditingNoteKindLocked] = useState(false);
@@ -5065,6 +5316,7 @@
         try {
           const { data, error } = await supabase.from('notes').insert({
             user_id: session.user.id,
+            note_title: noteTitle.trim() || null,
             content: noteText.trim(),
             kind: noteKind,
             pinned: false,
@@ -5073,6 +5325,7 @@
           }).select().single();
           if(error) throw error;
           setNotes(prev => [data, ...prev]);
+          setNoteTitle('');
           setNoteText('');
           setNoteKind('idea');
           setNoteKindLocked(false);
@@ -5250,6 +5503,7 @@
 
       const startEditNote = (note) => {
         setEditingNoteId(note.id);
+        setEditingNoteTitle(note.note_title || '');
         setEditingNoteContent(note.content || '');
         setEditingNoteKind(note.kind || 'idea');
         setEditingNoteKindLocked(false);
@@ -5262,6 +5516,7 @@
         try {
           const { data, error } = await supabase.from('notes')
             .update({
+              note_title: editingNoteTitle.trim() || null,
               content: editingNoteContent.trim(),
               kind: editingNoteKind,
               updated_at: new Date().toISOString()
@@ -5303,6 +5558,42 @@
           delete aiDraftTimersRef.current[note.id];
         } catch(e) {
           setError(e.message || 'No se pudo borrar el pensamiento.');
+        }
+      };
+
+      const exportNote = (note) => {
+        try {
+          const title = noteDisplayTitle(note);
+          const thread = aiReplies[note.id] || [];
+          const lines = [
+            `Titulo: ${title}`,
+            `Categoria: ${noteKindMeta(note.kind || 'idea').label}`,
+            `Fecha: ${formatTaskDate(note.created_at)}`,
+            '',
+            'Contenido:',
+            String(note.content || '').trim(),
+            ''
+          ];
+          if(thread.length){
+            lines.push('Debate IA:', '');
+            thread.forEach((item, idx) => {
+              lines.push(`${idx + 1}. Pregunta: ${item.question}`);
+              lines.push(`Respuesta: ${item.reply}`);
+              lines.push('');
+            });
+          }
+          const blob = new Blob([lines.join('\n')], { type:'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          const safeName = title.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'pensamiento';
+          a.href = url;
+          a.download = `${safeName}.txt`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch(e) {
+          setError(e.message || 'No se pudo exportar el pensamiento.');
         }
       };
 
@@ -5681,6 +5972,8 @@
           <${Card}>
             <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Pensamiento rapido</p>
             <div style="display:flex;flex-direction:column;gap:8px;">
+              <input class="inp" placeholder="Titulo opcional"
+                value=${noteTitle} onInput=${e=>setNoteTitle(e.target.value)} />
               <select class="inp" value=${noteKind} onChange=${e=>{ setNoteKind(e.target.value); setNoteKindLocked(true); }}>
                 ${NOTE_KIND_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
               </select>
@@ -5820,6 +6113,7 @@
                   <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid ${note.pinned?'rgba(245,158,11,0.35)':'#1E2D45'};">
                     ${editingNoteId === note.id ? html`
                       <div style="display:flex;flex-direction:column;gap:8px;">
+                        <input class="inp" value=${editingNoteTitle} onInput=${e=>setEditingNoteTitle(e.target.value)} placeholder="Titulo opcional" />
                         <select class="inp" value=${editingNoteKind} onChange=${e=>{ setEditingNoteKind(e.target.value); setEditingNoteKindLocked(true); }}>
                           ${NOTE_KIND_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
                         </select>
@@ -5839,6 +6133,7 @@
                         </div>
                       </div>
                     ` : html`
+                      <p style="margin:0 0 6px;font-size:12px;color:#F8FAFC;font-weight:700;">${noteDisplayTitle(note)}</p>
                       <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.content}</p>
                       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -5855,6 +6150,10 @@
                           <button onClick=${()=>togglePinNote(note)}
                             style="padding:6px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.35);background:rgba(245,158,11,0.12);color:#FBBF24;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                             ${note.pinned ? 'DESFIJAR' : 'FIJAR'}
+                          </button>
+                          <button onClick=${()=>exportNote(note)}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            EXPORTAR
                           </button>
                           <button onClick=${()=>setAiOpenNoteId(aiOpenNoteId === note.id ? null : note.id)}
                             style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.35);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
@@ -7178,7 +7477,7 @@
             ${view==='study'    && html`<${StudyView} session=${session}/>`}
             ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight}/>`}
             ${view==='books'    && html`<${BooksView} session=${session}/>`}
-            ${view==='notif'    && html`<${NotifView}/>`}
+            ${view==='notif'    && html`<${NotifView} session=${session}/>`}
             ${view==='routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
 
           </main>
