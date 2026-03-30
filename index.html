@@ -2659,11 +2659,11 @@
               ${(filterYear||filterMonth) && html`
                 <button onClick=${()=>{ setFilterYear(''); setFilterMonth(''); }}
                   style="padding:6px 10px;border-radius:8px;border:1px solid #1E2D45;background:rgba(239,68,68,0.1);color:#EF4444;font-size:11px;cursor:pointer;white-space:nowrap;">
-                  ✕ Reset
+                  Reset
                 </button>
               `}
             </div>
-            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">Progresión de Peso por Ejercicio</p>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">Progresion de Peso por Ejercicio</p>
             <select class="inp" style="margin-bottom:12px;" value=${selEx} onChange=${e=>setSelEx(e.target.value)}>
               <option value="">Seleccionar ejercicio...</option>
               ${allExercises.map(e=>html`<option>${e}</option>`)}
@@ -2673,7 +2673,7 @@
                 ${exerciseRows.map(row => html`
                   <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.6);border:1px solid #1E2D45;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
-                      <span style="font-size:11px;color:#CBD5E1;font-weight:700;">${row.week} · serie ${row.set}</span>
+                      <span style="font-size:11px;color:#CBD5E1;font-weight:700;">${row.week} - serie ${row.set}</span>
                       <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#10B981;">${row.weight} kg</span>
                     </div>
                     <div style="height:10px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;">
@@ -2706,13 +2706,13 @@
                 <div style="display:flex;align-items:center;gap:4px;"><div style="width:12px;height:2px;background:#F59E0B;border-radius:1px;border-style:dashed;"></div><span style="font-size:10px;color:#64748b;">RPE (fatiga)</span></div>
               </div>
             `}
-            ${selEx && exHistory.length===0 && html`<p style="color:#64748b;font-size:13px;text-align:center;padding:20px 0;">Sin datos registrados aún para este ejercicio.</p>`}
+            ${selEx && exHistory.length===0 && html`<p style="color:#64748b;font-size:13px;text-align:center;padding:20px 0;">Sin datos registrados aun para este ejercicio.</p>`}
           <//>
 
-          <!-- RÉCORDS PERSONALES -->
+          <!-- RECORDS PERSONALES -->
           ${personalRecords.length > 0 && html`
             <${Card}>
-              <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">🏆 Récords Personales</p>
+              <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">Records Personales</p>
               <div style="display:flex;flex-direction:column;gap:6px;">
                 ${personalRecords.map(([ex, pr], i) => html`
                   <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:7px;background:${i===0?'rgba(245,158,11,0.08)':'rgba(10,15,30,0.4)'};border:1px solid ${i===0?'rgba(245,158,11,0.3)':'#1E2D45'};">
@@ -2755,7 +2755,7 @@
           <!-- PESO CORPORAL -->
           ${weightHistory.length > 0 && html`
             <${Card}>
-              <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#38BDF8;">⚖️ Evolución de Peso Corporal</p>
+              <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#38BDF8;">Evolucion de Peso Corporal</p>
               <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
                 <div>
                   <span style="font-size:10px;color:#64748b;">Inicio: </span>
@@ -2787,13 +2787,13 @@
 
           <!-- EXPORTAR -->
           <${Card}>
-            <p style="margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#64748b;">📤 Exportar</p>
+            <p style="margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#64748b;">Exportar</p>
             <button onClick=${exportImage}
               style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.1);color:#818CF8;font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-              📸 Capturar progreso como imagen
+              Capturar progreso como imagen
             </button>
             <p style="margin:6px 0 0;font-size:10px;color:#374151;text-align:center;">
-              Usá Ctrl+P o la captura de pantalla del celular para guardar
+              Usa Ctrl+P o la captura de pantalla del celular para guardar
             </p>
           <//>
 
@@ -4432,7 +4432,7 @@
                       <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.5);border:1px solid #1E2D45;">
                         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
                           <div style="flex:1;">
-                            <p style="margin:0 0 6px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${note.book_title} · pag ${note.current_page}</p>
+                            <p style="margin:0 0 6px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${note.book_title} - pag ${note.current_page}</p>
                             <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.question || note.answer || ''}</p>
                           </div>
                           <button onClick=${()=>deleteBookNote(note.id)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
@@ -6886,7 +6886,7 @@
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
                   <div>
                     <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;letter-spacing:0.04em;color:white;">
-                      ${routineInfo?.fullName||`DÍA ${activeDay}: Descanso`}
+                      ${routineInfo?.fullName||`DIA ${activeDay}: Descanso`}
                     </h2>
                     ${routineInfo?.description && html`<p style="margin:2px 0 0;font-size:13px;color:#6366F1;">${routineInfo.description}</p>`}
                   </div>
@@ -6932,8 +6932,8 @@
                   <${Card}>
                     <div style="text-align:center;padding:24px 0;">
                       <p style="font-size:36px;margin:0 0 8px;">🛌</p>
-                      <p style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#cbd5e1;margin:0;">Día de Descanso</p>
-                      <p style="font-size:13px;color:#64748b;margin:4px 0 0;">Recuperá y registrá tus hábitos arriba.</p>
+                      <p style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#cbd5e1;margin:0;">Dia de Descanso</p>
+                      <p style="font-size:13px;color:#64748b;margin:4px 0 0;">Recupera y registra tus habitos arriba.</p>
                     </div>
                   <//>
                 `}
