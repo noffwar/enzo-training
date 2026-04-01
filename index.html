@@ -2063,26 +2063,74 @@
           .trim()
           .replace(/\s+/g, ' ');
 
+      const parseLeadingRecipeAmount = (text='') => {
+        const raw = String(text || '').trim().toLowerCase();
+        if(!raw) return null;
+
+        let match = raw.match(/^(\d+)\s*\/\s*(\d+)(?:\s+(.*))?$/);
+        if(match) {
+          const numerator = parseFloat(match[1]);
+          const denominator = parseFloat(match[2]);
+          return {
+            value: denominator ? numerator / denominator : 0,
+            rest: String(match[3] || '').trim(),
+            label: `${match[1]}/${match[2]}`
+          };
+        }
+
+        match = raw.match(/^(media|medio)(?:\s+(.*))?$/);
+        if(match) {
+          return { value: 0.5, rest: String(match[2] || '').trim(), label: match[1] };
+        }
+
+        match = raw.match(/^(una|un|1)\s+y\s+media(?:\s+(.*))?$/);
+        if(match) {
+          return { value: 1.5, rest: String(match[2] || '').trim(), label: String(match[0] || '').trim() };
+        }
+
+        match = raw.match(/^(\d+(?:[.,]\d+)?)(?:\s+y\s+media)?(?:\s+(.*))?$/);
+        if(match) {
+          const base = parseFloat(String(match[1]).replace(',', '.'));
+          const hasHalf = /\s+y\s+media(?:\s|$)/.test(raw);
+          return {
+            value: base + (hasHalf ? 0.5 : 0),
+            rest: String(match[2] || '').trim(),
+            label: hasHalf ? `${match[1]} y media` : String(match[1])
+          };
+        }
+
+        return null;
+      };
+
       const parseRecipeAmount = (text='') => {
-        const m = String(text).toLowerCase().match(/(\d+(?:[.,]\d+)?)\s*(kg|g|gramos?|porciones?|porcion|u|unidades?)/);
+        const raw = String(text || '').toLowerCase().trim();
+        const lead = parseLeadingRecipeAmount(raw);
+        const amountPart = lead ? raw.slice(0, raw.length - lead.rest.length).trim() : raw;
+        const m = amountPart.match(/(\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\s*(kg|g|gramos?|porciones?|porcion|u|unidades?)/);
         if(!m) return null;
+        const parsed = parseLeadingRecipeAmount(`${m[1]} x`) || { value: parseFloat(String(m[1]).replace(',', '.')) || 0 };
         return {
-          value: parseFloat(m[1].replace(',', '.')),
+          value: parsed.value,
           unit: m[2]
         };
       };
 
       const parseRecipeCountNoun = (text='') => {
-        const m = String(text).trim().match(/^(\d+(?:[.,]\d+)?)\s+(.+)$/i);
-        if(!m) return null;
+        const parsed = parseLeadingRecipeAmount(text);
+        if(!parsed || !(parsed.value > 0) || !parsed.rest) return null;
         return {
-          value: parseFloat(String(m[1]).replace(',', '.')),
-          noun: normalizeRecipeText(m[2] || '')
+          value: parsed.value,
+          noun: normalizeRecipeText(parsed.rest || ''),
+          label: parsed.label || '',
+          rawRest: String(parsed.rest || '').trim()
         };
       };
 
-      const stripRecipeAmount = (text='') =>
-        normalizeRecipeText(String(text).replace(/(\d+(?:[.,]\d+)?)\s*(kg|g|gramos?|porciones?|porcion|u|unidades?)/ig, ' '));
+      const stripRecipeAmount = (text='') => {
+        const parsed = parseLeadingRecipeAmount(text);
+        if(parsed?.rest) return normalizeRecipeText(parsed.rest);
+        return normalizeRecipeText(String(text).replace(/(\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\s*(kg|g|gramos?|porciones?|porcion|u|unidades?)/ig, ' '));
+      };
 
       const singularizeWord = (word='') => {
         const w = String(word || '').trim();
@@ -2114,7 +2162,19 @@
 
       const formatRecipeQty = (value, unit) => {
         const n = Number(value);
-        const clean = Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100).replace('.', ',');
+        const rounded = Math.round(n * 100) / 100;
+        let clean = '';
+        if(Number.isInteger(rounded)) {
+          clean = String(rounded);
+        } else {
+          const whole = Math.trunc(rounded);
+          const fraction = Math.abs(rounded - whole);
+          if(Math.abs(fraction - 0.5) < 0.01) {
+            clean = whole === 0 ? '1/2' : `${whole} 1/2`;
+          } else {
+            clean = String(rounded).replace('.', ',');
+          }
+        }
         return `${clean} ${unit}`.trim();
       };
 
@@ -2151,6 +2211,7 @@
         const fuzzyMatches = [];
 
         for(const recipe of (recipes || [])) {
+          const rawNames = [recipe.recipe_name, ...((Array.isArray(recipe.aliases) ? recipe.aliases : []))].filter(Boolean);
           const names = [recipe.recipe_name, ...((Array.isArray(recipe.aliases) ? recipe.aliases : []))]
             .filter(Boolean)
             .map(normalizeRecipeText);
@@ -2207,10 +2268,15 @@
             const baseQty = parseFloat(recipe.base_qty) || 1;
             factor = parsedCountNoun.value / baseQty;
             const baseUnitNormalized = normalizeStockUnit(recipe.base_unit || '');
-            const countUnit = baseUnitNormalized === 'porcion'
-              ? (parsedCountNoun.value === 1 ? 'porcion' : 'porciones')
-              : (parsedCountNoun.value === 1 ? 'unidad' : 'unidades');
-            qty = `${formatRecipeQty(parsedCountNoun.value, countUnit)} (${recipe.base_unit || (baseUnitNormalized === 'porcion' ? 'porcion' : 'unidad')})`;
+            const humanPrefix = String(parsedCountNoun.label || '').trim();
+            const exactRawMatch = rawNames.find(name => normalizeRecipeKey(name) === parsedCountNounKey) || recipe.recipe_name;
+            const pluralRawMatch = rawNames.find(name => normalizeRecipeKey(name) === parsedCountNounKey && /s\b/i.test(String(name).trim())) || exactRawMatch;
+            const humanNoun = String(parsedCountNoun.value > 1 ? pluralRawMatch : recipe.recipe_name || parsedCountNoun.rawRest || '').trim();
+            qty = humanPrefix && humanNoun
+              ? `${humanPrefix} ${humanNoun}`.trim()
+              : formatRecipeQty(parsedCountNoun.value, baseUnitNormalized === 'porcion'
+                  ? (parsedCountNoun.value === 1 ? 'porcion' : 'porciones')
+                  : (parsedCountNoun.value === 1 ? 'unidad' : 'unidades'));
             stockDelta = parsedCountNoun.value;
             stockDeltaUnit = baseUnitNormalized === 'porcion' ? 'porcion' : 'unidad';
           }
@@ -2282,9 +2348,36 @@
         };
       }, []);
 
-      const pushRecipeSuggestionIntoDraft = (mealIndex, recipeName) => {
+      const pushRecipeSuggestionIntoDraft = (mealIndex, recipeName, recipeAliases=[]) => {
         const current = String(t.meals?.[mealIndex]?.aiDraft || '').trim();
-        const next = current ? `${current}, ${recipeName}` : recipeName;
+        const currentNormalized = normalizeFoodText(current);
+        const recipeNormalized = normalizeFoodText(recipeName);
+        let next = recipeName;
+        const parsedPrefix = parseLeadingRecipeAmount(current);
+        const parsedPrefixNumber = parsedPrefix?.value ?? null;
+        const aliasList = [recipeName, ...(Array.isArray(recipeAliases) ? recipeAliases : [])].filter(Boolean);
+        const pluralFriendlyName = (() => {
+          if(!(parsedPrefixNumber > 1)) return recipeName;
+          const pluralAlias = aliasList.find(name => /s$/i.test(String(name).trim())) || recipeName;
+          return pluralAlias;
+        })();
+
+        if(current) {
+          const amountPrefixMatch = current.match(/^(\s*(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\s*(?:kg|g|gramos?|porciones?|porcion|u|unidades?)?\s*)(.*)$/i);
+          if(amountPrefixMatch) {
+            const prefix = String(amountPrefixMatch[1] || '').trim();
+            const tail = String(amountPrefixMatch[2] || '').trim();
+            if(prefix && (!tail || recipeNormalized.includes(normalizeFoodText(tail)) || normalizeFoodText(tail).includes(recipeNormalized) || normalizeFoodText(tail).length >= 2)) {
+              next = `${prefix} ${pluralFriendlyName}`.trim();
+            } else {
+              next = `${current}, ${recipeName}`;
+            }
+          } else if(recipeNormalized.includes(currentNormalized) || currentNormalized.includes(recipeNormalized) || currentNormalized.length >= 2) {
+            next = pluralFriendlyName;
+          } else {
+            next = `${current}, ${recipeName}`;
+          }
+        }
         onMeal(mealIndex, 'aiDraft', next);
       };
 
@@ -2292,6 +2385,76 @@
         onMeal(mealIndex, 'aiDraft', '');
         setAiError(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
         setRecipeMsg(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
+      };
+
+      const splitMealDraftParts = (text='') => {
+        const raw = String(text || '').trim();
+        if(!raw) return [];
+        const normalized = raw.replace(/\s+/g, ' ').trim();
+        const parts = normalized
+          .split(/\s+(?:y|e)\s+|,/i)
+          .map(part => part.trim())
+          .filter(Boolean);
+        if(parts.length <= 1) return [normalized];
+
+        const looksIndependent = (part) => {
+          const p = String(part || '').trim().toLowerCase();
+          return !!(
+            parseRecipeAmount(p) ||
+            parseRecipeCountNoun(p) ||
+            /^\d/.test(p) ||
+            /^(media|medio|una y media|un y medio|1\/2)\b/.test(p)
+          );
+        };
+
+        return parts.every(looksIndependent) ? parts : [normalized];
+      };
+
+      const analyzeSingleMealEntry = async (mealIndex, text) => {
+        try {
+          const recipes = await getRecipes();
+          const recipeSearch = findRecipeMatch(recipes, text);
+          if(recipeSearch?.kind === 'ambiguous') {
+            const optionsText = recipeSearch.options.map(op => op.name).join(', ');
+            const useLibrary = window.confirm(`Encontre varias opciones en tu biblioteca: ${optionsText}. ¿Querés usar la biblioteca en vez de calcularlo por internet?`);
+            if(!useLibrary) throw new Error('__USE_INTERNET__');
+          }
+
+          const recipeHit = recipeSearch?.item || (recipeSearch?.options ? recipeSearch.options[0] : null);
+          if(recipeHit) {
+            const shouldUseLibrary = recipeSearch?.kind === 'exact'
+              ? true
+              : window.confirm(`Encontre "${recipeHit.name}" en tu biblioteca. ¿Querés usar ese valor guardado en vez de calcularlo por internet?`);
+            if(!shouldUseLibrary) throw new Error('__USE_INTERNET__');
+
+            onAddItem(mealIndex, recipeHit);
+            if(recipeHit.stock_unit && recipeHit.stock_delta_unit && normalizeStockUnit(recipeHit.stock_unit) === normalizeStockUnit(recipeHit.stock_delta_unit)) {
+              await discountItemStock(mealIndex, recipeHit);
+            }
+            return;
+          }
+        } catch(recipeErr) {
+          if(recipeErr?.message !== '__USE_INTERNET__') {
+            console.warn('[RECIPES]', recipeErr.message);
+          }
+        }
+
+        const res = await fetch('/.netlify/functions/get-macros', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ meal: text })
+        });
+        const data = await res.json().catch(() => ({}));
+        if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        onAddItem(mealIndex, {
+          name: data.name || text,
+          qty:  data.qty  || '1 porción',
+          cals: Math.round(parseFloat(data.cals)||0),
+          prot: Math.round(parseFloat(data.prot)||0),
+          carb: Math.round(parseFloat(data.carb)||0),
+          fat:  Math.round(parseFloat(data.fat) ||0),
+          nota: data.nota || ''
+        });
       };
 
       // analyzeMeal: llama a la IA y agrega el resultado como item a la leyenda
@@ -2303,6 +2466,14 @@
         setAiError(prev   => { const n=[...prev]; n[mealIndex]='';   return n; });
 
         try {
+          const parts = splitMealDraftParts(text);
+          if(parts.length > 1) {
+            for(const part of parts) {
+              await analyzeSingleMealEntry(mealIndex, part);
+            }
+            onMeal(mealIndex, 'aiDraft', '');
+            return;
+          }
           try {
             const recipes = await getRecipes();
             const recipeSearch = findRecipeMatch(recipes, text);
@@ -2665,7 +2836,7 @@
                       <div style="display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 8px;">
                         ${recipeSuggestions.map(recipe => html`
                           <button
-                            onClick=${()=>pushRecipeSuggestionIntoDraft(i, recipe.recipe_name)}
+                            onClick=${()=>pushRecipeSuggestionIntoDraft(i, recipe.recipe_name, recipe.aliases)}
                             title="Usar receta guardada"
                             style="padding:5px 9px;border-radius:999px;border:1px solid rgba(16,185,129,0.22);background:rgba(16,185,129,0.08);color:#86EFAC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.04em;cursor:pointer;"
                           >
