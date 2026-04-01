@@ -6216,22 +6216,20 @@
           history: remaining
         });
         await persistHealth(next, 'Movimiento borrado y stock recompuesto.');
-        const affectsDate = target?.logical_date || (isTodayEntry(target.at) ? localDateKey(new Date()) : '');
-        const logicalToday = localDateKey(new Date());
-        const logicalYesterday = localDateKey(new Date(Date.now() - 86400000));
-        if(affectsDate === logicalToday || affectsDate === logicalYesterday || isTodayEntry(target.at)) {
-          const medStateForAffectedDate = affectsDate === logicalYesterday ? previousMedsState : todayMedsState;
-          if(deltas.roaccutan < 0 && todayMedsState.roacuttan && !hasRemainingTakeForDate(remaining, 'roaccutan', logicalToday)) {
-            await syncTodayChecks({ roacuttan: false });
+        const affectsDate = target?.logical_date || (target?.at ? localDateKey(new Date(target.at)) : '');
+        const affectsChecks = target?.type === 'roaccutan_take' || target?.type === 'dinner_combo_take' || target?.type === 'habit_toggle';
+        if(affectsChecks && affectsDate) {
+          if(deltas.roaccutan < 0 && !hasRemainingTakeForDate(remaining, 'roaccutan', affectsDate)) {
+            await syncTodayChecks({ roacuttan: false }, affectsDate);
           }
-          if(deltas.roaccutan > 0 && !todayMedsState.roacuttan) {
-            await syncTodayChecks({ roacuttan: true });
+          if(deltas.roaccutan > 0) {
+            await syncTodayChecks({ roacuttan: true }, affectsDate);
           }
-          if(deltas.combo < 0 && (medStateForAffectedDate.finasteride || medStateForAffectedDate.minoxidil) && !hasRemainingTakeForDate(remaining, 'combo', affectsDate || logicalToday)) {
-            await syncTodayChecks({ finasteride: false, minoxidil: false }, affectsDate || undefined);
+          if(deltas.combo < 0 && !hasRemainingTakeForDate(remaining, 'combo', affectsDate)) {
+            await syncTodayChecks({ finasteride: false, minoxidil: false }, affectsDate);
           }
-          if(deltas.combo > 0 && (!medStateForAffectedDate.finasteride || !medStateForAffectedDate.minoxidil)) {
-            await syncTodayChecks({ finasteride: true, minoxidil: true }, affectsDate || undefined);
+          if(deltas.combo > 0) {
+            await syncTodayChecks({ finasteride: true, minoxidil: true }, affectsDate);
           }
         }
       };
@@ -6297,9 +6295,12 @@
         d.setHours(0,0,0,0);
         return d;
       })();
+      const startOfWeekKey = localDateKey(startOfWeek);
       const weekRealTakes = fullHistory.filter(entry => {
-        const at = entry?.at ? new Date(entry.at) : null;
-        if(!at || Number.isNaN(at.getTime()) || at < startOfWeek) return false;
+        const logicalKey = entry?.logical_date || (entry?.at ? localDateKey(new Date(entry.at)) : '');
+        if(!logicalKey) return false;
+        const logicalDate = new Date(`${logicalKey}T12:00:00`);
+        if(Number.isNaN(logicalDate.getTime()) || logicalKey < startOfWeekKey) return false;
         return entry?.type === 'roaccutan_take' || entry?.type === 'dinner_combo_take';
       });
       const weekRoaccutanTakes = weekRealTakes.filter(entry => entry?.type === 'roaccutan_take').length;
@@ -8484,7 +8485,10 @@
             const medMap = { meds:'roacuttan', meds2:'dinner_combo' };
             const medKey = medMap[medId];
             if(medKey && date) {
-              const effectiveDate = medKey === 'dinner_combo' ? getDinnerLogicalDateKey(new Date(`${date}T12:00:00`)) : date;
+              const now = new Date();
+              const effectiveDate = medKey === 'dinner_combo'
+                ? (date === localDateKey(now) ? getDinnerLogicalDateKey(now) : date)
+                : date;
               const patchPromise = medKey === 'dinner_combo'
                 ? Promise.all([
                     supabase.rpc('patch_med_status', { p_date: effectiveDate, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
@@ -8515,7 +8519,10 @@
             // Esperar a que haya sesión activa antes de persistir
             supabase.auth.getSession().then(({ data: { session: sess } }) => {
               if(!sess) return;
-              const effectiveDate = medKey === 'dinner_combo' ? getDinnerLogicalDateKey(new Date(`${pendingMedDate}T12:00:00`)) : pendingMedDate;
+              const now = new Date();
+              const effectiveDate = medKey === 'dinner_combo'
+                ? (pendingMedDate === localDateKey(now) ? getDinnerLogicalDateKey(now) : pendingMedDate)
+                : pendingMedDate;
               const patchPromise = medKey === 'dinner_combo'
                 ? Promise.all([
                     supabase.rpc('patch_med_status', { p_date: effectiveDate, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
@@ -8792,7 +8799,9 @@
         const allowedDate = isDinnerMed ? dinnerLogicalDate : todayDate;
         if(selectedDate !== allowedDate) return;
 
-        const prevMeds = tracker?.meds || {};
+        const { weekKey: targetWeekKey, dayIdx: targetDayIdx } = getWeekAndDayFromDateKey(selectedDate);
+        const targetTrackerDay = allWeeks[targetWeekKey]?.tracker?.[targetDayIdx] || newDay();
+        const prevMeds = targetTrackerDay?.meds || {};
         const prevVal = !!prevMeds[med];
         const normalizedNext = !!nextVal;
         if(prevVal === normalizedNext) return;
