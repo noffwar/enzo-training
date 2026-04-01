@@ -319,8 +319,105 @@
     };
 
     const ROUTINES_KEY = 'enzo_routines_v1'; // legado — solo para migración inicial
+    const mkSet = (reps, weight, rir, restSecs, restStr) => ({
+      reps: String(reps),
+      weight: String(weight),
+      rir: String(rir),
+      restSecs,
+      restStr
+    });
+
+    const trainingPlanRoutines = {
+      "1": { id:"1", name:"Torso A", fullName:"DIA 1: Torso A", description:"Vector primario: empuje y tension mecanica", exercises:[
+        { name:"Press banca plano", sets:[mkSet("11","65,0","2",180,"3 min"),mkSet("9","65,0","1",180,"3 min"),mkSet("8","65,0","1",180,"3 min")] },
+        { name:"Remo 45° con barra", sets:[mkSet("13","40,0","2",150,"2,5 min"),mkSet("11","45,0","1",150,"2,5 min"),mkSet("9","50,0","1",150,"2,5 min")] },
+        { name:"Press militar en Smith", sets:[mkSet("12","40,0","2",120,"2 min"),mkSet("10","45,0","1",120,"2 min"),mkSet("8","50,0","1",120,"2 min")] },
+        { name:"Maquina de Jalon Dorsal Isolateral", sets:[mkSet("12","40,0","2",120,"2 min"),mkSet("10","45,0","1",120,"2 min"),mkSet("8","50,0","1",120,"2 min")] },
+        { name:"Hombro vuelo lateral", sets:[mkSet("15","9,0","2",90,"1,5 min"),mkSet("12","9,0","1",90,"1,5 min"),mkSet("10","9,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Encogimientos de Trapecio", sets:[mkSet("15","21,0","2",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min"),mkSet("12","25,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Cruces en polea alta", sets:[mkSet("15","15,0","1",90,"1,5 min"),mkSet("12","20,0","1",90,"1,5 min"),mkSet("12","20,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Cruces invertidos en polea", sets:[mkSet("15","5,0","1",90,"1,5 min"),mkSet("12","7,5","1",90,"1,5 min"),mkSet("12","7,5","0 (Fallo)",90,"1,5 min")] },
+        { name:"Push-up Plus", sets:[mkSet("15","Peso corporal","2",90,"1,5 min"),mkSet("15","Peso corporal","1",90,"1,5 min"),mkSet("Fallo tecnico","Peso corporal","0",90,"1,5 min")] }
+      ]},
+      "2": { id:"2", name:"Pierna A + Brazos A", fullName:"DIA 2: Pierna A y Brazos A", description:"Vector primario: cuadriceps, gemelos, brazos y core", exercises:[
+        { name:"Sentadilla Smith", sets:[mkSet("10","30,0","2",180,"3 min"),mkSet("8","40,0","1",180,"3 min"),mkSet("8","50,0","1",180,"3 min")] },
+        { name:"Peso muerto mancuernas (Rumano)", sets:[mkSet("10","20,0","2",150,"2,5 min"),mkSet("8","25,0","2",150,"2,5 min"),mkSet("8","25,0","1",150,"2,5 min")] },
+        { name:"Maquina cuadriceps (Extensiones Bilaterales)", sets:[mkSet("15","35,0","2",90,"1,5 min"),mkSet("12","40,0","1",90,"1,5 min"),mkSet("10","45,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Curl femoral tumbado", sets:[mkSet("15","25,0","2",90,"1,5 min"),mkSet("12","30,0","1",90,"1,5 min"),mkSet("10","35,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Aductores maquina", sets:[mkSet("15","65,0","1",90,"1,5 min"),mkSet("12","70,0","0 (Fallo)",90,"1,5 min"),mkSet("12","70,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Elevacion de Gemelos de pie", sets:[mkSet("Metodo 7-7-7","40,0","2",90,"1,5 min"),mkSet("Metodo 7-7-7","60,0","1",90,"1,5 min"),mkSet("Metodo 7-7-7","70,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Soleos banco", sets:[mkSet("20","20,0","2",90,"1,5 min"),mkSet("18","22,5","1",90,"1,5 min"),mkSet("15","25,0","1",90,"1,5 min"),mkSet("15","25,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Curl Biceps Martillo mancuernas", sets:[mkSet("12","10,0","1",90,"1,5 min"),mkSet("10","12,5","1",90,"1,5 min"),mkSet("10","12,5","0 (Fallo)",90,"1,5 min")] },
+        { name:"Triceps polea con barra", sets:[mkSet("15","35,0","2",90,"1,5 min"),mkSet("12","40,0","1",90,"1,5 min"),mkSet("10","45,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Crunch en polea alta", sets:[mkSet("15","20,0","1",90,"1,5 min"),mkSet("15","20,0","1",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min")] },
+        { name:"Pallof Press", sets:[mkSet("12","10,0","1",90,"1,5 min"),mkSet("12","10,0","1",90,"1,5 min"),mkSet("12","15,0","1",90,"1,5 min")] },
+        { name:"Elevaciones de Tibial", sets:[mkSet("20","Peso corporal","2",90,"1,5 min"),mkSet("15","Peso corporal","1",90,"1,5 min"),mkSet("Fallo tecnico","Peso corporal","0",90,"1,5 min")] }
+      ]},
+      "3": { id:"3", name:"Accesorios + Core", fullName:"DIA 3: Accesorios y Core", description:"Vector primario: hombro lateral, brazos y estabilidad", exercises:[
+        { name:"Hombro vuelo lateral", sets:[mkSet("15","9,0","2",90,"1,5 min"),mkSet("12","9,0","1",90,"1,5 min"),mkSet("10","9,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Encogimientos de Trapecio", sets:[mkSet("15","21,0","2",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min"),mkSet("12","25,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Curl Biceps Martillo mancuernas", sets:[mkSet("12","10,0","1",90,"1,5 min"),mkSet("10","12,5","1",90,"1,5 min"),mkSet("10","12,5","0 (Fallo)",90,"1,5 min")] },
+        { name:"Mancuernas biceps supino", sets:[mkSet("15","10,0","2",90,"1,5 min"),mkSet("12","12,5","1",90,"1,5 min"),mkSet("10","12,5","0 (Fallo)",90,"1,5 min")] },
+        { name:"Triceps polea con barra", sets:[mkSet("15","35,0","2",90,"1,5 min"),mkSet("12","40,0","1",90,"1,5 min"),mkSet("10","45,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Triceps polea soga", sets:[mkSet("15","25,0","2",90,"1,5 min"),mkSet("12","30,0","1",90,"1,5 min"),mkSet("10","35,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Crunch en polea alta", sets:[mkSet("15","20,0","1",90,"1,5 min"),mkSet("15","20,0","1",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min")] },
+        { name:"Pallof Press", sets:[mkSet("12","10,0","1",90,"1,5 min"),mkSet("12","10,0","1",90,"1,5 min"),mkSet("12","15,0","1",90,"1,5 min")] }
+      ]},
+      "4": { id:"4", name:"Torso B", fullName:"DIA 4: Torso B", description:"Vector primario: traccion y postura", exercises:[
+        { name:"Dominadas prono y neutras", sets:[mkSet("Max.","Peso propio","1",150,"2,5 min"),mkSet("Max.","Peso propio","1",150,"2,5 min"),mkSet("Max.","Peso propio","1",150,"2,5 min")] },
+        { name:"Press inclinado mancuernas", sets:[mkSet("12","17,5","2",150,"2,5 min"),mkSet("10","20,0","1",150,"2,5 min"),mkSet("8","20,0","1",150,"2,5 min")] },
+        { name:"Remo sentado en maquina unilateral", sets:[mkSet("12","20,0","2",90,"1,5 min"),mkSet("10","25,0","1",90,"1,5 min"),mkSet("8","30,0","1",90,"1,5 min")] },
+        { name:"Mariposa (Pectoral)", sets:[mkSet("15","40,0","2",90,"1,5 min"),mkSet("12","50,0","1",90,"1,5 min"),mkSet("10","55,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Facepull en Polea Alta", sets:[mkSet("15","15,0","2",90,"1,5 min"),mkSet("12","20,0","1",90,"1,5 min"),mkSet("12","20,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Hombro vuelo lateral en polea baja", sets:[mkSet("15","5,0","2",90,"1,5 min"),mkSet("12","5,0","1",90,"1,5 min"),mkSet("12","5,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Push-up Plus", sets:[mkSet("15","Peso corporal","2",90,"1,5 min"),mkSet("15","Peso corporal","1",90,"1,5 min"),mkSet("Fallo tecnico","Peso corporal","0",90,"1,5 min")] }
+      ]},
+      "5": { id:"5", name:"Pierna B + Brazos B", fullName:"DIA 5: Pierna B y Brazos B", description:"Vector primario: asimetria, gluteos, lumbares, brazos y core", exercises:[
+        { name:"Hip Thrust con Maquina", sets:[mkSet("12","60,0","2",150,"2,5 min"),mkSet("10","70,0","2",150,"2,5 min"),mkSet("8","80,0","1",150,"2,5 min")] },
+        { name:"Sentadilla Bulgara en Smith", sets:[mkSet("12","20,0","2",120,"2 min"),mkSet("10","25,0","1",120,"2 min"),mkSet("10","25,0","1",120,"2 min")] },
+        { name:"Curl femoral sentado", sets:[mkSet("10","30,0","2",90,"1,5 min"),mkSet("9","35,0","1",90,"1,5 min"),mkSet("8","40,0","0 (Fallo)",90,"1,5 min"),mkSet("15","60,0","1",90,"1,5 min"),mkSet("12","65,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Maquina cuadriceps unilateral", sets:[mkSet("15","20,0","2",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min"),mkSet("10","30,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Abductores maquina", sets:[mkSet("15","50,0","2",90,"1,5 min"),mkSet("12","55,0","1",90,"1,5 min"),mkSet("12","60,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Elevacion de Gemelos (Prensa)", sets:[mkSet("15","70,0","2",90,"1,5 min"),mkSet("12","80,0","1",90,"1,5 min"),mkSet("10","90,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Extensiones Lumbares en Banco Romano", sets:[mkSet("15","Peso corporal","2",90,"1,5 min"),mkSet("12","5,0","1",90,"1,5 min"),mkSet("12","5,0","1",90,"1,5 min")] },
+        { name:"Mancuernas biceps", sets:[mkSet("15","10,0","2",90,"1,5 min"),mkSet("12","12,5","1",90,"1,5 min"),mkSet("10","12,5","0 (Fallo)",90,"1,5 min")] },
+        { name:"Triceps polea soga", sets:[mkSet("15","25,0","2",90,"1,5 min"),mkSet("12","30,0","1",90,"1,5 min"),mkSet("10","35,0","0 (Fallo)",90,"1,5 min")] },
+        { name:"Elevacion de rodillas colgado", sets:[mkSet("Fallo tecnico (~15)","Peso corporal","0",90,"1,5 min"),mkSet("Fallo tecnico (~12)","Peso corporal","0",90,"1,5 min"),mkSet("Fallo tecnico (~10)","Peso corporal","0",90,"1,5 min"),mkSet("Fallo tecnico (~10)","Peso corporal","0",90,"1,5 min")] },
+        { name:"Elevaciones de Tibial", sets:[mkSet("20","Peso corporal","2",90,"1,5 min"),mkSet("15","Peso corporal","1",90,"1,5 min"),mkSet("Fallo tecnico","Peso corporal","0",90,"1,5 min")] }
+      ]}
+    };
+
+    const TRAINING_PLAN_START = '2026-03-16';
+    const TRAINING_PLAN_EFFECTIVE_WEEK = '2026-03-30';
+    const TRAINING_PLAN_VERSION = '2026-03-31-r1';
+    const PLAN_SPLITS = {
+      "4": { "1":"1", "2":"2", "3":"", "4":"4", "5":"5", "6":"", "0":"" },
+      "5": { "1":"1", "2":"2", "3":"3", "4":"4", "5":"5", "6":"", "0":"" }
+    };
+    const HOLIDAYS_2026 = {
+      "2026-01-01": "Ano Nuevo",
+      "2026-02-16": "Carnaval",
+      "2026-02-17": "Carnaval",
+      "2026-03-23": "Feriado turistico",
+      "2026-03-24": "Dia de la Memoria",
+      "2026-04-02": "Dia del Veterano y de los Caidos en Malvinas",
+      "2026-04-03": "Viernes Santo",
+      "2026-05-01": "Dia del Trabajador",
+      "2026-05-25": "Revolucion de Mayo",
+      "2026-06-15": "Paso a la Inmortalidad del General Guemes",
+      "2026-06-22": "Paso a la Inmortalidad del General Belgrano",
+      "2026-07-09": "Dia de la Independencia",
+      "2026-07-10": "Feriado turistico",
+      "2026-08-17": "Paso a la Inmortalidad del General San Martin",
+      "2026-10-12": "Respeto a la Diversidad Cultural",
+      "2026-11-23": "Dia de la Soberania Nacional",
+      "2026-12-07": "Feriado turistico",
+      "2026-12-08": "Inmaculada Concepcion de Maria",
+      "2026-12-25": "Navidad"
+    };
+
     const ROUTINES_SUPA_KEY = 'routines_v1'; // clave legacy en weekly_configs (ya no se usa para writes)
-    const DEFAULT_ROUTINES = defaultRoutines;
+    const DEFAULT_ROUTINES = trainingPlanRoutines;
 
     const loadRoutines = () => {
       // Prioridad: v3 namespace → legacy enzo_routines_v1 → defaults
@@ -383,6 +480,110 @@
     const MUSCLES = ["Pecho","Espalda","Hombros","Tríceps","Bíceps","Trapecio","Cuádriceps","Femorales","Glúteos","Pantorrillas","Lumbares","Aductores"];
     const DAYS = [{key:"1",label:"Lun",abbr:"L"},{key:"2",label:"Mar",abbr:"M"},{key:"3",label:"Mié",abbr:"X"},{key:"4",label:"Jue",abbr:"J"},{key:"5",label:"Vie",abbr:"V"},{key:"6",label:"Sáb",abbr:"S"},{key:"0",label:"Dom",abbr:"D"}];
 
+    Object.assign(muscleMap, {
+      "Press militar en Smith":{direct:["Hombros"],indirect:["Triceps"]},
+      "Maquina de Jalon Dorsal Isolateral":{direct:["Espalda"],indirect:["Biceps"]},
+      "Encogimientos de Trapecio":{direct:["Trapecio"],indirect:[]},
+      "Cruces en polea alta":{direct:["Pecho"],indirect:["Hombros"]},
+      "Cruces invertidos en polea":{direct:["Hombros"],indirect:["Trapecio","Espalda"]},
+      "Push-up Plus":{direct:["Hombros"],indirect:["Pecho","Core"]},
+      "Peso muerto mancuernas (Rumano)":{direct:["Femorales","Gluteos"],indirect:["Lumbares"]},
+      "Maquina cuadriceps (Extensiones Bilaterales)":{direct:["Cuadriceps"],indirect:[]},
+      "Curl femoral tumbado":{direct:["Femorales"],indirect:[]},
+      "Aductores maquina":{direct:["Aductores"],indirect:[]},
+      "Elevacion de Gemelos de pie":{direct:["Pantorrillas"],indirect:[]},
+      "Curl Biceps Martillo mancuernas":{direct:["Biceps"],indirect:[]},
+      "Triceps polea con barra":{direct:["Triceps"],indirect:[]},
+      "Crunch en polea alta":{direct:["Core"],indirect:[]},
+      "Pallof Press":{direct:["Core"],indirect:[]},
+      "Elevaciones de Tibial":{direct:["Pantorrillas"],indirect:[]},
+      "Mancuernas biceps supino":{direct:["Biceps"],indirect:[]},
+      "Dominadas prono y neutras":{direct:["Espalda"],indirect:["Biceps"]},
+      "Remo sentado en maquina unilateral":{direct:["Espalda"],indirect:["Biceps"]},
+      "Mariposa (Pectoral)":{direct:["Pecho"],indirect:[]},
+      "Facepull en Polea Alta":{direct:["Hombros"],indirect:["Trapecio","Espalda"]},
+      "Hombro vuelo lateral en polea baja":{direct:["Hombros"],indirect:[]},
+      "Hip Thrust con Maquina":{direct:["Gluteos"],indirect:["Femorales"]},
+      "Sentadilla Bulgara en Smith":{direct:["Cuadriceps","Gluteos"],indirect:[]},
+      "Curl femoral sentado":{direct:["Femorales"],indirect:[]},
+      "Maquina cuadriceps unilateral":{direct:["Cuadriceps"],indirect:[]},
+      "Abductores maquina":{direct:["Gluteos"],indirect:["Aductores"]},
+      "Elevacion de Gemelos (Prensa)":{direct:["Pantorrillas"],indirect:[]},
+      "Extensiones Lumbares en Banco Romano":{direct:["Lumbares"],indirect:["Gluteos","Femorales"]},
+      "Mancuernas biceps":{direct:["Biceps"],indirect:[]},
+      "Triceps polea soga":{direct:["Triceps"],indirect:[]},
+      "Elevacion de rodillas colgado":{direct:["Core"],indirect:[]}
+    });
+
+    const DAY_KEYS = DAYS.map(d => d.key);
+    ['Triceps','Biceps','Cuadriceps','Gluteos','Core'].forEach(m => {
+      if(!MUSCLES.includes(m)) MUSCLES.push(m);
+    });
+    const MUSCLE_ALIASES = {
+      'Tríceps': 'Triceps',
+      'Bíceps': 'Biceps',
+      'Cuádriceps': 'Cuadriceps',
+      'Glúteos': 'Gluteos',
+      'Abdomen': 'Core'
+    };
+    const canonicalMuscleName = (muscle='') => {
+      const raw = String(muscle || '').trim();
+      if(!raw) return '';
+      const normalized = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return MUSCLE_ALIASES[raw] || MUSCLE_ALIASES[normalized] || normalized;
+    };
+
+    const buildPlanDayMapping = (mode='4', weekKey='') => {
+      const split = String(mode) === '5' ? ['1','2','3','4','5'] : ['1','2','4','5'];
+      const mapping = { "1":"", "2":"", "3":"", "4":"", "5":"", "6":"", "0":"", _planMode: String(mode) };
+      let consecutive = 0;
+      DAY_KEYS.forEach(key => {
+        const closed = weekKey ? isGymClosedDate(getDayDate(weekKey, parseInt(key, 10))) : key === '0';
+        if(closed) { consecutive = 0; return; }
+        if(String(mode) === '4' && consecutive >= 2) { consecutive = 0; return; }
+        const nextRoutine = split.shift() || '';
+        if(nextRoutine) {
+          mapping[key] = nextRoutine;
+          consecutive += 1;
+        } else {
+          consecutive = 0;
+        }
+      });
+      return mapping;
+    };
+
+    const getPlanMode = (weekData) => String(weekData?.dayMapping?._planMode || '4');
+    const getRoutineAssignments = (weekData) => DAY_KEYS.reduce((acc, key) => {
+      const value = weekData?.dayMapping?.[key];
+      acc[key] = typeof value === 'string' ? value : '';
+      return acc;
+    }, {});
+
+    const isHoliday2026 = (dateStr='') => dateStr.startsWith('2026-') && !!HOLIDAYS_2026[dateStr];
+    const getHolidayLabel = (dateStr='') => HOLIDAYS_2026[dateStr] || '';
+    const isSundayDate = (dateStr='') => {
+      if(!dateStr) return false;
+      const dt = new Date(`${dateStr}T12:00:00`);
+      return dt.getDay() === 0;
+    };
+    const isGymClosedDate = (dateStr='') => isSundayDate(dateStr) || isHoliday2026(dateStr);
+
+    const weekDiffFromStart = (weekKey='') => {
+      const base = new Date(`${TRAINING_PLAN_START}T12:00:00`);
+      const week = new Date(`${weekKey}T12:00:00`);
+      return Math.floor((week - base) / (7 * 24 * 3600 * 1000));
+    };
+    const isDeloadWeek = (weekKey='') => {
+      const diff = weekDiffFromStart(weekKey);
+      return diff >= 6 && diff % 6 === 0;
+    };
+    const didTrainDay = (weekData, dayKey) => {
+      const session = weekData?.sessions?.[dayKey] || [];
+      const hasCompletedSet = session.some(ex => (ex?.sets || []).some(set => !!set.completed));
+      const trackerDay = weekData?.tracker?.[dayKey] || {};
+      return hasCompletedSet || !!trackerDay.gymStartTime || !!trackerDay.gymEndTime;
+    };
+
     const normalizeExerciseKey = (text='') =>
       String(text || '')
         .normalize('NFD')
@@ -400,6 +601,85 @@
         if(key === target || key.includes(target) || target.includes(key)) return info;
       }
       return null;
+    };
+
+    const DELOAD_REP_OVERRIDES = {
+      "1": {
+        "Press banca plano": ["7","6"],
+        "Remo 45° con barra": ["9","7"],
+        "Press militar en Smith": ["8","6"],
+        "Maquina de Jalon Dorsal Isolateral": ["9","7"],
+        "Hombro vuelo lateral": ["10","8"],
+        "Encogimientos de Trapecio": ["10","8"],
+        "Cruces en polea alta": ["10","8"],
+        "Cruces invertidos en polea": ["10","8"],
+        "Push-up Plus": ["8","8"]
+      },
+      "2": {
+        "Sentadilla Smith": ["8","6"],
+        "Peso muerto mancuernas (Rumano)": ["6","5"],
+        "Maquina cuadriceps (Extensiones Bilaterales)": ["10","8"],
+        "Curl femoral tumbado": ["10","8"],
+        "Aductores maquina": ["10","8"],
+        "Elevacion de Gemelos de pie": ["Metodo 5-5-5","Metodo 5-5-5"],
+        "Soleos banco": ["14","12"],
+        "Curl Biceps Martillo mancuernas": ["8","6"],
+        "Triceps polea con barra": ["10","8"],
+        "Crunch en polea alta": ["10","8"],
+        "Pallof Press": ["10","8"],
+        "Elevaciones de Tibial": ["10","10"]
+      },
+      "4": {
+        "Dominadas prono y neutras": ["6","5"],
+        "Press inclinado mancuernas": ["8","6"],
+        "Remo sentado en maquina unilateral": ["8","6"],
+        "Mariposa (Pectoral)": ["10","8"],
+        "Facepull en Polea Alta": ["10","8"],
+        "Hombro vuelo lateral en polea baja": ["8","8"],
+        "Push-up Plus": ["8","8"]
+      },
+      "5": {
+        "Hip Thrust con Maquina": ["8","7"],
+        "Sentadilla Bulgara en Smith": ["8","6"],
+        "Curl femoral sentado": ["6","8"],
+        "Maquina cuadriceps unilateral": ["10","8"],
+        "Abductores maquina": ["10","8"],
+        "Elevacion de Gemelos (Prensa)": ["10","8"],
+        "Extensiones Lumbares en Banco Romano": ["10","8"],
+        "Mancuernas biceps": ["10","6"],
+        "Triceps polea soga": ["10","8"],
+        "Elevacion de rodillas colgado": ["8","10"],
+        "Elevaciones de Tibial": ["10","10"]
+      }
+    };
+
+    const buildDeloadSets = (routineId, exercise) => {
+      const overrides = DELOAD_REP_OVERRIDES[routineId] || {};
+      const repPair = overrides[exercise.name];
+      const sourceSets = Array.isArray(exercise.sets) ? exercise.sets : [];
+      const baseSets = sourceSets.slice(0, 2);
+      if(baseSets.length === 0) return [];
+      const result = baseSets.map((set, idx) => ({
+        ...set,
+        reps: repPair?.[idx] || set.reps,
+        rir: '4-5'
+      }));
+      return result;
+    };
+
+    const getRoutineForWeek = (routineId, routineData, weekKey) => {
+      const baseRoutine = routineData?.[routineId];
+      if(!baseRoutine) return null;
+      if(!isDeloadWeek(weekKey)) return baseRoutine;
+      return {
+        ...baseRoutine,
+        name: `${baseRoutine.name} · Descarga`,
+        description: `${baseRoutine.description} · Semana de descarga`,
+        exercises: baseRoutine.exercises.map(ex => ({
+          ...ex,
+          sets: buildDeloadSets(routineId, ex)
+        }))
+      };
     };
 
     // Objetivos nutricionales diarios
@@ -763,7 +1043,7 @@
         const dateObj = new Date(date+'T12:00:00');
         const wkKey   = getWeekKey(dateObj);
         const dayIdx  = dateObj.getDay();
-        if(!result[wkKey]) result[wkKey] = hydrate(newWeek());
+        if(!result[wkKey]) result[wkKey] = hydrate(newWeek(wkKey));
         const { _session, _updatedAt, _revision, _dirty, ...dayClean } = dayData || {};
         if(_session) result[wkKey].sessions = { ...result[wkKey].sessions, [dayIdx]: _session };
         result[wkKey].tracker[dayIdx] = { ...newDay(), ...dayClean, meals: Array.isArray(dayClean?.meals)?dayClean.meals:newDay().meals };
@@ -855,8 +1135,8 @@
       (acc, m) => { const t=mealTotals(m); return { cals:acc.cals+t.cals, prot:acc.prot+t.prot, carb:acc.carb+t.carb, fat:acc.fat+t.fat }; },
       { cals:0, prot:0, carb:0, fat:0 }
     );
-    const newWeek = () => ({
-      dayMapping:{1:'1',2:'2',3:'',4:'4',5:'5',6:'',0:''},
+    const newWeek = (weekKey='') => ({
+      dayMapping:buildPlanDayMapping('4', weekKey),
       sessions:{},
       bodyWeight: '', // kg del lunes de esa semana
       tracker:{0:newDay(),1:newDay(),2:newDay(),3:newDay(),4:newDay(),5:newDay(),6:newDay()}
@@ -865,9 +1145,9 @@
     // Combina datos de la nube con la estructura base para garantizar que
     // dayMapping, sessions y tracker siempre existan con los campos correctos
     const hydrate = (data) => {
-      const base = newWeek();
+      const base = newWeek(data?.weekKey || '');
       const result = {
-        dayMapping:  { ...base.dayMapping, ...(data?.dayMapping || {}) },
+        dayMapping:  { ...base.dayMapping, ...(data?.dayMapping || {}), _planMode: String(data?.dayMapping?._planMode || base.dayMapping._planMode || '4') },
         sessions:    { ...(data?.sessions  || {}) },
         bodyWeight:  data?.bodyWeight || '',
         tracker:     { ...base.tracker }
@@ -1158,6 +1438,18 @@
           due: !lastBackupAt || hours >= 72
         });
       }, []);
+
+      useEffect(() => {
+        refreshBackupMeta();
+        const onFocus = () => refreshBackupMeta();
+        const onVisible = () => { if(document.visibilityState === 'visible') refreshBackupMeta(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [refreshBackupMeta]);
 
       // Obtener estado del SW al montar
       useEffect(() => {
@@ -1934,23 +2226,47 @@
 
       useEffect(() => {
         let cancelled = false;
-        setRecipesLoading(true);
-        setRecipesError('');
-        getRecipes()
-          .then((rows) => {
-            if(cancelled) return;
-            setSavedRecipes(rows || []);
-          })
-          .catch((e) => {
-            if(cancelled) return;
-            setRecipesError(e.message || 'No se pudieron cargar las recetas.');
-          })
-          .finally(() => {
-            if(cancelled) return;
-            setRecipesLoading(false);
-          });
-        return () => { cancelled = true; };
+        const refreshRecipes = () => {
+          setRecipesLoading(true);
+          setRecipesError('');
+          recipesRef.current = null;
+          getRecipes()
+            .then((rows) => {
+              if(cancelled) return;
+              setSavedRecipes(rows || []);
+            })
+            .catch((e) => {
+              if(cancelled) return;
+              setRecipesError(e.message || 'No se pudieron cargar las recetas.');
+            })
+            .finally(() => {
+              if(cancelled) return;
+              setRecipesLoading(false);
+            });
+        };
+        refreshRecipes();
+        const onFocus = () => refreshRecipes();
+        const onVisible = () => { if(document.visibilityState === 'visible') refreshRecipes(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          cancelled = true;
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
       }, []);
+
+      const pushRecipeSuggestionIntoDraft = (mealIndex, recipeName) => {
+        const current = String(t.meals?.[mealIndex]?.aiDraft || '').trim();
+        const next = current ? `${current}, ${recipeName}` : recipeName;
+        onMeal(mealIndex, 'aiDraft', next);
+      };
+
+      const clearMealDraft = (mealIndex) => {
+        onMeal(mealIndex, 'aiDraft', '');
+        setAiError(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
+        setRecipeMsg(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
+      };
 
       // analyzeMeal: llama a la IA y agrega el resultado como item a la leyenda
       const analyzeMeal = async (mealIndex) => {
@@ -2269,6 +2585,17 @@
                 const mTotals  = mealTotals(m);
                 const loading  = aiLoading[i];
                 const errMsg   = aiError[i];
+                const draftText = String(m.aiDraft || '').trim();
+                const recipeSuggestions = (savedRecipes || [])
+                  .filter(r => {
+                    const name = String(r.recipe_name || '').trim();
+                    if(!name) return false;
+                    if(!draftText) return true;
+                    const normName = normalizeFoodText(name);
+                    const draftTokens = normalizeFoodText(draftText).split(' ').filter(Boolean);
+                    return draftTokens.some(tok => tok.length >= 2 && normName.includes(tok));
+                  })
+                  .slice(0, draftText ? 4 : 5);
 
                 return html`
                   <div style="padding:10px;border-radius:8px;background:rgba(22,32,53,0.6);border:1px solid #1E2D45;">
@@ -2285,6 +2612,15 @@
                         style="flex:1;background:#0a0f1e;border:1px solid #2A3F5F;border-radius:8px;padding:7px 10px;font-size:12px;color:#e2e8f0;font-family:'Barlow',sans-serif;"
                         disabled=${loading}
                       />
+                      ${draftText && html`
+                        <button
+                          onClick=${()=>clearMealDraft(i)}
+                          title="Limpiar borrador"
+                          style="padding:7px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#FCA5A5;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;cursor:pointer;"
+                        >
+                          LIMPIAR
+                        </button>
+                      `}
                       <button
                         onClick=${()=>analyzeMeal(i)}
                         disabled=${loading||!String(m.aiDraft||'').trim()}
@@ -2298,6 +2634,20 @@
                         <span>${loading?'...':'IA'}</span>
                       </button>
                     </div>
+
+                    ${recipeSuggestions.length > 0 && html`
+                      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 8px;">
+                        ${recipeSuggestions.map(recipe => html`
+                          <button
+                            onClick=${()=>pushRecipeSuggestionIntoDraft(i, recipe.recipe_name)}
+                            title="Usar receta guardada"
+                            style="padding:5px 9px;border-radius:999px;border:1px solid rgba(16,185,129,0.22);background:rgba(16,185,129,0.08);color:#86EFAC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.04em;cursor:pointer;"
+                          >
+                            + ${recipe.recipe_name}
+                          </button>
+                        `)}
+                      </div>
+                    `}
 
                     <!-- Error IA -->
                     ${errMsg && html`<p style="margin:0 0 6px;font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">❌ ${errMsg}</p>`}
@@ -2426,10 +2776,14 @@
     // ═══════════════════════════════════════════════════
     //  PANEL GYM
     // ═══════════════════════════════════════════════════
-    const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload}) => {
+    const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload, onCompleteSession, onResetSessionChecks}) => {
       const [open,setOpen] = useState(true);
       if(!session||session.length===0) return null;
       const safeT = { gymStartTime:'', gymEndTime:'', ...t };
+      const totalSets = session.reduce((acc, ex) => acc + (ex.sets?.length || 0), 0);
+      const completedSets = session.reduce((acc, ex) => acc + ex.sets.filter(s => s.completed).length, 0);
+      const completedExercises = session.filter(ex => ex.sets.length > 0 && ex.sets.every(s => s.completed)).length;
+      const progressPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
 
       // Detecta ejercicios donde se superaron las reps objetivo en al menos 1 serie
       const overloadCandidates = session.filter(ex =>
@@ -2449,6 +2803,34 @@
                   <input type="time" value=${safeT[k]||''} onInput=${e=>onHabit(k,e.target.value)} class="inp-sm"/>
                 </div>
               `)}
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;margin-bottom:12px;">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              ${[
+                { label:'Series', value:`${completedSets}/${totalSets}`, color:'#10B981' },
+                { label:'Ejercicios', value:`${completedExercises}/${session.length}`, color:'#6366F1' },
+                { label:'Progreso', value:`${progressPct}%`, color:'#F59E0B' }
+              ].map(stat => html`
+                <div style="padding:8px;border-radius:8px;background:#0F1729;border:1px solid #1E2D45;text-align:center;">
+                  <p style="margin:0;font-size:9px;text-transform:uppercase;color:#64748b;">${stat.label}</p>
+                  <p style="margin:2px 0 0;font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${stat.color};">${stat.value}</p>
+                </div>
+              `)}
+            </div>
+            <div style="height:8px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;">
+              <div style=${`width:${progressPct}%;height:100%;background:linear-gradient(90deg,#10B981,#6366F1);transition:width 0.3s ease;`}></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <button onClick=${()=>onCompleteSession&&onCompleteSession()}
+                style="padding:7px 12px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                COMPLETAR SESION
+              </button>
+              <button onClick=${()=>onResetSessionChecks&&onResetSessionChecks()}
+                style="padding:7px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.28);background:rgba(239,68,68,0.10);color:#FCA5A5;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                REINICIAR CHECKS
+              </button>
             </div>
           </div>
 
@@ -2541,11 +2923,11 @@
     // ═══════════════════════════════════════════════════
     //  SEMANA RESUMEN
     // ═══════════════════════════════════════════════════
-    const WeekSummary = ({weekData}) => {
+    const WeekSummary = ({weekData, weekKey}) => {
       const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } = getRC();
       const sessions = weekData?.sessions || {};
       const tracker  = weekData?.tracker  || {};
-      const weeklyGymGoal = 4;
+      const weeklyGymGoal = getPlanMode(weekData) === '5' ? 5 : 4;
       const canRenderBarCharts = !!(BarChart && Bar && XAxis && YAxis && CartesianGrid && Tooltip && ResponsiveContainer);
       const canRenderVolumeChart = canRenderBarCharts && ReferenceLine;
 
@@ -2573,16 +2955,23 @@
       }));
 
       // ── Días de entrenamiento
-      const trainingDays = Object.values(weekData?.dayMapping||{}).filter(v=>v!=='').length;
+      const trainingDays = Object.values(getRoutineAssignments(weekData)).filter(v=>v!=='').length;
 
       // ── Volumen muscular
-      const vol = {}; MUSCLES.forEach(m=>vol[m]={direct:0,indirect:0});
+      const canonicalMuscles = Array.from(new Set(MUSCLES.map(m => canonicalMuscleName(m)).filter(Boolean)));
+      const vol = {}; canonicalMuscles.forEach(m=>vol[m]={direct:0,indirect:0});
       Object.values(sessions).forEach(s=>s&&s.forEach(ex=>{
         const done=ex.sets.filter(s=>s.completed).length;
         const muscles = resolveMuscleInfo(ex.name);
         if(done>0 && muscles){
-          muscles.direct.forEach(m=>{if(vol[m])vol[m].direct+=done;});
-          muscles.indirect.forEach(m=>{if(vol[m])vol[m].indirect+=done;});
+          muscles.direct.forEach(m=>{
+            const key = canonicalMuscleName(m);
+            if(vol[key]) vol[key].direct += done;
+          });
+          muscles.indirect.forEach(m=>{
+            const key = canonicalMuscleName(m);
+            if(vol[key]) vol[key].indirect += done;
+          });
         }
       }));
       const volumeScaleMax = Math.max(20, ...Object.values(vol).map(v => (v.direct + v.indirect)), 0);
@@ -2612,6 +3001,36 @@
         carb: Math.min(100, Math.round(wm.carb  / (carbsTargetWeekly||1) * 100)),
         fat:  Math.min(100, Math.round(wm.fat   / (TARGETS.fat*7)        * 100)),
         kcal: Math.min(100, Math.round(wm.cals  / (TARGETS.kcal*7)       * 100)),
+      };
+
+      const exportWeekMetrics = () => {
+        try {
+          const payload = {
+            app: 'enzo-training-week',
+            exported_at: new Date().toISOString(),
+            week_key: weekKey || '',
+            summary: {
+              training_days: trainingDays,
+              weekly_gym_goal: weeklyGymGoal,
+              total_steps: totalSteps,
+              total_water_ml: totalWater,
+              sleep_avg: Number(sleepAvg.toFixed(2)),
+              macros_week: wm,
+              macro_adherence: macroAdh,
+              med_adherence: medAdherence,
+              volume: volumeData
+            }
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `semana-${String(weekKey || 'actual')}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch(_) {}
       };
 
       return html`
@@ -2781,6 +3200,19 @@
         if(onMount) { setLoadingAll(true); onMount().finally(()=>setLoadingAll(false)); }
       },[]);
 
+      useEffect(() => {
+        if(!onMount) return;
+        const rerun = () => { setLoadingAll(true); onMount().finally(()=>setLoadingAll(false)); };
+        const onFocus = () => rerun();
+        const onVisible = () => { if(document.visibilityState === 'visible') rerun(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [onMount]);
+
       // Años disponibles en el historial
       const availableYears = useMemo(()=>{
         const ys = new Set(Object.keys(allWeeks).filter(wk=>!isBeforeStart(wk)).map(wk=>wk.slice(0,4)));
@@ -2884,6 +3316,32 @@
       },[allWeeks]);
       const tooltipStyle = {background:'#0F1729',border:'1px solid #1E2D45',borderRadius:'8px',fontFamily:'JetBrains Mono,monospace',fontSize:'11px'};
 
+      const exportProgressData = () => {
+        try {
+          const payload = {
+            app: 'enzo-training-progress',
+            exported_at: new Date().toISOString(),
+            filters: { year: filterYear || null, month: filterMonth || null, exercise: selEx || null },
+            weekly_calories_target: weeklyCaloriesTarget,
+            weight_history: weightHistory,
+            exercise_history: exHistory,
+            calories_history: macHistory,
+            personal_records: personalRecords
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `progreso-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch(e) {
+          console.warn('[ProgressExportData]', e.message || e);
+        }
+      };
+
       if(Object.keys(allWeeks).length===0) return html`
         <${Card}>
           <div style="text-align:center;padding:32px 0;">
@@ -2924,6 +3382,14 @@
                   Reset
                 </button>
               `}
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;flex-wrap:wrap;">
+              <button onClick=${exportProgressData} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                EXPORTAR DATOS
+              </button>
+              <button onClick=${exportImage} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                EXPORTAR IMAGEN
+              </button>
             </div>
             <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">Progresion de Peso por Ejercicio</p>
             <select class="inp" style="margin-bottom:12px;" value=${selEx} onChange=${e=>setSelEx(e.target.value)}>
@@ -3265,7 +3731,17 @@
         }
       }, []);
 
-      useEffect(() => { loadRecipes(); }, [loadRecipes]);
+      useEffect(() => {
+        loadRecipes();
+        const onFocus = () => loadRecipes();
+        const onVisible = () => { if(document.visibilityState === 'visible') loadRecipes(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [loadRecipes]);
 
       const loadSweetsStock = useCallback(async () => {
         setSweetsLoading(true);
@@ -3298,7 +3774,41 @@
         }
       }, []);
 
-      useEffect(() => { loadSweetsStock(); }, [loadSweetsStock]);
+      useEffect(() => {
+        loadSweetsStock();
+        const onFocus = () => loadSweetsStock();
+        const onVisible = () => { if(document.visibilityState === 'visible') loadSweetsStock(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [loadSweetsStock]);
+
+      const exportRecipesLibrary = () => {
+        try {
+          const payload = {
+            app: 'enzo-training-recipes',
+            exported_at: new Date().toISOString(),
+            recipes: rows,
+            sweets_sauces_stock: sweetsStock
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `recetas-stock-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          setSweetsMsg('Biblioteca y stock exportados.');
+          setTimeout(() => setSweetsMsg(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo exportar la biblioteca.');
+        }
+      };
 
       const resetForm = () => {
         setEditingId(null);
@@ -3634,9 +4144,14 @@
             <div style="display:flex;flex-direction:column;gap:12px;">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                 <p style="margin:0;font-size:12px;color:#64748b;">Carga comidas o ingredientes con macros conocidos. Si escribis ese nombre en una comida, la app lo usa antes que Gemini.</p>
-                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadRecipes}>
-                  <${ISync} s=${16}/>
-                </button>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <button onClick=${exportRecipesLibrary} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                    EXPORTAR
+                  </button>
+                  <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadRecipes}>
+                    <${ISync} s=${16}/>
+                  </button>
+                </div>
               </div>
               ${error && html`<div style="padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
               <div style="display:flex;flex-direction:column;gap:8px;">
@@ -4478,7 +4993,17 @@
         }
       }, []);
 
-      useEffect(() => { loadBooks(); }, [loadBooks]);
+      useEffect(() => {
+        loadBooks();
+        const onFocus = () => loadBooks();
+        const onVisible = () => { if(document.visibilityState === 'visible') loadBooks(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [loadBooks]);
 
       useEffect(() => {
         if(!pomodoroActive) return;
@@ -4608,6 +5133,30 @@
         }
       };
 
+      const exportBookNotes = () => {
+        try {
+          const payload = {
+            app: 'enzo-training-books',
+            exported_at: new Date().toISOString(),
+            book,
+            notes
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `libros-${String(book.title || 'sin-titulo').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'notas'}-${new Date().toISOString().slice(0,10)}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          setNotice('Notas del libro exportadas.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudieron exportar las notas del libro.');
+        }
+      };
+
       const askBookAi = async () => {
         const question = String(chatDraft || '').trim();
         if(!question) return;
@@ -4726,6 +5275,9 @@
                     <button onClick=${summarizeBookSafe} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#BAE6FD;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                       ${summaryLoading ? 'RESUMIENDO...' : 'RESUMEN SEGURO'}
                     </button>
+                    <button onClick=${exportBookNotes} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                      EXPORTAR NOTAS
+                    </button>
                   </div>
                 </div>
 
@@ -4763,9 +5315,14 @@
                             <p style="margin:0 0 6px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${note.book_title} - pag ${note.current_page}</p>
                             <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.question || note.answer || ''}</p>
                           </div>
-                          <button onClick=${()=>deleteBookNote(note.id)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                            BORRAR
-                          </button>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                            <button onClick=${()=>passBookNoteToTask(note)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              TAREA
+                            </button>
+                            <button onClick=${()=>deleteBookNote(note.id)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              BORRAR
+                            </button>
+                          </div>
                         </div>
                       </div>
                     `)}
@@ -4827,7 +5384,41 @@
         }
       }, []);
 
-      useEffect(() => { loadHealth(); }, [loadHealth]);
+      useEffect(() => {
+        loadHealth();
+        const onFocus = () => loadHealth();
+        const onVisible = () => { if(document.visibilityState === 'visible') loadHealth(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [loadHealth]);
+
+      const exportHealthData = () => {
+        try {
+          const payload = {
+            app: 'enzo-training-health',
+            exported_at: new Date().toISOString(),
+            meds_stock: stock,
+            body_weight: bodyWeight || ''
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `salud-stock-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          setNotice('Datos de SALUD exportados.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudieron exportar los datos de salud.');
+        }
+      };
 
       const persistHealth = async (payload, okMsg='Salud guardada.') => {
         setSaving(true);
@@ -4932,9 +5523,14 @@
                 <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Salud / Blindex</p>
                 <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Stock real de medicacion, toma diaria y alerta de reposicion.</p>
               </div>
-              <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadHealth}>
-                <${ISync} s=${16}/>
-              </button>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <button onClick=${exportHealthData} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.12);color:#FCD34D;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                  EXPORTAR
+                </button>
+                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadHealth}>
+                  <${ISync} s=${16}/>
+                </button>
+              </div>
             </div>
             ${notice && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#FCD34D;font-size:12px;">${notice}</div>`}
             ${error && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
@@ -5036,7 +5632,7 @@
       `;
     };
 
-    const TodayDashboard = ({session, onOpenTasks, onOpenStudy, onOpenBooks, onOpenHealth, onOpenRecipes}) => {
+    const TodayDashboard = ({session, onOpenTasks, onOpenStudy, onOpenBooks, onOpenHealth, onOpenRecipes, onOpenNotif}) => {
       const [summary, setSummary] = useState({
         pending:0, dueToday:0, notes:0, high:0, nextTask:null,
         studyPending:0, studyDone:0, studySubjects:0,
@@ -5049,6 +5645,41 @@
         backupLabel:''
       });
       const [loading, setLoading] = useState(true);
+
+      const quickUpdateTask = useCallback(async (task, status) => {
+        if(!task?.id) return;
+        try {
+          const basePatch = {
+            status,
+            email_reminder_sent_at: status === 'pending' ? null : task.email_reminder_sent_at || null,
+            updated_at: new Date().toISOString()
+          };
+          const { error } = await supabase.from('tasks')
+            .update(basePatch)
+            .eq('id', task.id)
+            .eq('user_id', session.user.id);
+          if(error) throw error;
+
+          if(status === 'done' && (task.recurrence || 'none') !== 'none'){
+            const nextDueAt = computeNextRecurringDueAt(task);
+            const { error: nextErr } = await supabase.from('tasks').insert({
+              user_id: session.user.id,
+              title: task.title,
+              details: task.details || null,
+              subtasks: normalizeSubtasks(task.subtasks || []),
+              priority: task.priority || 'normal',
+              category: task.category || 'personal',
+              recurrence: task.recurrence || 'none',
+              status: 'pending',
+              auto_email_reminder: task.auto_email_reminder !== false,
+              due_at: nextDueAt,
+              email_reminder_sent_at: null
+            });
+            if(nextErr) throw nextErr;
+          }
+          loadSummary();
+        } catch(_) {}
+      }, [loadSummary, session.user.id]);
 
       const loadSummary = useCallback(async () => {
         setLoading(true);
@@ -5165,7 +5796,17 @@
         }
       }, [session.user.id]);
 
-      useEffect(() => { loadSummary(); }, [loadSummary]);
+      useEffect(() => {
+        loadSummary();
+        const onFocus = () => loadSummary();
+        const onVisible = () => { if(document.visibilityState === 'visible') loadSummary(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [loadSummary]);
 
       return html`
         <div class="glass-card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
@@ -5227,7 +5868,7 @@
             </button>
           </div>
           ${summary.backupDue && html`
-            <button onClick=${onOpenRecipes ? (()=>window.location.hash='') : undefined} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);cursor:default;">
+            <button onClick=${onOpenNotif} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);cursor:pointer;">
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#FCD34D;font-weight:700;">Backup recomendado</p>
               <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">Hace backup desde ALERTAS</p>
               <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.backupLabel || 'Pasaron mas de 72 horas sin backup manual.'}</p>
@@ -5242,6 +5883,19 @@
               <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;font-family:'JetBrains Mono',monospace;">
                 ${formatTaskDate(summary.nextTask.due_at)}
               </p>
+            `}
+            ${!loading && summary.nextTask && html`
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+                <button onClick=${()=>quickUpdateTask(summary.nextTask,'done')} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                  HECHA
+                </button>
+                <button onClick=${()=>quickUpdateTask(summary.nextTask,'archived')} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                  ARCHIVAR
+                </button>
+                <button onClick=${onOpenTasks} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                  ABRIR
+                </button>
+              </div>
             `}
           </div>
         </div>
@@ -5348,7 +6002,17 @@
         }
       }, [session.user.id]);
 
-      useEffect(() => { loadData(); }, [loadData]);
+      useEffect(() => {
+        loadData();
+        const onFocus = () => loadData();
+        const onVisible = () => { if(document.visibilityState === 'visible') loadData(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [loadData]);
 
       const addTask = async () => {
         if(!taskTitle.trim()) return;
@@ -6069,7 +6733,7 @@
               <div style="display:flex;flex-direction:column;gap:12px;">
                 ${[
                   ['Hoy', groupedPending.today],
-                  ['Manana', groupedPending.tomorrow],
+                  ['Mañana', groupedPending.tomorrow],
                   ['Esta semana', groupedPending.week],
                   ['Mas adelante', groupedPending.later],
                   ['Sin fecha', groupedPending.someday]
@@ -6537,13 +7201,33 @@
       const [timerLeft, setTimerLeft] = useState(0);
       const [timerActive, setTimerActive] = useState(false);
       const timerRef = useRef(null);
+
+      useEffect(() => {
+        if(metaGet('training_plan_version') === TRAINING_PLAN_VERSION) return;
+        metaSet('training_plan_version', TRAINING_PLAN_VERSION);
+        setRoutineData(trainingPlanRoutines);
+        saveRoutines(trainingPlanRoutines).catch(()=>{});
+        setAllWeeks(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(wkKey => {
+            if(!isDateKey(wkKey) || wkKey < TRAINING_PLAN_EFFECTIVE_WEEK) return;
+            const hydrated = hydrate(next[wkKey] || newWeek(wkKey));
+            const nextMapping = buildPlanDayMapping(getPlanMode(hydrated), wkKey);
+            next[wkKey] = { ...hydrated, dayMapping: { ...hydrated.dayMapping, ...nextMapping }, sessions: {} };
+          });
+          if(!next[TRAINING_PLAN_EFFECTIVE_WEEK]) {
+            next[TRAINING_PLAN_EFFECTIVE_WEEK] = newWeek(TRAINING_PLAN_EFFECTIVE_WEEK);
+          }
+          return next;
+        });
+      }, []);
       const prevTimerLeftRef = useRef(0);
       // Audio silencioso — necesario para que MediaSession funcione en background (Android)
       const audioRef = useRef(typeof Audio !== 'undefined'
         ? new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=')
         : null
       );
-      const [moduleAlerts, setModuleAlerts] = useState({ study:0, health:false, books:false, recipes:0 });
+      const [moduleAlerts, setModuleAlerts] = useState({ study:0, health:false, books:false, recipes:0, notif:false });
 
       const refreshModuleAlerts = useCallback(async () => {
         try {
@@ -6572,11 +7256,16 @@
             return qty > 0 && threshold > 0 && qty <= threshold;
           }).length;
 
+          const lastBackupAt = metaGet('last_backup_at');
+          const lastBackupMs = lastBackupAt ? new Date(lastBackupAt).getTime() : 0;
+          const backupDue = !lastBackupMs || Math.floor((Date.now() - lastBackupMs) / 3600000) >= 72;
+
           setModuleAlerts({
             study: studyPending,
             health: pn(meds.roaccutan) <= 2 || pn(meds.minoxidil_finasteride) <= 2,
             books: pn(book.current_page) > 0 && pn(book.current_page) < pn(book.total_pages),
-            recipes: recipesLow
+            recipes: recipesLow,
+            notif: backupDue
           });
         } catch(_) {}
       }, []);
@@ -6615,7 +7304,7 @@
         if(!weeklyCache[initWk]) weeklyCache[initWk] = { dayMapping: {}, bodyWeight: '' };
 
         const localAllWeeks = buildAllWeeks(weeklyCache, dailyCache);
-        if(!localAllWeeks[initWk]) localAllWeeks[initWk] = newWeek();
+        if(!localAllWeeks[initWk]) localAllWeeks[initWk] = newWeek(initWk);
         setAllWeeks(localAllWeeks);
 
         // Rutinas locales
@@ -6686,7 +7375,7 @@
               const localTs  = prev[wkKey]?.tracker?.[dayIdx]?._updatedAt;
               if(localTs && row.updated_at && localTs > row.updated_at) return prev;
               const next = { ...prev };
-              if(!next[wkKey]) next[wkKey] = hydrate(newWeek());
+              if(!next[wkKey]) next[wkKey] = hydrate(newWeek(wkKey));
               // BUG FIX: usar row.tracker/row.session (schema nuevo) en vez de row.data (schema viejo)
               const tracker = row.tracker || {};
               const sess    = row.session  || null;
@@ -6703,7 +7392,7 @@
             if(isBeforeStart(row.week_key)) return;
             setAllWeeks(prev => {
               const next = { ...prev };
-              const existing = prev[row.week_key] || newWeek();
+              const existing = prev[row.week_key] || newWeek(row.week_key);
               // BUG FIX: usar row.day_mapping/row.body_weight (schema nuevo)
               const bwStr = (row.body_weight !== undefined && row.body_weight !== null)
                 ? String(row.body_weight).replace('.', ',') : existing.bodyWeight;
@@ -6741,7 +7430,7 @@
 
               // Actualizar UI inmediatamente (optimista)
               setAllWeeks(prev => {
-                const wk  = prev[todayWk] || newWeek();
+            const wk  = prev[todayWk] || newWeek(todayWk);
                 const tr  = { ...wk.tracker };
                 const updatedDay = { ...tr[todayIdx], meds: { ...(tr[todayIdx]?.meds||{}), [medKey]: true } };
                 tr[todayIdx] = updatedDay;
@@ -6759,7 +7448,7 @@
                 if(error) {
                   console.warn('[MEDS_DONE] patch_med_status falló, encolando:', error.message);
                   // Si falla por red, encolar en outbox
-                  const wk = allWeeks[todayWk] || newWeek();
+                  const wk = allWeeks[todayWk] || newWeek(todayWk);
                   const dayData = wk.tracker?.[todayIdx];
                   if(dayData) {
                     enqueueOutboxOp({
@@ -6944,16 +7633,18 @@
         return () => clearInterval(timerRef.current);
       },[timerActive, timerLeft]);
 
-      const upd = fn => { setHasUnsaved(true); setAllWeeks(prev=>{ const wk=prev[currentWk]||newWeek(); const next={...prev,[currentWk]:fn(wk)}; return next; }); };
+      const upd = fn => { setHasUnsaved(true); setAllWeeks(prev=>{ const wk=prev[currentWk]||newWeek(currentWk); const next={...prev,[currentWk]:fn(wk)}; return next; }); };
 
       // ── Ensure session exists
       const ensureSession = useCallback((wkKey, dayKey)=>{
         setAllWeeks(prev=>{
-          const wd=prev[wkKey]||newWeek();
-          const rid=wd.dayMapping[dayKey];
-          if(!rid||!routineData[rid]||wd.sessions[dayKey]) return prev;
+          const wd=prev[wkKey]||newWeek(wkKey);
+          const assignments = getRoutineAssignments(wd);
+          const rid=assignments[dayKey];
+          const routineForWeek = getRoutineForWeek(rid, routineData, wkKey);
+          if(!rid||!routineForWeek||wd.sessions[dayKey]) return prev;
           // idealReps: copia de reps objetivo para detectar superación de reps en sobrecarga progresiva
-          const session=routineData[rid].exercises.map((ex,ei)=>({
+          const session=routineForWeek.exercises.map((ex,ei)=>({
             ...ex,
             id:`ex-${wkKey}-${dayKey}-${ei}`,
             sets:ex.sets.map((s,si)=>({
@@ -6969,23 +7660,47 @@
 
       useEffect(()=>ensureSession(currentWk,activeDay),[currentWk,activeDay]);
 
-      const wd = allWeeks[currentWk]||newWeek();
+      const wd = allWeeks[currentWk]||newWeek(currentWk);
+      const routineAssignments = getRoutineAssignments(wd);
+      const planMode = getPlanMode(wd);
       const tracker    = wd.tracker[activeDay]||newDay();
       const gymSession = wd.sessions[activeDay]||[];
       const yesterdayFastMsg = getYesterdayFast(allWeeks, currentWk, activeDay);
-      const routineId  = wd.dayMapping[activeDay];
-      const routineInfo = routineId ? routineData[routineId] : null;
+      const routineId  = routineAssignments[activeDay];
+      const routineInfo = routineId ? getRoutineForWeek(routineId, routineData, currentWk) : null;
+      const activeDateKey = getDayDate(currentWk, parseInt(activeDay, 10));
+      const activeDayClosed = isGymClosedDate(activeDateKey);
+      const previousDayKey = DAY_KEYS[(DAY_KEYS.indexOf(activeDay) + DAY_KEYS.length - 1) % DAY_KEYS.length];
+      const previousTwoDayKey = DAY_KEYS[(DAY_KEYS.indexOf(activeDay) + DAY_KEYS.length - 2) % DAY_KEYS.length];
+      const hitTwoConsecutiveRule = planMode === '4'
+        && !!routineId
+        && !activeDayClosed
+        && !didTrainDay(wd, activeDay)
+        && didTrainDay(wd, previousDayKey)
+        && didTrainDay(wd, previousTwoDayKey)
+        && !isDeloadWeek(currentWk);
       const navBadges = {
         study: moduleAlerts.study > 0 ? (moduleAlerts.study > 9 ? '9+' : String(moduleAlerts.study)) : '',
         health: moduleAlerts.health ? '!' : '',
         books: moduleAlerts.books ? '•' : '',
-        recipes: moduleAlerts.recipes > 0 ? (moduleAlerts.recipes > 9 ? '9+' : String(moduleAlerts.recipes)) : ''
+        recipes: moduleAlerts.recipes > 0 ? (moduleAlerts.recipes > 9 ? '9+' : String(moduleAlerts.recipes)) : '',
+        notif: moduleAlerts.notif ? '!' : ''
       };
 
-      useEffect(() => { refreshModuleAlerts(); }, [refreshModuleAlerts, view]);
+      useEffect(() => {
+        refreshModuleAlerts();
+        const onFocus = () => refreshModuleAlerts();
+        const onVisible = () => { if(document.visibilityState === 'visible') refreshModuleAlerts(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [refreshModuleAlerts, view]);
 
       const updateHabit = (f,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}));
-      const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek()),bodyWeight:v}})); };
+      const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek(currentWk)),bodyWeight:v}})); };
       const syncTodayMedsFromHealth = useCallback(async (partialMeds) => {
         const now = new Date();
         const todayWk = getWeekKey(now);
@@ -6995,7 +7710,7 @@
 
         setHasUnsaved(true);
         setAllWeeks(prev => {
-          const wk = prev[todayWk] || newWeek();
+          const wk = prev[todayWk] || newWeek(todayWk);
           const baseDay = wk.tracker?.[todayIdx] || newDay();
           nextDayState = {
             ...baseDay,
@@ -7143,22 +7858,37 @@
         upd(w=>{
           const dm  = {...w.dayMapping};
           const ns  = {...w.sessions};
+          const assignments = getRoutineAssignments(w);
+          const nextAssignments = { ...assignments };
 
           // Si esta rutina estaba asignada a otro día, limpiarlo
           // Y borrar TAMBIÉN la sesión huérfana de ese día
           if(v) {
-            Object.keys(dm).forEach(k=>{
-              if(dm[k]===v && k!==activeDay) {
-                dm[k]='';
+            DAY_KEYS.forEach(k=>{
+              if(assignments[k]===v && k!==activeDay) {
+                nextAssignments[k]='';
                 delete ns[k]; // Bug 4 fix: eliminar sesión huérfana
               }
             });
           }
-          dm[activeDay] = v;
+          nextAssignments[activeDay] = v;
           delete ns[activeDay]; // limpiar sesión del día actual para regenerar
-          return{...w, dayMapping:dm, sessions:ns};
+          return{...w, dayMapping:{ ...dm, ...nextAssignments }, sessions:ns};
         });
         if(v) setTimeout(()=>ensureSession(currentWk,activeDay),50);
+      };
+
+      const handlePlanModeChange = (nextMode) => {
+        upd(w => {
+          const nextAssignments = buildPlanDayMapping(nextMode, currentWk);
+          const nextSessions = {};
+          return {
+            ...w,
+            dayMapping: { ...w.dayMapping, ...nextAssignments },
+            sessions: nextSessions
+          };
+        });
+        DAY_KEYS.forEach(dayKey => setTimeout(() => ensureSession(currentWk, dayKey), 20));
       };
 
       const handleSetComplete = (ei,si,restSecs) => {
@@ -7177,6 +7907,32 @@
         upd(w=>{const s=[...(w.sessions[activeDay]||[])];const sets=[...s[ei].sets];sets[si]={...sets[si],[f]:v};s[ei]={...s[ei],sets};return{...w,sessions:{...w.sessions,[activeDay]:s}};});
       };
 
+      const handleCompleteSessionQuick = () => {
+        upd(w => {
+          const s = [ ...(w.sessions[activeDay] || []) ].map(ex => ({
+            ...ex,
+            sets: ex.sets.map(set => ({ ...set, completed: true }))
+          }));
+          const trackerDay = w.tracker?.[activeDay] || newDay();
+          const nextEnd = trackerDay.gymEndTime || new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', hour12:false });
+          return {
+            ...w,
+            tracker: { ...w.tracker, [activeDay]: { ...trackerDay, gymEndTime: nextEnd } },
+            sessions: { ...w.sessions, [activeDay]: s }
+          };
+        });
+      };
+
+      const handleResetSessionChecksQuick = () => {
+        upd(w => {
+          const s = [ ...(w.sessions[activeDay] || []) ].map(ex => ({
+            ...ex,
+            sets: ex.sets.map(set => ({ ...set, completed: false }))
+          }));
+          return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
+        });
+      };
+
       // Helper: detectar si un día tiene datos reales (no es un newDay vacío)
       const dayHasData = (dayData) => {
         if(!dayData) return false;
@@ -7193,7 +7949,7 @@
         if(syncSaveStatus === 'saving') return;
         setSyncSaveStatus('saving');
         try {
-          const wkData = allWeeks[currentWk] || newWeek();
+          const wkData = allWeeks[currentWk] || newWeek(currentWk);
 
           // 1. weekly_config: SOLO dayMapping + bodyWeight vía RPC
           const wkResult = await saveWeeklyRemote(
@@ -7301,7 +8057,7 @@
               const dateObj = new Date(row.date + 'T12:00:00');
               const wkKey   = getWeekKey(dateObj);
               const dayIdx  = dateObj.getDay();
-              if(!next[wkKey]) next[wkKey] = hydrate(newWeek());
+              if(!next[wkKey]) next[wkKey] = hydrate(newWeek(wkKey));
               const tracker = row.tracker || {};
               const sess    = row.session  || null;
               if(sess) next[wkKey].sessions = { ...next[wkKey].sessions, [dayIdx]: sess };
@@ -7321,9 +8077,32 @@
         const nk = addWeeks(currentWk, dir);
         if(isBeforeStart(nk)) return; // no navegar antes del inicio oficial
         setCurrentWk(nk);
-        setAllWeeks(prev=>prev[nk]?prev:{...prev,[nk]:newWeek()});
+        setAllWeeks(prev=>prev[nk]?prev:{...prev,[nk]:newWeek(nk)});
       };
       const isAtStart = currentWk <= START_WEEK;
+
+      const exportWeekSnapshot = () => {
+        try {
+          const payload = {
+            app: 'enzo-training-week',
+            exported_at: new Date().toISOString(),
+            week_key: currentWk,
+            week_label: formatWeekLabel(currentWk),
+            data: wd
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `semana-${currentWk}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch(e) {
+          console.warn('[WeekExport]', e.message || e);
+        }
+      };
 
       const handleSaveRoutines = async (updated) => {
         setRoutineData(updated);
@@ -7333,7 +8112,7 @@
       // A. Motor de sobrecarga progresiva: aplica +2,5kg a los pesos base de la rutina
       const handleApplyOverload = (candidates) => {
         const updated = JSON.parse(JSON.stringify(routineData)); // deep copy
-        const routineId = wd.dayMapping[activeDay];
+        const routineId = routineAssignments[activeDay];
         if(!routineId || !updated[routineId]) return;
 
         candidates.forEach(({name}) => {
@@ -7452,25 +8231,47 @@
                   <p style="margin:0;font-size:13px;font-weight:600;color:white;">${formatWeekLabel(currentWk)}</p>
                   ${isCurrentWeek(currentWk) && html`<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:#10B981;">● SEMANA ACTUAL</span>`}
                 </div>
+                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${exportWeekSnapshot} title="Exportar semana">
+                  ⇪
+                </button>
                 <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${()=>navWeek(1)} disabled=${isCurrentWeek(currentWk)}>
                   <${IChevR} s=${16}/>
                 </button>
+              </div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:10px;text-transform:uppercase;color:#64748b;">Split semanal</span>
+                  <select class="inp" style="min-width:118px;font-size:12px;padding:8px 10px;" value=${planMode} onChange=${e=>handlePlanModeChange(e.target.value)}>
+                    <option value="4">4 dias</option>
+                    <option value="5">5 dias</option>
+                  </select>
+                  ${isDeloadWeek(currentWk) && html`
+                    <span class="badge" style="background:rgba(245,158,11,0.12);color:#FCD34D;">DESCARGA · RIR 4-5</span>
+                  `}
+                </div>
+                <span style="font-size:11px;color:#94A3B8;">
+                  ${planMode === '4' ? 'Maximo 2 dias seguidos. El tercero va descanso.' : 'Distribucion de 5 dias con los mismos ejercicios.'}
+                </span>
               </div>
 
               <!-- Day tabs -->
               <div class="hide-scroll" style="display:flex;gap:4px;overflow-x:auto;">
                 ${DAYS.map(day=>{
                   const active=activeDay===day.key;
-                  const hasR=wd.dayMapping[day.key]!=='';
+                  const hasR=routineAssignments[day.key]!=='';
                   const sess=wd.sessions[day.key]||[];
                   const done=sess.reduce((a,ex)=>a+ex.sets.filter(s=>s.completed).length,0);
                   const total=sess.reduce((a,ex)=>a+ex.sets.length,0);
+                  const dateKey = getDayDate(currentWk, parseInt(day.key, 10));
+                  const closed = isGymClosedDate(dateKey);
                   return html`
                     <button key=${day.key} onClick=${()=>{setActiveDay(day.key);setView('today');}}
-                      style=${`flex:1;min-width:38px;padding:8px 4px;border-radius:10px;border:1px solid ${active?'#10B981':'#1E2D45'};background:${active?'#10B981':'#162035'};cursor:pointer;position:relative;${active?'box-shadow:0 0 12px rgba(16,185,129,0.3);':''}`}>
-                      <p style=${`margin:0;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${active?'white':'#64748b'};`}>${day.abbr}</p>
-                      <p style=${`margin:0;font-size:9px;color:${active?'rgba(255,255,255,0.75)':'#374151'};`}>${day.label}</p>
+                      style=${`flex:1;min-width:38px;padding:8px 4px;border-radius:10px;border:1px solid ${active?(closed?'#EF4444':'#10B981'):(closed?'rgba(239,68,68,0.35)':'#1E2D45')};background:${active?(closed?'rgba(239,68,68,0.18)':'#10B981'):(closed?'rgba(127,29,29,0.18)':'#162035')};cursor:pointer;position:relative;${active?'box-shadow:0 0 12px rgba(16,185,129,0.3);':''}`}>
+                      <p style=${`margin:0;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${active?'white':closed?'#FCA5A5':'#64748b'};`}>${day.abbr}</p>
+                      <p style=${`margin:0;font-size:9px;color:${active?'rgba(255,255,255,0.75)':closed?'#FCA5A5':'#374151'};`}>${day.label}</p>
                       ${hasR && !active && html`<div style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:#6366F1;"></div>`}
+                      ${closed && html`<div style="position:absolute;top:3px;left:3px;width:5px;height:5px;border-radius:50%;background:#EF4444;"></div>`}
                       ${done>0 && html`<div style="position:absolute;bottom:3px;right:3px;font-size:8px;font-family:'JetBrains Mono',monospace;color:#10B981;">${done}/${total}</div>`}
                     </button>
                   `;
@@ -7499,6 +8300,31 @@
                   </select>
                 </div>
 
+                ${(activeDayClosed || hitTwoConsecutiveRule || isDeloadWeek(currentWk)) && html`
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    ${activeDayClosed && html`
+                      <div style="padding:10px 12px;border-radius:10px;background:rgba(127,29,29,0.18);border:1px solid rgba(239,68,68,0.35);">
+                        <p style="margin:0;font-size:12px;color:#FCA5A5;font-weight:700;">
+                          ${isSundayDate(activeDateKey) ? 'Domingo' : 'Feriado'}: gimnasio cerrado${getHolidayLabel(activeDateKey) ? ` · ${getHolidayLabel(activeDateKey)}` : ''}.
+                        </p>
+                        <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Si igual entrenaste, podes asignar la rutina manualmente desde el selector.</p>
+                      </div>
+                    `}
+                    ${hitTwoConsecutiveRule && html`
+                      <div style="padding:10px 12px;border-radius:10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);">
+                        <p style="margin:0;font-size:12px;color:#FCD34D;font-weight:700;">Enzo, ya entrenaste 2 dias seguidos: hoy toca descanso.</p>
+                        <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">La app te deja forzarlo manualmente, pero la recomendacion del split de 4 dias es frenar hoy.</p>
+                      </div>
+                    `}
+                    ${isDeloadWeek(currentWk) && html`
+                      <div style="padding:10px 12px;border-radius:10px;background:rgba(99,102,241,0.10);border:1px solid rgba(99,102,241,0.26);">
+                        <p style="margin:0;font-size:12px;color:#C7D2FE;font-weight:700;">Semana de descarga activa.</p>
+                        <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">La app reduce el volumen a 2 series por ejercicio y sube el esfuerzo objetivo a RIR 4-5.</p>
+                      </div>
+                    `}
+                  </div>
+                `}
+
                 <${TodayDashboard}
                   session=${session}
                   onOpenTasks=${()=>navigateTo('tasks')}
@@ -7506,6 +8332,7 @@
                   onOpenBooks=${()=>navigateTo('books')}
                   onOpenHealth=${()=>navigateTo('health')}
                   onOpenRecipes=${()=>navigateTo('recipes')}
+                  onOpenNotif=${()=>navigateTo('notif')}
                 />
 
                 <${HabitsPanel} tracker=${tracker} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem}/>
@@ -7529,7 +8356,7 @@
                   roacuttan=${tracker.meds?.roacuttan||false}/>
                 <${SmartCena} currentProt=${dayTotals(tracker.meals||[]).prot}/>
 
-                <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleInput} onHabit=${updateHabit} onApplyOverload=${handleApplyOverload}/>
+                <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleInput} onHabit=${updateHabit} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSessionQuick} onResetSessionChecks=${handleResetSessionChecksQuick}/>
 
                 ${gymSession.length===0 && !routineId && html`
                   <${Card}>
@@ -7578,7 +8405,7 @@
                 <button key=${tab.id} onClick=${()=>navigateTo(tab.id)}
                   style=${`flex:1;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0 7px;gap:2px;border:none;background:transparent;cursor:pointer;color:${view===tab.id?'#10B981':'#374151'};`}>
                   ${navBadges[tab.id] && html`
-                    <span style=${`position:absolute;top:6px;right:10px;min-width:${navBadges[tab.id].length > 1 ? '18px' : '14px'};height:14px;padding:0 4px;border-radius:999px;background:${tab.id==='health' ? '#EF4444' : tab.id==='books' ? '#38BDF8' : '#F59E0B'};color:${tab.id==='books' ? '#041018' : '#fff'};font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;line-height:1;`}>
+                    <span style=${`position:absolute;top:6px;right:10px;min-width:${navBadges[tab.id].length > 1 ? '18px' : '14px'};height:14px;padding:0 4px;border-radius:999px;background:${tab.id==='health' ? '#EF4444' : tab.id==='books' ? '#38BDF8' : tab.id==='study' ? '#6366F1' : tab.id==='notif' ? '#F59E0B' : '#F59E0B'};color:${tab.id==='books' ? '#041018' : '#fff'};font-size:9px;font-weight:800;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;line-height:1;`}>
                       ${navBadges[tab.id]}
                     </span>
                   `}
