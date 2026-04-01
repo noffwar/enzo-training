@@ -5928,12 +5928,56 @@
       `;
     };
 
-    const HealthView = ({session, onSyncDailyMeds, bodyWeight, onBodyWeight}) => {
+    const HealthView = ({session, onSyncDailyMeds, bodyWeight, onBodyWeight, todayMeds}) => {
       const [stock, setStock] = useState(MEDS_STOCK_DEFAULT);
       const [loading, setLoading] = useState(true);
       const [saving, setSaving] = useState(false);
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
+      const todayMedsState = todayMeds || {};
+
+      const entryDeltas = (entry) => {
+        if(!entry) return { roaccutan: 0, combo: 0 };
+        if(entry.type === 'roaccutan_take') return { roaccutan: -1, combo: 0 };
+        if(entry.type === 'dinner_combo_take') return { roaccutan: 0, combo: -1 };
+        if(entry.type === 'habit_toggle') {
+          return {
+            roaccutan: pn(entry.delta_roaccutan),
+            combo: pn(entry.delta_combo)
+          };
+        }
+        if(entry.field === 'roaccutan') return { roaccutan: pn(entry.delta), combo: 0 };
+        if(entry.field === 'minoxidil_finasteride') return { roaccutan: 0, combo: pn(entry.delta) };
+        return { roaccutan: 0, combo: 0 };
+      };
+      const isTodayEntry = (iso) => {
+        if(!iso) return false;
+        const d = new Date(iso);
+        if(Number.isNaN(d.getTime())) return false;
+        const now = new Date();
+        return d.getFullYear() === now.getFullYear()
+          && d.getMonth() === now.getMonth()
+          && d.getDate() === now.getDate();
+      };
+      const hasRemainingTodayTake = (history, field) => {
+        return (history || []).some(entry => {
+          if(!isTodayEntry(entry?.at)) return false;
+          const deltas = entryDeltas(entry);
+          return field === 'roaccutan' ? deltas.roaccutan < 0 : deltas.combo < 0;
+        });
+      };
+      const recalcLastTakeFields = (payload) => {
+        const history = Array.isArray(payload?.history) ? payload.history : [];
+        const lastRoaccutan = history.find(entry => entry?.type === 'roaccutan_take' || (entry?.type === 'habit_toggle' && pn(entry?.delta_roaccutan) < 0));
+        const lastDinner = history.find(entry => entry?.type === 'dinner_combo_take' || (entry?.type === 'habit_toggle' && pn(entry?.delta_combo) < 0));
+        const latestAt = history.find(entry => entry?.at)?.at || '';
+        return {
+          ...payload,
+          last_roaccutan_at: lastRoaccutan?.at || '',
+          last_dinner_meds_at: lastDinner?.at || '',
+          last_taken_at: latestAt || ''
+        };
+      };
 
       const loadHealth = useCallback(async () => {
         setLoading(true);
@@ -6037,8 +6081,13 @@
       };
 
       const registerRoaccutanTake = async () => {
+        if(todayMedsState.roacuttan) {
+          setNotice('Roaccutan ya esta marcado hoy. Si fue un error, corregilo desde HOY o el historial.');
+          setTimeout(() => setNotice(''), 2500);
+          return;
+        }
         const now = new Date();
-        const next = {
+        const next = recalcLastTakeFields({
           ...stock,
           roaccutan: Math.max(0, (parseInt(stock.roaccutan || 0, 10) || 0) - 1),
           last_taken_at: now.toISOString(),
@@ -6048,14 +6097,19 @@
             type: 'roaccutan_take',
             roaccutan: 1
           }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
-        };
+        });
         await persistHealth(next, 'Roaccutan del mediodia registrado.');
         await syncTodayChecks({ roacuttan: true });
       };
 
       const registerDinnerTake = async () => {
+        if(todayMedsState.finasteride && todayMedsState.minoxidil) {
+          setNotice('Las meds de cena ya estan marcadas hoy. Si fue un error, corregilo desde HOY o el historial.');
+          setTimeout(() => setNotice(''), 2500);
+          return;
+        }
         const now = new Date();
-        const next = {
+        const next = recalcLastTakeFields({
           ...stock,
           minoxidil_finasteride: Math.max(0, (parseInt(stock.minoxidil_finasteride || 0, 10) || 0) - 1),
           last_taken_at: now.toISOString(),
@@ -6065,7 +6119,7 @@
             type: 'dinner_combo_take',
             minoxidil_finasteride: 1
           }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
-        };
+        });
         await persistHealth(next, 'Meds de la cena registradas.');
         await syncTodayChecks({ finasteride: true, minoxidil: true });
       };
@@ -6074,7 +6128,7 @@
         const nowIso = new Date().toISOString();
         const current = parseInt(stock[field] || 0, 10) || 0;
         const nextVal = Math.max(0, current + delta);
-        const next = {
+        const next = recalcLastTakeFields({
           ...stock,
           [field]: nextVal,
           history: [{
@@ -6083,11 +6137,40 @@
             field,
             delta
           }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
-        };
+        });
         await persistHealth(next, delta > 0 ? 'Stock repuesto.' : 'Stock ajustado.');
-        if(delta < 0) {
+        if(delta === -1) {
           if(field === 'roaccutan') await syncTodayChecks({ roacuttan: true });
           if(field === 'minoxidil_finasteride') await syncTodayChecks({ finasteride: true, minoxidil: true });
+        }
+      };
+
+      const deleteHistoryEntry = async (entryAt) => {
+        const history = Array.isArray(stock.history) ? stock.history : [];
+        const target = history.find(entry => entry?.at === entryAt);
+        if(!target) return;
+        const deltas = entryDeltas(target);
+        const remaining = history.filter(entry => entry?.at !== entryAt);
+        const next = recalcLastTakeFields({
+          ...stock,
+          roaccutan: Math.max(0, pn(stock.roaccutan) - deltas.roaccutan),
+          minoxidil_finasteride: Math.max(0, pn(stock.minoxidil_finasteride) - deltas.combo),
+          history: remaining
+        });
+        await persistHealth(next, 'Movimiento borrado y stock recompuesto.');
+        if(isTodayEntry(target.at)) {
+          if(deltas.roaccutan < 0 && todayMedsState.roacuttan && !hasRemainingTodayTake(remaining, 'roaccutan')) {
+            await syncTodayChecks({ roacuttan: false });
+          }
+          if(deltas.roaccutan > 0 && !todayMedsState.roacuttan) {
+            await syncTodayChecks({ roacuttan: true });
+          }
+          if(deltas.combo < 0 && (todayMedsState.finasteride || todayMedsState.minoxidil) && !hasRemainingTodayTake(remaining, 'combo')) {
+            await syncTodayChecks({ finasteride: false, minoxidil: false });
+          }
+          if(deltas.combo > 0 && (!todayMedsState.finasteride || !todayMedsState.minoxidil)) {
+            await syncTodayChecks({ finasteride: true, minoxidil: true });
+          }
         }
       };
 
@@ -6147,6 +6230,7 @@
                       <p style="margin:0 0 10px;font-size:11px;color:#64748b;">Blindex: ${Math.ceil(count / 10)} de 10 unidades</p>
                       <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button onClick=${()=>adjustStock(key, -1)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">-1</button>
+                        <button onClick=${()=>adjustStock(key, -10)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.12);color:#FCD34D;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">- Blindex</button>
                         <button onClick=${()=>adjustStock(key, +10)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">+ Blindex</button>
                       </div>
                     </div>
@@ -6185,22 +6269,27 @@
                     ${(Array.isArray(stock.history) ? stock.history : []).length === 0 ? html`
                       <p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay movimientos guardados.</p>
                     ` : (stock.history || []).slice(0, 8).map(entry => html`
-                      <div style="padding:8px 10px;border-radius:8px;background:rgba(8,13,26,0.5);border:1px solid #1E2D45;">
-                        <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${entry.at ? new Date(entry.at).toLocaleString('es-AR') : ''}</p>
-                        <p style="margin:0;font-size:12px;color:#E2E8F0;">
-                          ${entry.type === 'roaccutan_take'
-                            ? 'Toma mediodia: -1 Roaccutan'
-                            : entry.type === 'dinner_combo_take'
-                              ? 'Toma cena: -1 Minoxidil/Finasteride'
-                            : entry.type === 'habit_toggle'
-                              ? `Check diario: ${entry.med === 'roacuttan'
-                                  ? `Roaccutan ${entry.delta_roaccutan > 0 ? '+' : ''}${entry.delta_roaccutan}`
-                                  : `Combo noche ${entry.delta_combo > 0 ? '+' : ''}${entry.delta_combo}`}`
-                            : entry.type === 'restock'
-                              ? `Reposicion: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} +${entry.delta}`
-                              : `Ajuste: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} ${entry.delta}`
-                          }
-                        </p>
+                      <div style="padding:8px 10px;border-radius:8px;background:rgba(8,13,26,0.5);border:1px solid #1E2D45;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                        <div style="flex:1;min-width:0;">
+                          <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${entry.at ? new Date(entry.at).toLocaleString('es-AR') : ''}</p>
+                          <p style="margin:0;font-size:12px;color:#E2E8F0;">
+                            ${entry.type === 'roaccutan_take'
+                              ? 'Toma mediodia: -1 Roaccutan'
+                              : entry.type === 'dinner_combo_take'
+                                ? 'Toma cena: -1 Minoxidil/Finasteride'
+                              : entry.type === 'habit_toggle'
+                                ? `Check diario: ${entry.med === 'roacuttan'
+                                    ? `Roaccutan ${entry.delta_roaccutan > 0 ? '+' : ''}${entry.delta_roaccutan}`
+                                    : `Combo noche ${entry.delta_combo > 0 ? '+' : ''}${entry.delta_combo}`}`
+                              : entry.type === 'restock'
+                                ? `Reposicion: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} +${entry.delta}`
+                                : `Ajuste: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} ${entry.delta}`
+                            }
+                          </p>
+                        </div>
+                        <button onClick=${()=>deleteHistoryEntry(entry.at)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                          BORRAR
+                        </button>
                       </div>
                     `)}
                   </div>
@@ -8344,6 +8433,10 @@
       const routineInfo = routineId ? getRoutineForWeek(routineId, routineData, currentWk) : null;
       const effectiveGymSession = routineId ? gymSession : [];
       const activeDateKey = getDayDate(currentWk, parseInt(activeDay, 10));
+      const realToday = new Date();
+      const realTodayWeek = getWeekKey(realToday);
+      const realTodayIdx = String(realToday.getDay());
+      const realTodayTracker = allWeeks[realTodayWeek]?.tracker?.[realTodayIdx] || newDay();
       const previousSnapshot = getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1);
       const activeDayClosed = isGymClosedDate(activeDateKey);
       const previousDayKey = DAY_KEYS[(DAY_KEYS.indexOf(activeDay) + DAY_KEYS.length - 1) % DAY_KEYS.length];
@@ -9215,7 +9308,7 @@
             ${view==='tasks'    && html`<${ProductivityView} session=${session}/>`}
             ${view==='recipes'  && html`<${RecipesView} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe}/>`}
             ${view==='study'    && html`<${StudyView} session=${session}/>`}
-            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight}/>`}
+            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight} todayMeds=${realTodayTracker.meds||{}}/>`}
             ${view==='books'    && html`<${BooksView} session=${session}/>`}
             ${view==='notif'    && html`<${NotifView} session=${session}/>`}
             ${view==='routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
