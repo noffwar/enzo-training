@@ -2222,7 +2222,7 @@
       }
     };
 
-    const HabitsPanel = ({tracker:t, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem, onReplaceItem}) => {
+    const HabitsPanel = ({tracker:t, selectedDateKey, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem, onReplaceItem}) => {
       const [open,setOpen] = useState(true);
       const [aiLoading, setAiLoading] = useState([false,false,false]);
       const [aiError,   setAiError]   = useState(['','','']);
@@ -2250,6 +2250,22 @@
 
       // Totales diarios calculados desde items
       const macros = dayTotals(t.meals);
+      const visibleNow = new Date();
+      const calendarTodayKey = localDateKey(visibleNow);
+      const visibleDinnerLogicalKey = getDinnerLogicalDateKey(visibleNow);
+      const currentViewDateKey = String(selectedDateKey || calendarTodayKey);
+      const isCurrentCalendarDay = currentViewDateKey === calendarTodayKey;
+      const isCurrentDinnerLogicalDay = currentViewDateKey === visibleDinnerLogicalKey;
+      const roaccutanStatusLabel = t.meds?.roacuttan
+        ? (isCurrentCalendarDay ? 'Hecha hoy' : 'Hecha')
+        : (isCurrentCalendarDay ? 'Pendiente' : 'Pendiente');
+      const dinnerStatusLabel = (t.meds?.finasteride && t.meds?.minoxidil)
+        ? (isCurrentDinnerLogicalDay
+            ? (calendarTodayKey === visibleDinnerLogicalKey ? 'Hecha hoy' : 'Hecha para ayer')
+            : 'No corresponde')
+        : (isCurrentDinnerLogicalDay
+            ? (calendarTodayKey === visibleDinnerLogicalKey ? 'Pendiente' : 'Pendiente de ayer')
+            : 'No corresponde');
 
       const normalizeRecipeText = (s='') =>
         String(s)
@@ -3221,6 +3237,16 @@
               <!-- Suplementos -->
               <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:8px;">
                 <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#EF4444;">Suplementación</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                  <div style={`padding:6px 8px;border-radius:8px;border:1px solid ${t.meds?.roacuttan?'rgba(16,185,129,0.35)':'rgba(245,158,11,0.35)'};background:${t.meds?.roacuttan?'rgba(16,185,129,0.12)':'rgba(245,158,11,0.12)'};`}>
+                    <p style="margin:0;font-size:9px;text-transform:uppercase;color:#94A3B8;">Roaccutan</p>
+                    <p style={`margin:3px 0 0;font-size:11px;font-weight:700;color:${t.meds?.roacuttan?'#86EFAC':'#FCD34D'};`}>${roaccutanStatusLabel}</p>
+                  </div>
+                  <div style={`padding:6px 8px;border-radius:8px;border:1px solid ${(t.meds?.finasteride && t.meds?.minoxidil)?'rgba(16,185,129,0.35)':'rgba(245,158,11,0.35)'};background:${(t.meds?.finasteride && t.meds?.minoxidil)?'rgba(16,185,129,0.12)':'rgba(245,158,11,0.12)'};`}>
+                    <p style="margin:0;font-size:9px;text-transform:uppercase;color:#94A3B8;">Cena</p>
+                    <p style={`margin:3px 0 0;font-size:11px;font-weight:700;color:${(t.meds?.finasteride && t.meds?.minoxidil)?'#86EFAC':'#FCD34D'};`}>${dinnerStatusLabel}</p>
+                  </div>
+                </div>
                 <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">Con almuerzo</p>
                 <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
                   <input type="checkbox" checked=${t.meds.roacuttan} onChange=${e=>onMed('roacuttan',e.target.checked)}/>
@@ -5948,6 +5974,7 @@
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
       const [editingHistoryAt, setEditingHistoryAt] = useState('');
+      const [historyFilter, setHistoryFilter] = useState('all');
       const todayMedsState = todayMeds || {};
       const previousMedsState = previousDayMeds || {};
       const getDinnerLogicalTarget = () => {
@@ -6270,6 +6297,46 @@
       const roaccutanCount = parseInt(stock.roaccutan || 0, 10) || 0;
       const minoxCount = parseInt(stock.minoxidil_finasteride || 0, 10) || 0;
       const low = roaccutanCount <= 2 || minoxCount <= 2;
+      const fullHistory = Array.isArray(stock.history) ? stock.history : [];
+      const dinnerTarget = getDinnerLogicalTarget();
+      const roaccutanStatus = todayMedsState.roacuttan
+        ? { label:'Hecha hoy', color:'#86EFAC', bg:'rgba(16,185,129,0.12)', border:'rgba(16,185,129,0.35)' }
+        : { label:'Pendiente', color:'#FCD34D', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.35)' };
+      const dinnerDone = !!dinnerTarget.medsState.finasteride && !!dinnerTarget.medsState.minoxidil;
+      const dinnerStatus = dinnerDone
+        ? {
+            label: dinnerTarget.label === 'ayer' ? 'Hecha para ayer' : 'Hecha hoy',
+            color:'#86EFAC',
+            bg:'rgba(16,185,129,0.12)',
+            border:'rgba(16,185,129,0.35)'
+          }
+        : {
+            label: dinnerTarget.label === 'ayer' ? 'Pendiente de ayer' : 'Pendiente',
+            color:'#FCD34D',
+            bg:'rgba(245,158,11,0.12)',
+            border:'rgba(245,158,11,0.35)'
+          };
+      const startOfWeek = (() => {
+        const now = new Date();
+        const d = new Date(now);
+        d.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+        d.setHours(0,0,0,0);
+        return d;
+      })();
+      const weekRealTakes = fullHistory.filter(entry => {
+        const at = entry?.at ? new Date(entry.at) : null;
+        if(!at || Number.isNaN(at.getTime()) || at < startOfWeek) return false;
+        return entry?.type === 'roaccutan_take' || entry?.type === 'dinner_combo_take';
+      });
+      const weekRoaccutanTakes = weekRealTakes.filter(entry => entry?.type === 'roaccutan_take').length;
+      const weekDinnerTakes = weekRealTakes.filter(entry => entry?.type === 'dinner_combo_take').length;
+      const filteredHistory = fullHistory.filter(entry => {
+        if(historyFilter === 'all') return true;
+        if(historyFilter === 'takes') return entry?.type === 'roaccutan_take' || entry?.type === 'dinner_combo_take';
+        if(historyFilter === 'checks') return entry?.type === 'habit_toggle';
+        if(historyFilter === 'adjustments') return entry?.type === 'manual_adjust' || entry?.type === 'restock';
+        return true;
+      });
 
       return html`
         <div class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
@@ -6336,6 +6403,16 @@
                     <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;">${stock.last_taken_at ? new Date(stock.last_taken_at).toLocaleString('es-AR') : 'Sin registro'}</span>
                   </div>
                   <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Roaccutan va al mediodia. Minoxidil y Finasteride van con la cena. Si las tomas entre 00:00 y 06:00, cuentan para el dia anterior. Los botones de stock son solo ajustes de inventario; para marcar tomas reales usa los botones de registrar.</p>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                    <div style=${`padding:8px 10px;border-radius:8px;border:1px solid ${roaccutanStatus.border};background:${roaccutanStatus.bg};`}>
+                      <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">Estado mediodia</p>
+                      <p style={`margin:4px 0 0;font-size:13px;font-weight:700;color:${roaccutanStatus.color};`}>${roaccutanStatus.label}</p>
+                    </div>
+                    <div style=${`padding:8px 10px;border-radius:8px;border:1px solid ${dinnerStatus.border};background:${dinnerStatus.bg};`}>
+                      <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">Estado cena</p>
+                      <p style={`margin:4px 0 0;font-size:13px;font-weight:700;color:${dinnerStatus.color};`}>${dinnerStatus.label}</p>
+                    </div>
+                  </div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                     <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
                       <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#F59E0B;">Mediodia</p>
@@ -6357,14 +6434,69 @@
                 </div>
 
                 <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+                    <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
+                      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Semana</p>
+                      <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${weekRealTakes.length}</p>
+                      <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Tomas reales</p>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
+                      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Roaccutan</p>
+                      <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#FCD34D;">${weekRoaccutanTakes}</p>
+                      <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
+                    </div>
+                    <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
+                      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Cena</p>
+                      <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#86EFAC;">${weekDinnerTakes}</p>
+                      <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
+                    </div>
+                  </div>
                   <p style="margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Historial reciente</p>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                    ${[
+                      ['all','Todo'],
+                      ['takes','Tomas'],
+                      ['checks','Checks'],
+                      ['adjustments','Ajustes']
+                    ].map(([id,label]) => html`
+                      <button onClick=${()=>setHistoryFilter(id)} style=${`padding:5px 9px;border-radius:999px;border:1px solid ${historyFilter===id?'rgba(99,102,241,0.35)':'rgba(30,45,69,1)'};background:${historyFilter===id?'rgba(99,102,241,0.14)':'rgba(8,13,26,0.45)'};color:${historyFilter===id?'#C7D2FE':'#94A3B8'};font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;`}>
+                        ${label}
+                      </button>
+                    `)}
+                  </div>
                   <div style="display:flex;flex-direction:column;gap:8px;">
-                    ${(Array.isArray(stock.history) ? stock.history : []).length === 0 ? html`
+                    ${filteredHistory.length === 0 ? html`
                       <p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay movimientos guardados.</p>
-                    ` : (stock.history || []).slice(0, 8).map(entry => html`
+                    ` : filteredHistory.slice(0, 12).map(entry => html`
                       <div style="padding:8px 10px;border-radius:8px;background:rgba(8,13,26,0.5);border:1px solid #1E2D45;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
                         <div style="flex:1;min-width:0;">
                           <p style="margin:0 0 4px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${entry.at ? new Date(entry.at).toLocaleString('es-AR') : ''}</p>
+                          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px;">
+                            <span style=${`padding:3px 7px;border-radius:999px;border:1px solid ${
+                              entry.type === 'roaccutan_take' || entry.type === 'dinner_combo_take' ? 'rgba(16,185,129,0.35)'
+                              : entry.type === 'habit_toggle' ? 'rgba(99,102,241,0.35)'
+                              : entry.type === 'restock' ? 'rgba(245,158,11,0.35)'
+                              : 'rgba(239,68,68,0.35)'
+                            };background:${
+                              entry.type === 'roaccutan_take' || entry.type === 'dinner_combo_take' ? 'rgba(16,185,129,0.12)'
+                              : entry.type === 'habit_toggle' ? 'rgba(99,102,241,0.12)'
+                              : entry.type === 'restock' ? 'rgba(245,158,11,0.12)'
+                              : 'rgba(239,68,68,0.12)'
+                            };color:${
+                              entry.type === 'roaccutan_take' || entry.type === 'dinner_combo_take' ? '#86EFAC'
+                              : entry.type === 'habit_toggle' ? '#C7D2FE'
+                              : entry.type === 'restock' ? '#FCD34D'
+                              : '#FCA5A5'
+                            };font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;`}>
+                              ${entry.type === 'roaccutan_take' || entry.type === 'dinner_combo_take'
+                                ? 'TOMA'
+                                : entry.type === 'habit_toggle'
+                                  ? 'CHECK'
+                                  : entry.type === 'restock'
+                                    ? 'REPOSICION'
+                                    : 'AJUSTE'}
+                            </span>
+                          </div>
                           <p style="margin:0;font-size:12px;color:#E2E8F0;">
                             ${entry.type === 'roaccutan_take'
                               ? 'Toma mediodia: -1 Roaccutan'
@@ -8292,8 +8424,11 @@
             const medMap = { meds:'roacuttan', meds2:'dinner_combo' };
             const medKey = medMap[medId];
             if(medKey) {
-              const todayWk  = getWeekKey(new Date());
-              const todayIdx = String(new Date().getDay());
+              const baseDate = medKey === 'dinner_combo'
+                ? new Date(`${getDinnerLogicalDateKey(new Date())}T12:00:00`)
+                : new Date();
+              const todayWk  = getWeekKey(baseDate);
+              const todayIdx = String(baseDate.getDay());
               const dateKey  = getDayDate(todayWk, parseInt(todayIdx));
 
               // Actualizar UI inmediatamente (optimista)
@@ -8347,13 +8482,14 @@
             const medMap = { meds:'roacuttan', meds2:'dinner_combo' };
             const medKey = medMap[medId];
             if(medKey && date) {
+              const effectiveDate = medKey === 'dinner_combo' ? getDinnerLogicalDateKey(new Date(`${date}T12:00:00`)) : date;
               const patchPromise = medKey === 'dinner_combo'
                 ? Promise.all([
-                    supabase.rpc('patch_med_status', { p_date: date, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
-                    supabase.rpc('patch_med_status', { p_date: date, p_med: 'minoxidil', p_val: true, p_device_id: DEVICE_ID })
+                    supabase.rpc('patch_med_status', { p_date: effectiveDate, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
+                    supabase.rpc('patch_med_status', { p_date: effectiveDate, p_med: 'minoxidil', p_val: true, p_device_id: DEVICE_ID })
                   ])
                 : supabase.rpc('patch_med_status', {
-                    p_date: date, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
+                    p_date: effectiveDate, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
                   });
               Promise.resolve(patchPromise).then(()=>{}).catch(()=>{});
             }
@@ -8377,13 +8513,14 @@
             // Esperar a que haya sesión activa antes de persistir
             supabase.auth.getSession().then(({ data: { session: sess } }) => {
               if(!sess) return;
+              const effectiveDate = medKey === 'dinner_combo' ? getDinnerLogicalDateKey(new Date(`${pendingMedDate}T12:00:00`)) : pendingMedDate;
               const patchPromise = medKey === 'dinner_combo'
                 ? Promise.all([
-                    supabase.rpc('patch_med_status', { p_date: pendingMedDate, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
-                    supabase.rpc('patch_med_status', { p_date: pendingMedDate, p_med: 'minoxidil', p_val: true, p_device_id: DEVICE_ID })
+                    supabase.rpc('patch_med_status', { p_date: effectiveDate, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
+                    supabase.rpc('patch_med_status', { p_date: effectiveDate, p_med: 'minoxidil', p_val: true, p_device_id: DEVICE_ID })
                   ])
                 : supabase.rpc('patch_med_status', {
-                    p_date: pendingMedDate, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
+                    p_date: effectiveDate, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
                   });
               Promise.resolve(patchPromise).then(() => {
                 // Limpiar params de URL sin recargar
@@ -8602,6 +8739,14 @@
 
       const updateHabit = (f,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}));
       const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek(currentWk)),bodyWeight:v}})); };
+      const getWeekAndDayFromDateKey = (dateKey) => {
+        const baseDate = new Date(`${dateKey}T12:00:00`);
+        return {
+          weekKey: getWeekKey(baseDate),
+          dayIdx: String(baseDate.getDay()),
+          dateKey
+        };
+      };
       const syncTodayMedsFromHealth = useCallback(async (partialMeds, targetDateKey) => {
         const baseDate = targetDateKey ? new Date(`${targetDateKey}T12:00:00`) : new Date();
         const todayWk = getWeekKey(baseDate);
@@ -8636,8 +8781,8 @@
           }
         }
       }, []);
-      const syncMedsInventoryFromToggle = async (med, nextVal) => {
-        const selectedDate = getDayDate(currentWk, parseInt(activeDay, 10));
+      const syncMedsInventoryFromToggle = async (med, nextVal, targetDateKey) => {
+        const selectedDate = String(targetDateKey || getDayDate(currentWk, parseInt(activeDay, 10)));
         const now = new Date();
         const todayDate = localDateKey(now);
         const dinnerLogicalDate = getDinnerLogicalDateKey(now);
@@ -8715,8 +8860,34 @@
         }
       };
       const updateMed = (med,v) => {
-        upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...w.tracker[activeDay].meds,[med]:v}}}}));
-        syncMedsInventoryFromToggle(med, v);
+        const now = new Date();
+        const selectedDate = getDayDate(currentWk, parseInt(activeDay, 10));
+        const todayDate = localDateKey(now);
+        const dinnerLogicalDate = getDinnerLogicalDateKey(now);
+        const isDinnerMed = med === 'finasteride' || med === 'minoxidil';
+        const targetDateKey = (isDinnerMed && selectedDate === todayDate && dinnerLogicalDate !== todayDate)
+          ? dinnerLogicalDate
+          : selectedDate;
+        const { weekKey, dayIdx } = getWeekAndDayFromDateKey(targetDateKey);
+        setHasUnsaved(true);
+        setAllWeeks(prev => {
+          const wk = prev[weekKey] || newWeek(weekKey);
+          const baseDay = wk.tracker?.[dayIdx] || newDay();
+          const nextDayState = {
+            ...baseDay,
+            meds: { ...(baseDay.meds || {}), [med]: v },
+            _updatedAt: new Date().toISOString()
+          };
+          try { lsDaySave(targetDateKey, nextDayState); } catch(_) {}
+          return {
+            ...prev,
+            [weekKey]: {
+              ...wk,
+              tracker: { ...wk.tracker, [dayIdx]: nextDayState }
+            }
+          };
+        });
+        syncMedsInventoryFromToggle(med, v, targetDateKey);
       };
       const normalizeInventoryUnit = (unit='') => {
         const u = String(unit || '').trim().toLowerCase();
@@ -9406,7 +9577,7 @@
                   onOpenNotif=${()=>navigateTo('notif')}
                 />
 
-                <${HabitsPanel} tracker=${tracker} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem} onReplaceItem=${replaceMealItem}/>
+                <${HabitsPanel} tracker=${tracker} selectedDateKey=${activeDateKey} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem} onReplaceItem=${replaceMealItem}/>
 
                 <!-- Water + Macros elásticos del día + Asistente nutricional -->
                 <div class="glass-card" style="padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
