@@ -848,12 +848,23 @@
     const getTable  = k => isDateKey(k) ? 'daily_logs'    : 'weekly_configs';
     const getPkCol  = k => isDateKey(k) ? 'date'          : 'week_key';
     const isWeekKey = k => { const d=new Date(k+'T12:00:00'); return d.getDay()===1; };
+    const localDateKey = (d = new Date()) => {
+      const yy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yy}-${mm}-${dd}`;
+    };
+    const getDinnerLogicalDateKey = (now = new Date()) => {
+      const base = new Date(now);
+      if(base.getHours() < 6) base.setDate(base.getDate() - 1);
+      return localDateKey(base);
+    };
 
     const getDayDate = (wkKey, dayIdx) => {
       const d = new Date(wkKey+'T12:00:00');
       const offset = dayIdx===0 ? 6 : dayIdx-1;
       d.setDate(d.getDate()+offset);
-      return d.toISOString().split('T')[0];
+      return localDateKey(d);
     };
 
     // ─── OUTBOX con dedupe por entity_type+entity_id ─────────────
@@ -5537,6 +5548,7 @@
       last_taken_at: '',
       last_roaccutan_at: '',
       last_dinner_meds_at: '',
+      last_dinner_logical_date: '',
       history: [],
       _updatedAt: ''
     };
@@ -5929,13 +5941,31 @@
       `;
     };
 
-    const HealthView = ({session, onSyncDailyMeds, bodyWeight, onBodyWeight, todayMeds}) => {
+    const HealthView = ({session, onSyncDailyMeds, bodyWeight, onBodyWeight, todayMeds, previousDayMeds}) => {
       const [stock, setStock] = useState(MEDS_STOCK_DEFAULT);
       const [loading, setLoading] = useState(true);
       const [saving, setSaving] = useState(false);
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
+      const [editingHistoryAt, setEditingHistoryAt] = useState('');
       const todayMedsState = todayMeds || {};
+      const previousMedsState = previousDayMeds || {};
+      const getDinnerLogicalTarget = () => {
+        const now = new Date();
+        const baseDate = new Date(now);
+        let medsState = todayMedsState;
+        let label = 'hoy';
+        if(now.getHours() < 6) {
+          baseDate.setDate(baseDate.getDate() - 1);
+          medsState = previousMedsState;
+          label = 'ayer';
+        }
+        return {
+          dateKey: getDinnerLogicalDateKey(now),
+          medsState: medsState || {},
+          label
+        };
+      };
 
       const entryDeltas = (entry) => {
         if(!entry) return { roaccutan: 0, combo: 0 };
@@ -5960,9 +5990,10 @@
           && d.getMonth() === now.getMonth()
           && d.getDate() === now.getDate();
       };
-      const hasRemainingTodayTake = (history, field) => {
+      const hasRemainingTakeForDate = (history, field, dateKey) => {
         return (history || []).some(entry => {
-          if(!isTodayEntry(entry?.at)) return false;
+          const entryDateKey = entry?.logical_date || (entry?.at ? localDateKey(new Date(entry.at)) : '');
+          if(entryDateKey !== dateKey) return false;
           const deltas = entryDeltas(entry);
           return field === 'roaccutan' ? deltas.roaccutan < 0 : deltas.combo < 0;
         });
@@ -5976,8 +6007,24 @@
           ...payload,
           last_roaccutan_at: lastRoaccutan?.at || '',
           last_dinner_meds_at: lastDinner?.at || '',
+          last_dinner_logical_date: lastDinner?.logical_date || (lastDinner?.at ? localDateKey(new Date(lastDinner.at)) : ''),
           last_taken_at: latestAt || ''
         };
+      };
+      const buildHealthPayload = (basePayload, patch = {}, newEntry = null) => {
+        const base = { ...MEDS_STOCK_DEFAULT, ...(basePayload || {}) };
+        const history = Array.isArray(base.history) ? base.history : [];
+        const next = {
+          ...base,
+          ...patch,
+          history: newEntry ? [newEntry, ...history].slice(0, 60) : history
+        };
+        return recalcLastTakeFields(next);
+      };
+      const applyHealthAction = async ({ patch, entry, okMsg }) => {
+        const next = buildHealthPayload(stock, patch, entry);
+        await persistHealth(next, okMsg);
+        return next;
       };
       const pickNewestHealthPayload = (local, remote, remoteUpdatedAt='') => {
         const localTs = new Date(local?._updatedAt || 0).getTime() || 0;
@@ -6019,11 +6066,16 @@
         loadHealth();
         const onFocus = () => loadHealth();
         const onVisible = () => { if(document.visibilityState === 'visible') loadHealth(); };
+        const onHealthChanged = (event) => {
+          if(event?.detail) setStock(prev => ({ ...prev, ...event.detail }));
+        };
         window.addEventListener('focus', onFocus);
         document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('enzo-health-changed', onHealthChanged);
         return () => {
           window.removeEventListener('focus', onFocus);
           document.removeEventListener('visibilitychange', onVisible);
+          window.removeEventListener('enzo-health-changed', onHealthChanged);
         };
       }, [loadHealth]);
 
@@ -6056,6 +6108,8 @@
         setError('');
         try {
           const normalizedPayload = { ...payload, _updatedAt: new Date().toISOString() };
+          setStock(normalizedPayload);
+          try { window.dispatchEvent(new CustomEvent('enzo-health-changed', { detail: normalizedPayload })); } catch(_) {}
           try { localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(normalizedPayload)); } catch(_) {}
           const { error } = await supabase
             .from('app_inventory')
@@ -6064,7 +6118,6 @@
               data: normalizedPayload,
               updated_at: new Date().toISOString()
             }, { onConflict: 'key' });
-          setStock(normalizedPayload);
           if(error) {
             setNotice(`${okMsg} Guardado local porque el remoto esta restringido.`);
           } else {
@@ -6082,9 +6135,9 @@
         setStock(prev => ({ ...prev, [key]: value }));
       };
 
-      const syncTodayChecks = async (partial) => {
+      const syncTodayChecks = async (partial, dateKey) => {
         if(typeof onSyncDailyMeds === 'function') {
-          await onSyncDailyMeds(partial);
+          await onSyncDailyMeds(partial, dateKey);
         }
       };
 
@@ -6095,62 +6148,58 @@
           return;
         }
         const now = new Date();
-        const next = recalcLastTakeFields({
-          ...stock,
+        await applyHealthAction({
+          patch: {
           roaccutan: Math.max(0, (parseInt(stock.roaccutan || 0, 10) || 0) - 1),
-          last_taken_at: now.toISOString(),
-          last_roaccutan_at: now.toISOString(),
-          history: [{
+          },
+          entry: {
             at: now.toISOString(),
             type: 'roaccutan_take',
+            logical_date: localDateKey(now),
             roaccutan: 1
-          }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
+          },
+          okMsg: 'Roaccutan del mediodia registrado.'
         });
-        await persistHealth(next, 'Roaccutan del mediodia registrado.');
         await syncTodayChecks({ roacuttan: true });
       };
 
       const registerDinnerTake = async () => {
-        if(todayMedsState.finasteride && todayMedsState.minoxidil) {
-          setNotice('Las meds de cena ya estan marcadas hoy. Si fue un error, corregilo desde HOY o el historial.');
+        const dinnerTarget = getDinnerLogicalTarget();
+        if(dinnerTarget.medsState.finasteride && dinnerTarget.medsState.minoxidil) {
+          setNotice(`Las meds de cena ya estan marcadas para ${dinnerTarget.label}. Si fue un error, corregilo desde HOY o el historial.`);
           setTimeout(() => setNotice(''), 2500);
           return;
         }
         const now = new Date();
-        const next = recalcLastTakeFields({
-          ...stock,
+        await applyHealthAction({
+          patch: {
           minoxidil_finasteride: Math.max(0, (parseInt(stock.minoxidil_finasteride || 0, 10) || 0) - 1),
-          last_taken_at: now.toISOString(),
-          last_dinner_meds_at: now.toISOString(),
-          history: [{
+          },
+          entry: {
             at: now.toISOString(),
             type: 'dinner_combo_take',
+            logical_date: dinnerTarget.dateKey,
             minoxidil_finasteride: 1
-          }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
+          },
+          okMsg: `Meds de la cena registradas para ${dinnerTarget.label}.`
         });
-        await persistHealth(next, 'Meds de la cena registradas.');
-        await syncTodayChecks({ finasteride: true, minoxidil: true });
+        await syncTodayChecks({ finasteride: true, minoxidil: true }, dinnerTarget.dateKey);
       };
 
       const adjustStock = async (field, delta) => {
         const nowIso = new Date().toISOString();
         const current = parseInt(stock[field] || 0, 10) || 0;
         const nextVal = Math.max(0, current + delta);
-        const next = recalcLastTakeFields({
-          ...stock,
-          [field]: nextVal,
-          history: [{
+        await applyHealthAction({
+          patch: { [field]: nextVal },
+          entry: {
             at: nowIso,
             type: delta > 0 ? 'restock' : 'manual_adjust',
             field,
             delta
-          }, ...(Array.isArray(stock.history) ? stock.history : [])].slice(0, 30)
+          },
+          okMsg: delta > 0 ? 'Stock repuesto.' : 'Stock ajustado.'
         });
-        await persistHealth(next, delta > 0 ? 'Stock repuesto.' : 'Stock ajustado.');
-        if(delta === -1) {
-          if(field === 'roaccutan') await syncTodayChecks({ roacuttan: true });
-          if(field === 'minoxidil_finasteride') await syncTodayChecks({ finasteride: true, minoxidil: true });
-        }
       };
 
       const deleteHistoryEntry = async (entryAt) => {
@@ -6159,26 +6208,62 @@
         if(!target) return;
         const deltas = entryDeltas(target);
         const remaining = history.filter(entry => entry?.at !== entryAt);
-        const next = recalcLastTakeFields({
+        const next = buildHealthPayload({
           ...stock,
           roaccutan: Math.max(0, pn(stock.roaccutan) - deltas.roaccutan),
           minoxidil_finasteride: Math.max(0, pn(stock.minoxidil_finasteride) - deltas.combo),
           history: remaining
         });
         await persistHealth(next, 'Movimiento borrado y stock recompuesto.');
-        if(isTodayEntry(target.at)) {
-          if(deltas.roaccutan < 0 && todayMedsState.roacuttan && !hasRemainingTodayTake(remaining, 'roaccutan')) {
+        const affectsDate = target?.logical_date || (isTodayEntry(target.at) ? localDateKey(new Date()) : '');
+        const logicalToday = localDateKey(new Date());
+        const logicalYesterday = localDateKey(new Date(Date.now() - 86400000));
+        if(affectsDate === logicalToday || affectsDate === logicalYesterday || isTodayEntry(target.at)) {
+          const medStateForAffectedDate = affectsDate === logicalYesterday ? previousMedsState : todayMedsState;
+          if(deltas.roaccutan < 0 && todayMedsState.roacuttan && !hasRemainingTakeForDate(remaining, 'roaccutan', logicalToday)) {
             await syncTodayChecks({ roacuttan: false });
           }
           if(deltas.roaccutan > 0 && !todayMedsState.roacuttan) {
             await syncTodayChecks({ roacuttan: true });
           }
-          if(deltas.combo < 0 && (todayMedsState.finasteride || todayMedsState.minoxidil) && !hasRemainingTodayTake(remaining, 'combo')) {
-            await syncTodayChecks({ finasteride: false, minoxidil: false });
+          if(deltas.combo < 0 && (medStateForAffectedDate.finasteride || medStateForAffectedDate.minoxidil) && !hasRemainingTakeForDate(remaining, 'combo', affectsDate || logicalToday)) {
+            await syncTodayChecks({ finasteride: false, minoxidil: false }, affectsDate || undefined);
           }
-          if(deltas.combo > 0 && (!todayMedsState.finasteride || !todayMedsState.minoxidil)) {
-            await syncTodayChecks({ finasteride: true, minoxidil: true });
+          if(deltas.combo > 0 && (!medStateForAffectedDate.finasteride || !medStateForAffectedDate.minoxidil)) {
+            await syncTodayChecks({ finasteride: true, minoxidil: true }, affectsDate || undefined);
           }
+        }
+      };
+      const editHistoryEntry = async (entryAt) => {
+        const history = Array.isArray(stock.history) ? stock.history : [];
+        const target = history.find(entry => entry?.at === entryAt);
+        if(!target) return;
+        setEditingHistoryAt(entryAt);
+        try {
+          if(target.type === 'roaccutan_take') {
+            await deleteHistoryEntry(entryAt);
+            setNotice('Movimiento listo para corregir. Usa REGISTRAR ROACCUTAN si queres volver a cargarlo.');
+          } else if(target.type === 'dinner_combo_take') {
+            await deleteHistoryEntry(entryAt);
+            setNotice('Movimiento listo para corregir. Usa REGISTRAR MEDS CENA si queres volver a cargarlo.');
+          } else if(target.type === 'restock' || target.type === 'manual_adjust') {
+            const fieldLabel = target.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride';
+            const nextVal = window.prompt(`Nuevo ajuste para ${fieldLabel}. Usa positivo o negativo.`, String(target.delta || 0));
+            if(nextVal == null) return;
+            const parsed = pn(nextVal);
+            if(!parsed && parsed !== 0) {
+              setNotice('Ajuste cancelado.');
+              return;
+            }
+            await deleteHistoryEntry(entryAt);
+            if(parsed !== 0) await adjustStock(target.field, parsed);
+          } else if(target.type === 'habit_toggle') {
+            await deleteHistoryEntry(entryAt);
+            setNotice('Check diario quitado del historial. Si queres corregirlo, hacelo desde HOY.');
+          }
+          setTimeout(() => setNotice(''), 3000);
+        } finally {
+          setEditingHistoryAt('');
         }
       };
 
@@ -6250,7 +6335,7 @@
                     <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Tomas del dia</p>
                     <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;">${stock.last_taken_at ? new Date(stock.last_taken_at).toLocaleString('es-AR') : 'Sin registro'}</span>
                   </div>
-                  <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Roaccutan va al mediodia. Minoxidil y Finasteride van con la cena. Si descontas -1, tambien se marca el check del dia.</p>
+                  <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Roaccutan va al mediodia. Minoxidil y Finasteride van con la cena. Si las tomas entre 00:00 y 06:00, cuentan para el dia anterior. Los botones de stock son solo ajustes de inventario; para marcar tomas reales usa los botones de registrar.</p>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                     <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
                       <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#F59E0B;">Mediodia</p>
@@ -6295,9 +6380,14 @@
                             }
                           </p>
                         </div>
-                        <button onClick=${()=>deleteHistoryEntry(entry.at)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                          BORRAR
-                        </button>
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                          <button onClick=${()=>editHistoryEntry(entry.at)} disabled=${editingHistoryAt === entry.at} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;opacity:${editingHistoryAt === entry.at ? 0.7 : 1};">
+                            EDITAR
+                          </button>
+                          <button onClick=${()=>deleteHistoryEntry(entry.at)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            BORRAR
+                          </button>
+                        </div>
                       </div>
                     `)}
                   </div>
@@ -6397,9 +6487,18 @@
           const meds = { ...MEDS_STOCK_DEFAULT, ...(inventory.meds_stock || {}) };
           const book = { ...BOOK_DEFAULT, ...(inventory.reading_progress || {}) };
           const bookPct = Math.max(0, Math.min(100, Math.round((pn(book.current_page) / Math.max(1, pn(book.total_pages))) * 100) || 0));
-          const todayKey = new Date().toDateString();
-          const roaccutanToday = meds.last_roaccutan_at && new Date(meds.last_roaccutan_at).toDateString() === todayKey;
-          const dinnerToday = meds.last_dinner_meds_at && new Date(meds.last_dinner_meds_at).toDateString() === todayKey;
+          const todayKey = localDateKey(new Date());
+          const dinnerLogicalKey = (() => {
+            const now = new Date();
+            if(now.getHours() < 6) {
+              const prev = new Date(now);
+              prev.setDate(prev.getDate() - 1);
+              return localDateKey(prev);
+            }
+            return localDateKey(now);
+          })();
+          const roaccutanToday = meds.last_roaccutan_at && localDateKey(new Date(meds.last_roaccutan_at)) === todayKey;
+          const dinnerToday = (meds.last_dinner_logical_date || (meds.last_dinner_meds_at ? localDateKey(new Date(meds.last_dinner_meds_at)) : '')) === dinnerLogicalKey;
           const medNextLabel = !roaccutanToday
             ? 'Roaccutan pendiente'
             : !dinnerToday
@@ -8190,7 +8289,7 @@
         const onSwMessage = (event) => {
           if(event.data?.type === 'MEDS_DONE') {
             const medId  = event.data.id;
-            const medMap = { meds:'roacuttan', meds2:'magnesium' };
+            const medMap = { meds:'roacuttan', meds2:'dinner_combo' };
             const medKey = medMap[medId];
             if(medKey) {
               const todayWk  = getWeekKey(new Date());
@@ -8201,21 +8300,29 @@
               setAllWeeks(prev => {
             const wk  = prev[todayWk] || newWeek(todayWk);
                 const tr  = { ...wk.tracker };
-                const updatedDay = { ...tr[todayIdx], meds: { ...(tr[todayIdx]?.meds||{}), [medKey]: true } };
+                const updatedDay = medKey === 'dinner_combo'
+                  ? { ...tr[todayIdx], meds: { ...(tr[todayIdx]?.meds||{}), finasteride: true, minoxidil: true } }
+                  : { ...tr[todayIdx], meds: { ...(tr[todayIdx]?.meds||{}), [medKey]: true } };
                 tr[todayIdx] = updatedDay;
                 lsDaySave(dateKey, { ...updatedDay, _updatedAt: new Date().toISOString() });
                 return { ...prev, [todayWk]: { ...wk, tracker: tr } };
               });
 
-              // BUG FIX: llamar patch_med_status via Supabase (no el stub persistEntry)
-              supabase.rpc('patch_med_status', {
-                p_date:      dateKey,
-                p_med:       medKey,
-                p_val:       true,
-                p_device_id: DEVICE_ID
-              }).then(({ data, error }) => {
-                if(error) {
-                  console.warn('[MEDS_DONE] patch_med_status falló, encolando:', error.message);
+              const patchPromise = medKey === 'dinner_combo'
+                ? Promise.all([
+                    supabase.rpc('patch_med_status', { p_date: dateKey, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
+                    supabase.rpc('patch_med_status', { p_date: dateKey, p_med: 'minoxidil', p_val: true, p_device_id: DEVICE_ID })
+                  ])
+                : supabase.rpc('patch_med_status', {
+                    p_date:      dateKey,
+                    p_med:       medKey,
+                    p_val:       true,
+                    p_device_id: DEVICE_ID
+                  }).then(result => [result]);
+              patchPromise.then((results) => {
+                const firstError = results.find(r => r?.error)?.error;
+                if(firstError) {
+                  console.warn('[MEDS_DONE] patch_med_status falló, encolando:', firstError.message);
                   // Si falla por red, encolar en outbox
                   const wk = allWeeks[todayWk] || newWeek(todayWk);
                   const dayData = wk.tracker?.[todayIdx];
@@ -8223,7 +8330,7 @@
                     enqueueOutboxOp({
                       entity_type: 'daily_log',
                       entity_id:   dateKey,
-                      payload:     { tracker: { ...dayData, meds: { ...(dayData.meds||{}), [medKey]: true } }, session: null },
+                      payload:     { tracker: medKey === 'dinner_combo' ? { ...dayData, meds: { ...(dayData.meds||{}), finasteride: true, minoxidil: true } } : { ...dayData, meds: { ...(dayData.meds||{}), [medKey]: true } }, session: null },
                       base_revision: dayData._revision || null
                     }).catch(()=>{});
                   }
@@ -8237,12 +8344,18 @@
           // Acción pendiente del SW cuando la app se reabre sin auth fresca
           if(event.data?.type === 'PENDING_MED_ACTION') {
             const { medId, date } = event.data;
-            const medMap = { meds:'roacuttan', meds2:'magnesium' };
+            const medMap = { meds:'roacuttan', meds2:'dinner_combo' };
             const medKey = medMap[medId];
             if(medKey && date) {
-              supabase.rpc('patch_med_status', {
-                p_date: date, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
-              }).then(()=>{}).catch(()=>{});
+              const patchPromise = medKey === 'dinner_combo'
+                ? Promise.all([
+                    supabase.rpc('patch_med_status', { p_date: date, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
+                    supabase.rpc('patch_med_status', { p_date: date, p_med: 'minoxidil', p_val: true, p_device_id: DEVICE_ID })
+                  ])
+                : supabase.rpc('patch_med_status', {
+                    p_date: date, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
+                  });
+              Promise.resolve(patchPromise).then(()=>{}).catch(()=>{});
             }
           }
 
@@ -8258,15 +8371,21 @@
         const pendingMedId   = urlParams.get('pending_med');
         const pendingMedDate = urlParams.get('pending_date');
         if(pendingMedId && pendingMedDate) {
-          const medMap = { meds:'roacuttan', meds2:'magnesium' };
+          const medMap = { meds:'roacuttan', meds2:'dinner_combo' };
           const medKey = medMap[pendingMedId];
           if(medKey) {
             // Esperar a que haya sesión activa antes de persistir
             supabase.auth.getSession().then(({ data: { session: sess } }) => {
               if(!sess) return;
-              supabase.rpc('patch_med_status', {
-                p_date: pendingMedDate, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
-              }).then(() => {
+              const patchPromise = medKey === 'dinner_combo'
+                ? Promise.all([
+                    supabase.rpc('patch_med_status', { p_date: pendingMedDate, p_med: 'finasteride', p_val: true, p_device_id: DEVICE_ID }),
+                    supabase.rpc('patch_med_status', { p_date: pendingMedDate, p_med: 'minoxidil', p_val: true, p_device_id: DEVICE_ID })
+                  ])
+                : supabase.rpc('patch_med_status', {
+                    p_date: pendingMedDate, p_med: medKey, p_val: true, p_device_id: DEVICE_ID
+                  });
+              Promise.resolve(patchPromise).then(() => {
                 // Limpiar params de URL sin recargar
                 const clean = window.location.pathname + (window.location.search.replace(/[?&]pending_med=[^&]*/g,'').replace(/[?&]pending_date=[^&]*/g,'').replace(/^&/,'?') || '');
                 window.history.replaceState({}, '', clean);
@@ -8445,6 +8564,11 @@
       const realTodayWeek = getWeekKey(realToday);
       const realTodayIdx = String(realToday.getDay());
       const realTodayTracker = allWeeks[realTodayWeek]?.tracker?.[realTodayIdx] || newDay();
+      const realPreviousDate = new Date(realToday);
+      realPreviousDate.setDate(realPreviousDate.getDate() - 1);
+      const realPreviousWeek = getWeekKey(realPreviousDate);
+      const realPreviousIdx = String(realPreviousDate.getDay());
+      const realPreviousTracker = allWeeks[realPreviousWeek]?.tracker?.[realPreviousIdx] || newDay();
       const previousSnapshot = getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1);
       const activeDayClosed = isGymClosedDate(activeDateKey);
       const previousDayKey = DAY_KEYS[(DAY_KEYS.indexOf(activeDay) + DAY_KEYS.length - 1) % DAY_KEYS.length];
@@ -8478,10 +8602,10 @@
 
       const updateHabit = (f,v) => upd(w=>({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}));
       const updateBodyWeight = (v) => { setHasUnsaved(true); setAllWeeks(prev=>({...prev,[currentWk]:{...(prev[currentWk]||newWeek(currentWk)),bodyWeight:v}})); };
-      const syncTodayMedsFromHealth = useCallback(async (partialMeds) => {
-        const now = new Date();
-        const todayWk = getWeekKey(now);
-        const todayIdx = String(now.getDay());
+      const syncTodayMedsFromHealth = useCallback(async (partialMeds, targetDateKey) => {
+        const baseDate = targetDateKey ? new Date(`${targetDateKey}T12:00:00`) : new Date();
+        const todayWk = getWeekKey(baseDate);
+        const todayIdx = String(baseDate.getDay());
         const todayDate = getDayDate(todayWk, parseInt(todayIdx, 10));
         let nextDayState = null;
 
@@ -8514,8 +8638,12 @@
       }, []);
       const syncMedsInventoryFromToggle = async (med, nextVal) => {
         const selectedDate = getDayDate(currentWk, parseInt(activeDay, 10));
-        const todayDate = new Date().toISOString().slice(0,10);
-        if(selectedDate !== todayDate) return;
+        const now = new Date();
+        const todayDate = localDateKey(now);
+        const dinnerLogicalDate = getDinnerLogicalDateKey(now);
+        const isDinnerMed = med === 'finasteride' || med === 'minoxidil';
+        const allowedDate = isDinnerMed ? dinnerLogicalDate : todayDate;
+        if(selectedDate !== allowedDate) return;
 
         const prevMeds = tracker?.meds || {};
         const prevVal = !!prevMeds[med];
@@ -8551,25 +8679,29 @@
             ...MEDS_STOCK_DEFAULT,
             ...(error ? (local || {}) : freshest)
           };
-        const nextPayload = {
-          ...base,
-          roaccutan: Math.max(0, pn(base.roaccutan) + deltaRoaccutan),
-          minoxidil_finasteride: Math.max(0, pn(base.minoxidil_finasteride) + deltaCombo),
-          _updatedAt: new Date().toISOString(),
-          last_taken_at: normalizedNext ? new Date().toISOString() : base.last_taken_at,
-          last_roaccutan_at: med === 'roacuttan' && normalizedNext ? new Date().toISOString() : base.last_roaccutan_at,
-          last_dinner_meds_at: (med === 'finasteride' || med === 'minoxidil') && nextCombo ? new Date().toISOString() : base.last_dinner_meds_at,
+          const nowIso = new Date().toISOString();
+          const nextPayload = {
+            ...base,
+            roaccutan: Math.max(0, pn(base.roaccutan) + deltaRoaccutan),
+            minoxidil_finasteride: Math.max(0, pn(base.minoxidil_finasteride) + deltaCombo),
+            _updatedAt: nowIso,
+            last_taken_at: normalizedNext ? nowIso : base.last_taken_at,
+            last_roaccutan_at: med === 'roacuttan' && normalizedNext ? nowIso : base.last_roaccutan_at,
+            last_dinner_meds_at: isDinnerMed && nextCombo ? nowIso : base.last_dinner_meds_at,
+            last_dinner_logical_date: isDinnerMed && nextCombo ? dinnerLogicalDate : base.last_dinner_logical_date,
             history: [
               {
-                at: new Date().toISOString(),
+                at: nowIso,
                 type: 'habit_toggle',
                 med,
+                logical_date: isDinnerMed ? dinnerLogicalDate : todayDate,
                 delta_roaccutan: deltaRoaccutan,
                 delta_combo: deltaCombo
               },
               ...(Array.isArray(base.history) ? base.history : [])
             ].slice(0, 30)
           };
+          try { window.dispatchEvent(new CustomEvent('enzo-health-changed', { detail: nextPayload })); } catch(_) {}
           try { localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(nextPayload)); } catch(_) {}
           await supabase
             .from('app_inventory')
@@ -9319,7 +9451,7 @@
             ${view==='tasks'    && html`<${ProductivityView} session=${session}/>`}
             ${view==='recipes'  && html`<${RecipesView} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe}/>`}
             ${view==='study'    && html`<${StudyView} session=${session}/>`}
-            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight} todayMeds=${realTodayTracker.meds||{}}/>`}
+            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight} todayMeds=${realTodayTracker.meds||{}} previousDayMeds=${realPreviousTracker.meds||{}}/>`}
             ${view==='books'    && html`<${BooksView} session=${session}/>`}
             ${view==='notif'    && html`<${NotifView} session=${session}/>`}
             ${view==='routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
