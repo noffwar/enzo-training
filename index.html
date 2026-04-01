@@ -7670,6 +7670,8 @@
       const wd = allWeeks[currentWk]||newWeek(currentWk);
       const routineAssignments = getRoutineAssignments(wd);
       const planMode = getPlanMode(wd);
+      const selectableRoutineIds = String(planMode) === '5' ? ['1','2','3','4','5'] : ['1','2','4','5'];
+      const selectableRoutines = selectableRoutineIds.map(id => routineData[id]).filter(Boolean);
       const tracker    = wd.tracker[activeDay]||newDay();
       const gymSession = wd.sessions[activeDay]||[];
       const yesterdayFastMsg = getYesterdayFast(allWeeks, currentWk, activeDay);
@@ -8303,7 +8305,7 @@
                   </div>
                   <select class="inp" style="min-width:110px;font-size:12px;padding:8px 10px;" value=${routineId||''} onChange=${e=>handleRoutineChange(e.target.value)}>
                     <option value="">Descanso</option>
-                    ${Object.values(routineData).map(r=>html`<option value=${r.id}>${r.name}</option>`)}
+                  ${selectableRoutines.map(r=>html`<option value=${r.id}>${r.name}</option>`)}
                   </select>
                 </div>
 
