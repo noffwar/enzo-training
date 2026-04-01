@@ -2195,12 +2195,23 @@
               stockDelta = parsedAmount.value;
               stockDeltaUnit = normalizeStockUnit(parsedAmount.unit);
             }
-          } else if(parsedCountNoun?.value > 0 && (normalizeStockUnit(recipe.base_unit || '') === 'unidad' || normalizeStockUnit(recipe.stock_unit || '') === 'unidad')) {
+          } else if(
+            parsedCountNoun?.value > 0 &&
+            (
+              normalizeStockUnit(recipe.base_unit || '') === 'unidad' ||
+              normalizeStockUnit(recipe.stock_unit || '') === 'unidad' ||
+              normalizeStockUnit(recipe.base_unit || '') === 'porcion'
+            )
+          ) {
             const baseQty = parseFloat(recipe.base_qty) || 1;
             factor = parsedCountNoun.value / baseQty;
-            qty = `${formatRecipeQty(parsedCountNoun.value, parsedCountNoun.value === 1 ? 'unidad' : 'unidades')} (${recipe.base_unit || 'unidad'})`;
+            const baseUnitNormalized = normalizeStockUnit(recipe.base_unit || '');
+            const countUnit = baseUnitNormalized === 'porcion'
+              ? (parsedCountNoun.value === 1 ? 'porcion' : 'porciones')
+              : (parsedCountNoun.value === 1 ? 'unidad' : 'unidades');
+            qty = `${formatRecipeQty(parsedCountNoun.value, countUnit)} (${recipe.base_unit || (baseUnitNormalized === 'porcion' ? 'porcion' : 'unidad')})`;
             stockDelta = parsedCountNoun.value;
-            stockDeltaUnit = 'unidad';
+            stockDeltaUnit = baseUnitNormalized === 'porcion' ? 'porcion' : 'unidad';
           }
 
           const result = {
