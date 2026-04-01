@@ -1352,9 +1352,64 @@
     // ═══════════════════════════════════════════════════
     //  SMART CENA (Recomendador nutricional)
     // ═══════════════════════════════════════════════════
-    const SmartCena = ({currentProt}) => {
+    const SmartCena = ({currentProt, tracker}) => {
       const [rec, setRec] = useState(null);
       const [open, setOpen] = useState(false);
+      const meals = tracker?.meals || [];
+      const totals = dayTotals(meals);
+      const normalizeFoodHint = (s='') => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const fiberEstimate = (meals || []).reduce((acc, meal) => acc + (meal?.items || []).reduce((sum, item) => {
+        const text = normalizeFoodHint(`${item?.name || ''} ${item?.qty || ''}`);
+        let next = sum;
+        if(/avena|salvado|integral|legumbre|lenteja|garbanzo|poroto|verdura|brocoli|zanahoria|espinaca|banana|manzana|pera|papa|batata/.test(text)) next += 4;
+        if(/fruta|ensalada|vegetal|verduras|frutos secos/.test(text)) next += 2;
+        return next;
+      }, 0), 0);
+      const lastMealTime = (meals || [])
+        .map(m => String(m?.lastBite || '').trim())
+        .filter(Boolean)
+        .sort()
+        .slice(-1)[0] || '';
+      const fastingAdvice = useMemo(() => {
+        const proteinOk = totals.prot >= TARGETS.prot * 0.85;
+        const caloriesOk = totals.cals >= TARGETS.kcal * 0.78;
+        const fatOk = totals.fat >= 45;
+        const fiberOk = fiberEstimate >= 18;
+        const shouldFast = proteinOk && caloriesOk && (fatOk || fiberOk);
+        const caution = !proteinOk || totals.cals < TARGETS.kcal * 0.65;
+        let hungerWindow = 'Sin datos';
+        if(lastMealTime) {
+          const [h,m] = lastMealTime.split(':').map(Number);
+          if(!Number.isNaN(h)) {
+            const base = new Date();
+            base.setHours(h, m || 0, 0, 0);
+            const holdHours = 8.5
+              + Math.min(2, totals.fat / 35)
+              + Math.min(1.5, totals.prot / 90)
+              + Math.min(1.5, fiberEstimate / 16)
+              - (totals.cals < TARGETS.kcal * 0.7 ? 1.2 : 0);
+            const start = new Date(base.getTime() + holdHours * 3600000);
+            const end = new Date(start.getTime() + 90 * 60000);
+            const fmt = dt => dt.toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit' });
+            hungerWindow = `${fmt(start)}-${fmt(end)}`;
+          }
+        }
+        return {
+          shouldFast,
+          caution,
+          label: shouldFast
+            ? 'Hoy sí conviene ayuno corto'
+            : caution
+              ? 'Hoy no conviene forzar ayuno'
+              : 'Ayuno opcional y flexible',
+          detail: shouldFast
+            ? 'Buen cierre de energía/proteína para probar 12-14 h.'
+            : caution
+              ? 'Quedaste corto en energía o proteína; mejor cenar bien y no estirar de más.'
+              : 'Podés hacer ayuno suave si mañana te sentís bien.',
+          hungerWindow
+        };
+      }, [fiberEstimate, lastMealTime, totals.cals, totals.fat, totals.prot]);
 
       const calculate = () => {
         const missP = TARGETS.prot - currentProt;
@@ -1398,6 +1453,120 @@
               `)}
             </div>
           `}
+          <div style="margin-top:10px;padding:10px;border-radius:8px;background:rgba(10,15,30,0.42);border:1px solid #1E2D45;">
+            <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">Ayuno nocturno</p>
+            <p style="margin:6px 0 0;font-size:13px;font-weight:700;color:${fastingAdvice.shouldFast ? '#10B981' : (fastingAdvice.caution ? '#F59E0B' : '#CBD5E1')};">${fastingAdvice.label}</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${fastingAdvice.detail}</p>
+            <p style="margin:6px 0 0;font-size:11px;color:#7DD3FC;">Hambre probable: ${fastingAdvice.hungerWindow}</p>
+          </div>
+        </div>
+      `;
+    };
+
+    const NutritionReviewCard = ({currentDateKey, currentTracker, previousDateKey, previousTracker}) => {
+      const [review, setReview] = useState({ today:null, previous:null, loadingToday:false, loadingPrevious:false, error:'' });
+      const serializeMeals = (tracker) => JSON.stringify((tracker?.meals || []).map(meal => ({
+        items: (meal?.items || []).map(item => ({
+          name: item?.name || '',
+          qty: item?.qty || '',
+          cals: pn(item?.cals),
+          prot: pn(item?.prot),
+          carb: pn(item?.carb),
+          fat: pn(item?.fat)
+        }))
+      })));
+      const fetchReview = useCallback(async (dateKey, tracker, targetKey) => {
+        if(!dateKey || !(tracker?.meals || []).some(m => (m.items || []).length > 0)) return;
+        const cacheKey = `enzo_nutrition_review_${dateKey}`;
+        const mealsFingerprint = serializeMeals(tracker);
+        try {
+          const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+          if(cached?.fingerprint === mealsFingerprint && cached?.payload) {
+            setReview(prev => ({ ...prev, [targetKey]: cached.payload }));
+            return;
+          }
+        } catch(_) {}
+
+        setReview(prev => ({ ...prev, [`loading${targetKey === 'today' ? 'Today' : 'Previous'}`]: true, error:'' }));
+        try {
+          const res = await fetch('/.netlify/functions/daily-nutrition-review', {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({
+              date: dateKey,
+              meals: tracker.meals || [],
+              totals: dayTotals(tracker.meals || [])
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok) throw new Error(data?.error || 'No se pudo revisar la nutricion.');
+          setReview(prev => ({ ...prev, [targetKey]: data }));
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({ fingerprint: mealsFingerprint, payload: data }));
+          } catch(_) {}
+        } catch(e) {
+          setReview(prev => ({ ...prev, error: e.message || 'No se pudo revisar la nutricion.' }));
+        } finally {
+          setReview(prev => ({ ...prev, [`loading${targetKey === 'today' ? 'Today' : 'Previous'}`]: false }));
+        }
+      }, []);
+
+      useEffect(() => {
+        fetchReview(previousDateKey, previousTracker, 'previous');
+      }, [fetchReview, previousDateKey, serializeMeals(previousTracker)]);
+
+      useEffect(() => {
+        const now = new Date();
+        if(now.getHours() < 20) return;
+        fetchReview(currentDateKey, currentTracker, 'today');
+      }, [fetchReview, currentDateKey, serializeMeals(currentTracker)]);
+
+      const renderNutrients = (nutrients) => {
+        const entries = Object.entries(nutrients || {});
+        if(entries.length === 0) return null;
+        return html`
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+            ${entries.map(([key, status]) => html`
+              <span style=${`padding:4px 7px;border-radius:999px;border:1px solid rgba(30,41,59,0.8);background:${status === 'low' ? 'rgba(245,158,11,0.12)' : status === 'high' ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)'};color:${status === 'low' ? '#FBBF24' : status === 'high' ? '#FCA5A5' : '#86EFAC'};font-size:10px;font-weight:700;text-transform:uppercase;`}>
+                ${key}: ${status}
+              </span>
+            `)}
+          </div>
+        `;
+      };
+
+      if(!review.previous && !review.today && !review.loadingPrevious && !review.loadingToday) return null;
+
+      return html`
+        <div class="glass-card" style="padding:12px;border-color:rgba(56,189,248,0.25);display:flex;flex-direction:column;gap:10px;">
+          <div>
+            <p style="margin:0;font-size:12px;font-weight:700;color:#38BDF8;text-transform:uppercase;letter-spacing:0.06em;">Micros y sugerencias</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">Estimacion orientativa de fibra, minerales, sodio y cierre del dia.</p>
+          </div>
+          ${review.previous && html`
+            <div style="padding:10px;border-radius:8px;background:rgba(10,15,30,0.42);border:1px solid #1E2D45;">
+              <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">Para hoy, segun ayer</p>
+              <p style="margin:6px 0 0;font-size:13px;font-weight:700;color:#E2E8F0;">${review.previous.day_summary || 'Sin resumen'}</p>
+              ${renderNutrients(review.previous.nutrients)}
+              <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+                ${(review.previous.tomorrow_recommendations || []).slice(0,3).map(line => html`<p style="margin:0;font-size:11px;color:#CBD5E1;">• ${line}</p>`)}
+              </div>
+              ${review.previous.fat_advice && html`<p style="margin:8px 0 0;font-size:11px;color:#FBBF24;">${review.previous.fat_advice}</p>`}
+            </div>
+          `}
+          ${(review.today || review.loadingToday) && html`
+            <div style="padding:10px;border-radius:8px;background:rgba(10,15,30,0.42);border:1px solid #1E2D45;">
+              <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">Cierre del dia para mañana</p>
+              <p style="margin:6px 0 0;font-size:13px;font-weight:700;color:#E2E8F0;">${review.loadingToday ? 'Analizando...' : (review.today?.day_summary || 'Sin resumen')}</p>
+              ${renderNutrients(review.today?.nutrients)}
+              <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+                ${review.loadingToday
+                  ? html`<p style="margin:0;font-size:11px;color:#94A3B8;">Calculando recomendaciones...</p>`
+                  : (review.today?.tomorrow_recommendations || []).slice(0,3).map(line => html`<p style="margin:0;font-size:11px;color:#CBD5E1;">• ${line}</p>`)}
+              </div>
+            </div>
+          `}
+          ${review.error && html`<p style="margin:0;font-size:11px;color:#FCA5A5;">${review.error}</p>`}
         </div>
       `;
     };
@@ -2026,7 +2195,23 @@
       return null;
     };
 
-    const HabitsPanel = ({tracker:t, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem}) => {
+    const getRelativeDaySnapshot = (allWeeks, currentWk, activeDay, offsetDays) => {
+      try {
+        const baseDate = new Date(getDayDate(currentWk, parseInt(activeDay, 10)) + 'T12:00:00');
+        baseDate.setDate(baseDate.getDate() + offsetDays);
+        const wkKey = getWeekKey(baseDate);
+        const dayIdx = String(baseDate.getDay());
+        const tracker = allWeeks[wkKey]?.tracker?.[dayIdx] || null;
+        return {
+          dateKey: getDayDate(wkKey, parseInt(dayIdx, 10)),
+          tracker
+        };
+      } catch(_) {
+        return { dateKey:'', tracker:null };
+      }
+    };
+
+    const HabitsPanel = ({tracker:t, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem, onReplaceItem}) => {
       const [open,setOpen] = useState(true);
       const [aiLoading, setAiLoading] = useState([false,false,false]);
       const [aiError,   setAiError]   = useState(['','','']);
@@ -2047,6 +2232,7 @@
       const [editingRecipeNotes, setEditingRecipeNotes] = useState('');
       const [editingRecipeSaving, setEditingRecipeSaving] = useState(false);
       const [stockBusyKey, setStockBusyKey] = useState('');
+      const [editingMealItem, setEditingMealItem] = useState({ mealIndex:-1, itemIndex:-1 });
       const recipesRef = useRef(null);
 
       const fs = getFastStats(t);
@@ -2442,6 +2628,16 @@
         onMeal(mealIndex, 'aiDraft', '');
         setAiError(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
         setRecipeMsg(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
+        if(editingMealItem.mealIndex === mealIndex) {
+          setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
+        }
+      };
+
+      const startEditMealItem = (mealIndex, itemIndex, item) => {
+        const draft = `${String(item?.qty || '').trim()} ${String(item?.name || '').trim()}`.trim();
+        onMeal(mealIndex, 'aiDraft', draft);
+        setEditingMealItem({ mealIndex, itemIndex });
+        setAiError(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
       };
 
       const splitMealDraftParts = (text='') => {
@@ -2484,7 +2680,12 @@
               : window.confirm(`Encontre "${recipeHit.name}" en tu biblioteca. ¿Querés usar ese valor guardado en vez de calcularlo por internet?`);
             if(!shouldUseLibrary) throw new Error('__USE_INTERNET__');
 
-            onAddItem(mealIndex, recipeHit);
+            if(editingMealItem.mealIndex === mealIndex && editingMealItem.itemIndex >= 0) {
+              onReplaceItem(mealIndex, editingMealItem.itemIndex, recipeHit);
+              setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
+            } else {
+              onAddItem(mealIndex, recipeHit);
+            }
             if(recipeHit.stock_unit && recipeHit.stock_delta_unit && normalizeStockUnit(recipeHit.stock_unit) === normalizeStockUnit(recipeHit.stock_delta_unit)) {
               await discountItemStock(mealIndex, recipeHit);
             }
@@ -2503,7 +2704,7 @@
         const data = await res.json().catch(() => ({}));
         if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-        onAddItem(mealIndex, {
+        const nextItem = {
           name: data.name || text,
           qty:  data.qty  || '1 porción',
           cals: Math.round(parseFloat(data.cals)||0),
@@ -2511,7 +2712,13 @@
           carb: Math.round(parseFloat(data.carb)||0),
           fat:  Math.round(parseFloat(data.fat) ||0),
           nota: data.nota || ''
-        });
+        };
+        if(editingMealItem.mealIndex === mealIndex && editingMealItem.itemIndex >= 0) {
+          onReplaceItem(mealIndex, editingMealItem.itemIndex, nextItem);
+          setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
+        } else {
+          onAddItem(mealIndex, nextItem);
+        }
       };
 
       // analyzeMeal: llama a la IA y agrega el resultado como item a la leyenda
@@ -2547,7 +2754,12 @@
                 : window.confirm(`Encontre "${recipeHit.name}" en tu biblioteca. ¿Querés usar ese valor guardado en vez de calcularlo por internet?`);
               if(!shouldUseLibrary) throw new Error('__USE_INTERNET__');
 
-              onAddItem(mealIndex, recipeHit);
+              if(editingMealItem.mealIndex === mealIndex && editingMealItem.itemIndex >= 0) {
+                onReplaceItem(mealIndex, editingMealItem.itemIndex, recipeHit);
+                setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
+              } else {
+                onAddItem(mealIndex, recipeHit);
+              }
               onMeal(mealIndex, 'aiDraft', '');
               if(recipeHit.stock_unit && recipeHit.stock_delta_unit && normalizeStockUnit(recipeHit.stock_unit) === normalizeStockUnit(recipeHit.stock_delta_unit)) {
                 await discountItemStock(mealIndex, recipeHit);
@@ -2567,7 +2779,7 @@
           const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
-          onAddItem(mealIndex, {
+          const nextItem = {
             name: data.name || text,
             qty:  data.qty  || '1 porción',
             cals: Math.round(parseFloat(data.cals)||0),
@@ -2575,7 +2787,13 @@
             carb: Math.round(parseFloat(data.carb)||0),
             fat:  Math.round(parseFloat(data.fat) ||0),
             nota: data.nota || ''
-          });
+          };
+          if(editingMealItem.mealIndex === mealIndex && editingMealItem.itemIndex >= 0) {
+            onReplaceItem(mealIndex, editingMealItem.itemIndex, nextItem);
+            setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
+          } else {
+            onAddItem(mealIndex, nextItem);
+          }
 
           onMeal(mealIndex, 'aiDraft', '');
         } catch(e) {
@@ -2923,12 +3141,16 @@
                                 </span>
                               `}
                               <span style="font-size:11px;font-weight:700;color:#6366F1;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${fn(item.prot)}g P</span>
+                              <button onClick=${()=>startEditMealItem(i, idx, item)} style="color:#A5B4FC;background:none;border:none;font-size:16px;cursor:pointer;padding:0 2px;line-height:1;">✎</button>
                               <button onClick=${()=>onRemoveItem(i, idx, item)} style="color:#EF4444;background:none;border:none;font-size:20px;cursor:pointer;padding:0;line-height:1;">×</button>
                             </div>
                           </div>
                           ${item.nota && html`<p style="margin:1px 0 3px 8px;font-size:9px;color:#F59E0B;">⚠ ${item.nota}</p>`}
                         `)}
                       </div>
+                    `}
+                    ${editingMealItem.mealIndex === i && html`
+                      <p style="margin:-2px 0 4px;font-size:10px;color:#A5B4FC;">Editando item existente: al usar IA o biblioteca se reemplaza esa fila.</p>
                     `}
 
                     <!-- TOTALES ACUMULADOS DE LA COMIDA -->
@@ -6003,6 +6225,7 @@
         backupLabel:''
       });
       const [loading, setLoading] = useState(true);
+      const [weather, setWeather] = useState({ loading:true, data:null, error:'' });
 
       const loadSummary = useCallback(async () => {
         setLoading(true);
@@ -6166,6 +6389,39 @@
         };
       }, [loadSummary]);
 
+      const loadWeather = useCallback(async () => {
+        const cacheKey = 'enzo_weather_san_rafael';
+        try {
+          const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+          if(cached?.data && cached?.at && (Date.now() - cached.at) < 30 * 60 * 1000) {
+            setWeather({ loading:false, data: cached.data, error:'' });
+            return;
+          }
+        } catch(_) {}
+        setWeather(prev => ({ ...prev, loading:true, error:'' }));
+        try {
+          const res = await fetch('/.netlify/functions/weather-san-rafael');
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok) throw new Error(data?.error || 'No se pudo cargar el clima.');
+          setWeather({ loading:false, data, error:'' });
+          try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data })); } catch(_) {}
+        } catch(e) {
+          setWeather({ loading:false, data:null, error:e.message || 'No se pudo cargar el clima.' });
+        }
+      }, []);
+
+      useEffect(() => {
+        loadWeather();
+        const onFocus = () => loadWeather();
+        const onVisible = () => { if(document.visibilityState === 'visible') loadWeather(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [loadWeather]);
+
       return html`
         <div class="glass-card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -6214,6 +6470,24 @@
             </button>
           </div>
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+            <div style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.25);background:rgba(56,189,248,0.08);">
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#7DD3FC;font-weight:700;">San Rafael clima</p>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${weather.loading ? 'Cargando...' : weather.data ? `${weather.data.temp_current}° ahora · ${weather.data.temp_max}/${weather.data.temp_min}°` : 'Sin datos'}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">
+                ${weather.data
+                  ? `H ${weather.data.humidity_min}-${weather.data.humidity_max}% · lluvia ${weather.data.rain_probability}% · ráfagas ${weather.data.wind_gusts} km/h · UV ${weather.data.uv_max}`
+                  : (weather.error || 'Sin datos meteorológicos')}
+              </p>
+              ${weather.data && html`
+                <p style="margin:6px 0 0;font-size:11px;color:${weather.data.zonda || weather.data.hail_risk || weather.data.lightning_risk ? '#FCA5A5' : '#86EFAC'};">
+                  ${[
+                    weather.data.zonda ? 'Zonda' : null,
+                    weather.data.hail_risk ? 'granizo' : null,
+                    weather.data.lightning_risk ? 'rayos' : null
+                  ].filter(Boolean).join(' · ') || 'Sin alertas fuertes detectadas'}
+                </p>
+              `}
+            </div>
             <button onClick=${onOpenHealth} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.08);cursor:pointer;">
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#86EFAC;font-weight:700;">Proxima medicacion</p>
               <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : summary.medNextLabel}</p>
@@ -8029,6 +8303,7 @@
       const routineId  = routineAssignments[activeDay];
       const routineInfo = routineId ? getRoutineForWeek(routineId, routineData, currentWk) : null;
       const activeDateKey = getDayDate(currentWk, parseInt(activeDay, 10));
+      const previousSnapshot = getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1);
       const activeDayClosed = isGymClosedDate(activeDateKey);
       const previousDayKey = DAY_KEYS[(DAY_KEYS.indexOf(activeDay) + DAY_KEYS.length - 1) % DAY_KEYS.length];
       const previousTwoDayKey = DAY_KEYS[(DAY_KEYS.indexOf(activeDay) + DAY_KEYS.length - 2) % DAY_KEYS.length];
@@ -8323,6 +8598,14 @@
       const addMealItem = (mealIndex, item) => upd(w => {
         const meals = [...w.tracker[activeDay].meals];
         meals[mealIndex] = { ...meals[mealIndex], items: [...(meals[mealIndex].items||[]), item] };
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+      });
+
+      const replaceMealItem = (mealIndex, itemIndex, item) => upd(w => {
+        const meals = [...w.tracker[activeDay].meals];
+        const nextItems = [...(meals[mealIndex].items || [])];
+        nextItems[itemIndex] = item;
+        meals[mealIndex] = { ...meals[mealIndex], items: nextItems };
         return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
       });
 
@@ -8837,7 +9120,7 @@
                   onOpenNotif=${()=>navigateTo('notif')}
                 />
 
-                <${HabitsPanel} tracker=${tracker} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem}/>
+                <${HabitsPanel} tracker=${tracker} yesterdayFastMsg=${yesterdayFastMsg} onChange=${updateHabit} onMed=${updateMed} onMeal=${updateMeal} onAddItem=${addMealItem} onRemoveItem=${removeMealItem} onReplaceItem=${replaceMealItem}/>
 
                 <!-- Water + Macros elásticos del día + Asistente nutricional -->
                 <div class="glass-card" style="padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
@@ -8856,7 +9139,12 @@
                   val=${tracker.water||0}
                   onChange=${v=>updateHabit('water',v)}
                   roacuttan=${tracker.meds?.roacuttan||false}/>
-                <${SmartCena} currentProt=${dayTotals(tracker.meals||[]).prot}/>
+                <${NutritionReviewCard}
+                  currentDateKey=${activeDateKey}
+                  currentTracker=${tracker}
+                  previousDateKey=${previousSnapshot.dateKey}
+                  previousTracker=${previousSnapshot.tracker}/>
+                <${SmartCena} currentProt=${dayTotals(tracker.meals||[]).prot} tracker=${tracker}/>
 
                 <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleInput} onHabit=${updateHabit} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSessionQuick} onResetSessionChecks=${handleResetSessionChecksQuick}/>
 
