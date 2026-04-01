@@ -2146,6 +2146,7 @@
         const normalizedNameKey = normalizeRecipeKey(normalizedNameOnly);
         const parsedAmount = parseRecipeAmount(raw);
         const parsedCountNoun = parseRecipeCountNoun(raw);
+        const parsedCountNounKey = parsedCountNoun ? normalizeRecipeKey(parsedCountNoun.noun) : '';
         const exactMatches = [];
         const fuzzyMatches = [];
 
@@ -2161,13 +2162,13 @@
             names.includes(normalizedNameOnly) ||
             keys.includes(normalizedFullKey) ||
             keys.includes(normalizedNameKey) ||
-            (parsedCountNoun && keys.includes(parsedCountNoun.noun));
+            (parsedCountNounKey && keys.includes(parsedCountNounKey));
 
           const fuzzy =
             !exact &&
             (
               keys.some(k => k && (normalizedFullKey.includes(k) || k.includes(normalizedFullKey) || normalizedNameKey.includes(k) || k.includes(normalizedNameKey))) ||
-              (parsedCountNoun && keys.some(k => k && (parsedCountNoun.noun.includes(k) || k.includes(parsedCountNoun.noun))))
+              (parsedCountNounKey && keys.some(k => k && (parsedCountNounKey.includes(k) || k.includes(parsedCountNounKey))))
             );
 
           if(!exact && !fuzzy) continue;
