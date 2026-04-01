@@ -2243,6 +2243,18 @@
         };
       };
 
+      const mealItemUsesRecipe = (recipe, item) => {
+        if(!recipe || !item) return false;
+        if(item.recipe_id && recipe.id && item.recipe_id === recipe.id) return true;
+        const recipeKeys = [recipe.recipe_name, ...((Array.isArray(recipe.aliases) ? recipe.aliases : []))]
+          .filter(Boolean)
+          .map(normalizeRecipeKey);
+        const itemKeys = [item.recipe_name, item.name]
+          .filter(Boolean)
+          .map(normalizeRecipeKey);
+        return itemKeys.some(key => key && recipeKeys.includes(key));
+      };
+
       const findRecipeMatch = (recipes, inputText) => {
         const raw = String(inputText || '').trim();
         const normalizedFull = normalizeRecipeText(raw);
@@ -8165,6 +8177,7 @@
       };
       const recalculateMealsUsingRecipe = useCallback((updatedRecipe) => {
         if(!updatedRecipe?.id) return;
+        const touchedDays = [];
         setHasUnsaved(true);
         setAllWeeks(prev => {
           let changed = false;
@@ -8180,7 +8193,7 @@
                 const items = Array.isArray(meal?.items) ? meal.items : [];
                 let mealChanged = false;
                 const nextItems = items.map(item => {
-                  if(item?.recipe_id !== updatedRecipe.id) return item;
+                  if(!mealItemUsesRecipe(updatedRecipe, item)) return item;
                   mealChanged = true;
                   dayChanged = true;
                   weekChanged = true;
@@ -8195,6 +8208,13 @@
                   meals: nextMeals,
                   _updatedAt: new Date().toISOString()
                 };
+                touchedDays.push({
+                  wkKey,
+                  dayIdx,
+                  dateKey: getDayDate(wkKey, parseInt(dayIdx, 10)),
+                  tracker: nextTracker[dayIdx],
+                  session: wkData.sessions?.[dayIdx] || null
+                });
               }
             });
             if(weekChanged) {
@@ -8203,6 +8223,11 @@
           });
           return changed ? next : prev;
         });
+        setTimeout(() => {
+          touchedDays.forEach(day => {
+            saveDayRemote(day.dateKey, day.tracker, day.session, day.tracker?._revision || null).catch(()=>{});
+          });
+        }, 0);
       }, []);
       // updateMeal: solo para firstBite/lastBite (los macros vienen de items)
       const updateMeal  = (i,f,v) => upd(w=>{const meals=[...w.tracker[activeDay].meals];meals[i]={...meals[i],[f]:v};return{...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meals}}};});
