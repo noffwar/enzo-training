@@ -24,7 +24,7 @@ exports.handler = async () => {
     url.searchParams.set('forecast_days', '2');
     url.searchParams.set('current', 'temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,weather_code');
     url.searchParams.set('daily', 'temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max');
-    url.searchParams.set('hourly', 'relative_humidity_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m,weather_code');
+    url.searchParams.set('hourly', 'temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m,weather_code');
 
     const [weatherRes, alertsRes] = await Promise.allSettled([
       fetch(url.toString()),
@@ -40,11 +40,45 @@ exports.handler = async () => {
     const hourly = weather.hourly || {};
     const current = weather.current || {};
 
+    const times = hourly.time || [];
+    const temps = (hourly.temperature_2m || []).map(Number);
     const humidityList = (hourly.relative_humidity_2m || []).map(Number).filter(Number.isFinite);
     const rainProbList = (hourly.precipitation_probability || []).map(Number).filter(Number.isFinite);
     const gustList = (hourly.wind_gusts_10m || []).map(Number).filter(Number.isFinite);
     const windList = (hourly.wind_speed_10m || []).map(Number).filter(Number.isFinite);
     const weatherCodes = (hourly.weather_code || []).map(Number).filter(Number.isFinite);
+
+    const now = new Date();
+    const rollingTemps = [];
+    const tonightTemps = [];
+    const stormToday = [];
+    const stormNext24 = [];
+    times.forEach((iso, idx) => {
+      const dt = new Date(iso);
+      const temp = temps[idx];
+      const rainProb = Number((hourly.precipitation_probability || [])[idx]);
+      const gust = Number((hourly.wind_gusts_10m || [])[idx]);
+      const code = Number((hourly.weather_code || [])[idx]);
+      if(!Number.isFinite(temp)) return;
+      const diffHours = (dt.getTime() - now.getTime()) / 3600000;
+      if(diffHours >= 0 && diffHours <= 24) rollingTemps.push(temp);
+      const hour = dt.getHours();
+      if(diffHours >= 0 && diffHours <= 18 && (hour >= 18 || hour <= 9)) {
+        tonightTemps.push(temp);
+      }
+      const isStormCode = [95, 96, 99].includes(code);
+      const isStormLike = isStormCode || (rainProb >= 45 && gust >= 30);
+      if(isStormLike && diffHours >= 0 && diffHours <= 12) {
+        stormToday.push({ rainProb, gust, code });
+      }
+      if(isStormLike && diffHours >= 0 && diffHours <= 24) {
+        stormNext24.push({ rainProb, gust, code });
+      }
+    });
+
+    const rollingMin = rollingTemps.length ? Math.round(minOf(rollingTemps)) : Math.round(Number((daily.temperature_2m_min || [])[0]) || 0);
+    const rollingMax = rollingTemps.length ? Math.round(maxOf(rollingTemps)) : Math.round(Number((daily.temperature_2m_max || [])[0]) || 0);
+    const tonightMin = tonightTemps.length ? Math.round(minOf(tonightTemps)) : rollingMin;
 
     let alertsText = '';
     if(alertsRes.status === 'fulfilled' && alertsRes.value.ok) {
@@ -55,6 +89,17 @@ exports.handler = async () => {
     }
     const alertsLower = String(alertsText || '').toLowerCase();
     const thunderCodes = weatherCodes.some(code => [95, 96, 99].includes(code));
+    const classifyStormRisk = (events=[]) => {
+      if(!events.length) return 'bajo';
+      const maxRain = maxOf(events.map(e => Number(e.rainProb) || 0));
+      const maxGust = maxOf(events.map(e => Number(e.gust) || 0));
+      const severe = events.some(e => [96, 99].includes(Number(e.code)));
+      if(severe || maxRain >= 70 || maxGust >= 55) return 'alto';
+      if(maxRain >= 45 || maxGust >= 35) return 'medio';
+      return 'bajo';
+    };
+    const stormRiskToday = classifyStormRisk(stormToday);
+    const stormRiskNext24 = classifyStormRisk(stormNext24);
 
     const payload = {
       city: SAN_RAFAEL.name,
@@ -62,6 +107,9 @@ exports.handler = async () => {
       temp_current: Math.round(Number(current.temperature_2m) || 0),
       temp_max: Math.round(Number((daily.temperature_2m_max || [])[0]) || 0),
       temp_min: Math.round(Number((daily.temperature_2m_min || [])[0]) || 0),
+      temp_next24_max: rollingMax,
+      temp_next24_min: rollingMin,
+      temp_tonight_min: tonightMin,
       humidity_now: Math.round(Number(current.relative_humidity_2m) || 0),
       humidity_min: Math.round(minOf(humidityList)),
       humidity_max: Math.round(maxOf(humidityList)),
@@ -72,6 +120,10 @@ exports.handler = async () => {
       zonda: /zonda/.test(alertsLower),
       hail_risk: /granizo/.test(alertsLower),
       lightning_risk: thunderCodes || /tormenta electrica|actividad electrica|rayos/.test(alertsLower),
+      storm_risk_today: stormRiskToday,
+      storm_risk_next24: stormRiskNext24,
+      storm_probable_today: stormToday.length > 0,
+      storm_probable_next24: stormNext24.length > 0,
       source: {
         forecast: 'Open-Meteo',
         alerts: 'SMN'
