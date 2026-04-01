@@ -2507,7 +2507,19 @@
           const fuzzy =
             !exact &&
             (
-              keys.some(k => k && (normalizedFullKey.includes(k) || k.includes(normalizedFullKey) || normalizedNameKey.includes(k) || k.includes(normalizedNameKey))) ||
+              keys.some(k => {
+                if(!k) return false;
+                const words = k.split(' ').filter(Boolean);
+                if(words.length === 1 && words[0].length <= 3) return false;
+                return (
+                  normalizedFullKey.startsWith(k) ||
+                  normalizedNameKey.startsWith(k) ||
+                  k.startsWith(normalizedFullKey) ||
+                  k.startsWith(normalizedNameKey) ||
+                  normalizedFullKey.endsWith(` ${k}`) ||
+                  normalizedNameKey.endsWith(` ${k}`)
+                );
+              }) ||
               (parsedCountNounKey && keys.some(k => k && (parsedCountNounKey.includes(k) || k.includes(parsedCountNounKey))))
             );
 
@@ -2681,8 +2693,11 @@
         const raw = String(text || '').trim();
         if(!raw) return [];
         const normalized = raw.replace(/\s+/g, ' ').trim();
-        const parts = normalized
-          .split(/\s+(?:y|e)\s+|,/i)
+        const normalizedForSplit = normalized
+          .replace(/\s+y\s+(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ')
+          .replace(/,\s*(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ');
+        const parts = normalizedForSplit
+          .split(/\s*\|\s*/i)
           .map(part => part.trim())
           .filter(Boolean);
         if(parts.length <= 1) return [normalized];
@@ -6742,7 +6757,7 @@
       `;
     };
 
-    const TodayDashboard = ({session, onOpenTasks, onOpenStudy, onOpenBooks, onOpenHealth, onOpenRecipes, onOpenNotif}) => {
+    const TodayDashboard = ({session, tracker, selectedDateKey, onOpenTasks, onOpenStudy, onOpenBooks, onOpenHealth, onOpenRecipes, onOpenNotif}) => {
       const [summary, setSummary] = useState({
         pending:0, dueToday:0, notes:0, high:0, nextTask:null,
         studyPending:0, studyDone:0, studySubjects:0,
@@ -6830,28 +6845,6 @@
           const meds = { ...MEDS_STOCK_DEFAULT, ...(inventory.meds_stock || {}) };
           const book = { ...BOOK_DEFAULT, ...(inventory.reading_progress || {}) };
           const bookPct = Math.max(0, Math.min(100, Math.round((pn(book.current_page) / Math.max(1, pn(book.total_pages))) * 100) || 0));
-          const todayKey = localDateKey(new Date());
-          const dinnerLogicalKey = (() => {
-            const now = new Date();
-            if(now.getHours() < 6) {
-              const prev = new Date(now);
-              prev.setDate(prev.getDate() - 1);
-              return localDateKey(prev);
-            }
-            return localDateKey(now);
-          })();
-          const roaccutanToday = meds.last_roaccutan_at && localDateKey(new Date(meds.last_roaccutan_at)) === todayKey;
-          const dinnerToday = (meds.last_dinner_logical_date || (meds.last_dinner_meds_at ? localDateKey(new Date(meds.last_dinner_meds_at)) : '')) === dinnerLogicalKey;
-          const medNextLabel = !roaccutanToday
-            ? 'Roaccutan pendiente'
-            : !dinnerToday
-              ? 'Meds de cena pendientes'
-              : 'Tomas del dia completas';
-          const medNextDetail = !roaccutanToday
-            ? 'Mediodia'
-            : !dinnerToday
-              ? 'Cena'
-              : `Ultimos registros: R ${meds.last_roaccutan_at ? new Date(meds.last_roaccutan_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '-'} · C ${meds.last_dinner_meds_at ? new Date(meds.last_dinner_meds_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}) : '-'}`;
           const studyTopics = study.flatMap(row => Array.isArray(row.topics) ? row.topics : []);
           const studyPending = studyTopics.filter(topic => !topic?.done).length;
           const studyDone = studyTopics.filter(topic => !!topic?.done).length;
@@ -6884,8 +6877,6 @@
             meds,
             medsLow: pn(meds.roaccutan) <= 2 || pn(meds.minoxidil_finasteride) <= 2,
             pantryLow,
-            medNextLabel,
-            medNextDetail,
             backupDue,
             backupLabel
           });
@@ -6896,8 +6887,6 @@
             book:null, bookPct:0,
             meds:null, medsLow:false,
             pantryLow:0,
-            medNextLabel:'Sin datos de salud',
-            medNextDetail:'',
             backupDue:false,
             backupLabel:''
           });
@@ -6986,6 +6975,38 @@
         };
       }, [loadWeather]);
 
+      const medDashboardStatus = useMemo(() => {
+        const medsState = tracker?.meds || {};
+        const now = new Date();
+        const todayKey = localDateKey(now);
+        const dinnerLogicalKey = getDinnerLogicalDateKey(now);
+        const viewDateKey = String(selectedDateKey || todayKey);
+        const roaccutanDone = !!medsState.roacuttan;
+        const dinnerDone = !!medsState.finasteride && !!medsState.minoxidil;
+        const roaccTime = summary.meds?.last_roaccutan_at
+          ? new Date(summary.meds.last_roaccutan_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})
+          : '-';
+        const dinnerTime = summary.meds?.last_dinner_meds_at
+          ? new Date(summary.meds.last_dinner_meds_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})
+          : '-';
+
+        if(!roaccutanDone) {
+          return {
+            label:'Roaccutan pendiente',
+            detail: viewDateKey === todayKey ? 'Mediodia' : `Sin marcar en ${viewDateKey}`
+          };
+        }
+        if(viewDateKey === dinnerLogicalKey) {
+          return dinnerDone
+            ? { label:'Tomas del dia completas', detail:`Ultimos registros: R ${roaccTime} · C ${dinnerTime}` }
+            : { label:'Meds de cena pendientes', detail: todayKey === dinnerLogicalKey ? 'Cena' : 'Cena para ayer' };
+        }
+        return {
+          label: dinnerDone ? 'Cena registrada para ese dia' : 'Cena no corresponde ahora',
+          detail: dinnerDone ? `Ultimo registro cena: ${dinnerTime}` : `Vista de ${viewDateKey}`
+        };
+      }, [tracker, selectedDateKey, summary.meds]);
+
       return html`
         <div class="glass-card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -7025,7 +7046,7 @@
             <button onClick=${onOpenHealth} style=${`text-align:left;padding:10px 12px;border-radius:10px;border:1px solid ${summary.medsLow ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)'};background:${summary.medsLow ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'};cursor:pointer;`}>
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:${summary.medsLow ? '#FCA5A5' : '#86EFAC'};font-weight:700;">Salud</p>
               <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">R ${pn(summary.meds?.roaccutan)} - M ${pn(summary.meds?.minoxidil_finasteride)}</p>
-              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.medsLow ? 'Reponer pronto' : summary.medNextLabel}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.medsLow ? 'Reponer pronto' : medDashboardStatus.label}</p>
             </button>
             <button onClick=${onOpenRecipes} style=${`text-align:left;padding:10px 12px;border-radius:10px;border:1px solid ${summary.pantryLow > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(56,189,248,0.25)'};background:${summary.pantryLow > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(56,189,248,0.08)'};cursor:pointer;`}>
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:${summary.pantryLow > 0 ? '#FCD34D' : '#7DD3FC'};font-weight:700;">Biblioteca</p>
@@ -7069,8 +7090,8 @@
             </div>
             <button onClick=${onOpenHealth} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.08);cursor:pointer;">
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#86EFAC;font-weight:700;">Proxima medicacion</p>
-              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : summary.medNextLabel}</p>
-              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (summary.medNextDetail || 'Sin detalles')}</p>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : medDashboardStatus.label}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (medDashboardStatus.detail || 'Sin detalles')}</p>
             </button>
             <button onClick=${onOpenTasks} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.08);cursor:pointer;">
               <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;font-weight:700;">Proximo vencimiento</p>
@@ -9803,6 +9824,8 @@
 
                 <${TodayDashboard}
                   session=${session}
+                  tracker=${tracker}
+                  selectedDateKey=${activeDateKey}
                   onOpenTasks=${()=>navigateTo('tasks')}
                   onOpenStudy=${()=>navigateTo('study')}
                   onOpenBooks=${()=>navigateTo('books')}
