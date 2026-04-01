@@ -5646,41 +5646,6 @@
       });
       const [loading, setLoading] = useState(true);
 
-      const quickUpdateTask = useCallback(async (task, status) => {
-        if(!task?.id) return;
-        try {
-          const basePatch = {
-            status,
-            email_reminder_sent_at: status === 'pending' ? null : task.email_reminder_sent_at || null,
-            updated_at: new Date().toISOString()
-          };
-          const { error } = await supabase.from('tasks')
-            .update(basePatch)
-            .eq('id', task.id)
-            .eq('user_id', session.user.id);
-          if(error) throw error;
-
-          if(status === 'done' && (task.recurrence || 'none') !== 'none'){
-            const nextDueAt = computeNextRecurringDueAt(task);
-            const { error: nextErr } = await supabase.from('tasks').insert({
-              user_id: session.user.id,
-              title: task.title,
-              details: task.details || null,
-              subtasks: normalizeSubtasks(task.subtasks || []),
-              priority: task.priority || 'normal',
-              category: task.category || 'personal',
-              recurrence: task.recurrence || 'none',
-              status: 'pending',
-              auto_email_reminder: task.auto_email_reminder !== false,
-              due_at: nextDueAt,
-              email_reminder_sent_at: null
-            });
-            if(nextErr) throw nextErr;
-          }
-          loadSummary();
-        } catch(_) {}
-      }, [loadSummary, session.user.id]);
-
       const loadSummary = useCallback(async () => {
         setLoading(true);
         try {
@@ -5795,6 +5760,41 @@
           setLoading(false);
         }
       }, [session.user.id]);
+
+      const quickUpdateTask = useCallback(async (task, status) => {
+        if(!task?.id) return;
+        try {
+          const basePatch = {
+            status,
+            email_reminder_sent_at: status === 'pending' ? null : task.email_reminder_sent_at || null,
+            updated_at: new Date().toISOString()
+          };
+          const { error } = await supabase.from('tasks')
+            .update(basePatch)
+            .eq('id', task.id)
+            .eq('user_id', session.user.id);
+          if(error) throw error;
+
+          if(status === 'done' && (task.recurrence || 'none') !== 'none'){
+            const nextDueAt = computeNextRecurringDueAt(task);
+            const { error: nextErr } = await supabase.from('tasks').insert({
+              user_id: session.user.id,
+              title: task.title,
+              details: task.details || null,
+              subtasks: normalizeSubtasks(task.subtasks || []),
+              priority: task.priority || 'normal',
+              category: task.category || 'personal',
+              recurrence: task.recurrence || 'none',
+              status: 'pending',
+              auto_email_reminder: task.auto_email_reminder !== false,
+              due_at: nextDueAt,
+              email_reminder_sent_at: null
+            });
+            if(nextErr) throw nextErr;
+          }
+          loadSummary();
+        } catch(_) {}
+      }, [loadSummary, session.user.id]);
 
       useEffect(() => {
         loadSummary();
