@@ -5537,7 +5537,8 @@
       last_taken_at: '',
       last_roaccutan_at: '',
       last_dinner_meds_at: '',
-      history: []
+      history: [],
+      _updatedAt: ''
     };
 
     const BooksView = ({session}) => {
@@ -5978,6 +5979,11 @@
           last_taken_at: latestAt || ''
         };
       };
+      const pickNewestHealthPayload = (local, remote, remoteUpdatedAt='') => {
+        const localTs = new Date(local?._updatedAt || 0).getTime() || 0;
+        const remoteTs = new Date(remote?._updatedAt || remoteUpdatedAt || 0).getTime() || 0;
+        return localTs >= remoteTs ? (local || remote || MEDS_STOCK_DEFAULT) : (remote || local || MEDS_STOCK_DEFAULT);
+      };
 
       const loadHealth = useCallback(async () => {
         setLoading(true);
@@ -5986,13 +5992,14 @@
           const local = JSON.parse(localStorage.getItem(MEDS_STOCK_KEY) || 'null');
           const { data, error } = await supabase
             .from('app_inventory')
-            .select('data')
+            .select('data, updated_at')
             .eq('key', 'meds_stock')
             .maybeSingle();
           if(error) {
             setStock({ ...MEDS_STOCK_DEFAULT, ...(local || {}) });
           } else {
-            const merged = { ...MEDS_STOCK_DEFAULT, ...(local || {}), ...(data?.data || {}) };
+            const freshest = pickNewestHealthPayload(local, data?.data || null, data?.updated_at || '');
+            const merged = { ...MEDS_STOCK_DEFAULT, ...(freshest || {}) };
             setStock(merged);
             try { localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(merged)); } catch(_) {}
           }
@@ -6048,15 +6055,16 @@
         setSaving(true);
         setError('');
         try {
-          try { localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(payload)); } catch(_) {}
+          const normalizedPayload = { ...payload, _updatedAt: new Date().toISOString() };
+          try { localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(normalizedPayload)); } catch(_) {}
           const { error } = await supabase
             .from('app_inventory')
             .upsert({
               key: 'meds_stock',
-              data: payload,
+              data: normalizedPayload,
               updated_at: new Date().toISOString()
             }, { onConflict: 'key' });
-          setStock(payload);
+          setStock(normalizedPayload);
           if(error) {
             setNotice(`${okMsg} Guardado local porque el remoto esta restringido.`);
           } else {
@@ -8533,21 +8541,24 @@
           const local = JSON.parse(localStorage.getItem(MEDS_STOCK_KEY) || 'null');
           const { data, error } = await supabase
             .from('app_inventory')
-            .select('data')
+            .select('data, updated_at')
             .eq('key', 'meds_stock')
             .maybeSingle();
+          const localTs = new Date(local?._updatedAt || 0).getTime() || 0;
+          const remoteTs = new Date(data?.data?._updatedAt || data?.updated_at || 0).getTime() || 0;
+          const freshest = localTs >= remoteTs ? (local || {}) : (data?.data || {});
           const base = {
             ...MEDS_STOCK_DEFAULT,
-            ...(local || {}),
-            ...(error ? {} : (data?.data || {}))
+            ...(error ? (local || {}) : freshest)
           };
-          const nextPayload = {
-            ...base,
-            roaccutan: Math.max(0, pn(base.roaccutan) + deltaRoaccutan),
-            minoxidil_finasteride: Math.max(0, pn(base.minoxidil_finasteride) + deltaCombo),
-            last_taken_at: normalizedNext ? new Date().toISOString() : base.last_taken_at,
-            last_roaccutan_at: med === 'roacuttan' && normalizedNext ? new Date().toISOString() : base.last_roaccutan_at,
-            last_dinner_meds_at: (med === 'finasteride' || med === 'minoxidil') && nextCombo ? new Date().toISOString() : base.last_dinner_meds_at,
+        const nextPayload = {
+          ...base,
+          roaccutan: Math.max(0, pn(base.roaccutan) + deltaRoaccutan),
+          minoxidil_finasteride: Math.max(0, pn(base.minoxidil_finasteride) + deltaCombo),
+          _updatedAt: new Date().toISOString(),
+          last_taken_at: normalizedNext ? new Date().toISOString() : base.last_taken_at,
+          last_roaccutan_at: med === 'roacuttan' && normalizedNext ? new Date().toISOString() : base.last_roaccutan_at,
+          last_dinner_meds_at: (med === 'finasteride' || med === 'minoxidil') && nextCombo ? new Date().toISOString() : base.last_dinner_meds_at,
             history: [
               {
                 at: new Date().toISOString(),
