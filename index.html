@@ -3250,13 +3250,13 @@
               <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:8px;">
                 <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#EF4444;">Suplementación</p>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                  <div style={`padding:6px 8px;border-radius:8px;border:1px solid ${t.meds?.roacuttan?'rgba(16,185,129,0.35)':'rgba(245,158,11,0.35)'};background:${t.meds?.roacuttan?'rgba(16,185,129,0.12)':'rgba(245,158,11,0.12)'};`}>
+                  <div style=${`padding:6px 8px;border-radius:8px;border:1px solid ${t.meds?.roacuttan?'rgba(16,185,129,0.35)':'rgba(245,158,11,0.35)'};background:${t.meds?.roacuttan?'rgba(16,185,129,0.12)':'rgba(245,158,11,0.12)'};`}>
                     <p style="margin:0;font-size:9px;text-transform:uppercase;color:#94A3B8;">Roaccutan</p>
-                    <p style={`margin:3px 0 0;font-size:11px;font-weight:700;color:${t.meds?.roacuttan?'#86EFAC':'#FCD34D'};`}>${roaccutanStatusLabel}</p>
+                    <p style=${`margin:3px 0 0;font-size:11px;font-weight:700;color:${t.meds?.roacuttan?'#86EFAC':'#FCD34D'};`}>${roaccutanStatusLabel}</p>
                   </div>
-                  <div style={`padding:6px 8px;border-radius:8px;border:1px solid ${(t.meds?.finasteride && t.meds?.minoxidil)?'rgba(16,185,129,0.35)':'rgba(245,158,11,0.35)'};background:${(t.meds?.finasteride && t.meds?.minoxidil)?'rgba(16,185,129,0.12)':'rgba(245,158,11,0.12)'};`}>
+                  <div style=${`padding:6px 8px;border-radius:8px;border:1px solid ${(t.meds?.finasteride && t.meds?.minoxidil)?'rgba(16,185,129,0.35)':'rgba(245,158,11,0.35)'};background:${(t.meds?.finasteride && t.meds?.minoxidil)?'rgba(16,185,129,0.12)':'rgba(245,158,11,0.12)'};`}>
                     <p style="margin:0;font-size:9px;text-transform:uppercase;color:#94A3B8;">Cena</p>
-                    <p style={`margin:3px 0 0;font-size:11px;font-weight:700;color:${(t.meds?.finasteride && t.meds?.minoxidil)?'#86EFAC':'#FCD34D'};`}>${dinnerStatusLabel}</p>
+                    <p style=${`margin:3px 0 0;font-size:11px;font-weight:700;color:${(t.meds?.finasteride && t.meds?.minoxidil)?'#86EFAC':'#FCD34D'};`}>${dinnerStatusLabel}</p>
                   </div>
                 </div>
                 <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">Con almuerzo</p>
@@ -6545,11 +6545,11 @@
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
                     <div style=${`padding:8px 10px;border-radius:8px;border:1px solid ${roaccutanStatus.border};background:${roaccutanStatus.bg};`}>
                       <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">Estado mediodia</p>
-                      <p style={`margin:4px 0 0;font-size:13px;font-weight:700;color:${roaccutanStatus.color};`}>${roaccutanStatus.label}</p>
+                  <p style=${`margin:4px 0 0;font-size:13px;font-weight:700;color:${roaccutanStatus.color};`}>${roaccutanStatus.label}</p>
                     </div>
                     <div style=${`padding:8px 10px;border-radius:8px;border:1px solid ${dinnerStatus.border};background:${dinnerStatus.bg};`}>
                       <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">Estado cena</p>
-                      <p style={`margin:4px 0 0;font-size:13px;font-weight:700;color:${dinnerStatus.color};`}>${dinnerStatus.label}</p>
+                  <p style=${`margin:4px 0 0;font-size:13px;font-weight:700;color:${dinnerStatus.color};`}>${dinnerStatus.label}</p>
                     </div>
                   </div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
