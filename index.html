@@ -3461,13 +3461,6 @@
       const sleepAvg  = sleepDays.length ? (sleepDays.reduce((a,d)=>a+pn(d.sleepHours),0)/sleepDays.length) : 0;
       const sleepColor = sleepAvg>=8?'#10B981':sleepAvg>=7?'#6366F1':sleepAvg>=6?'#F59E0B':'#EF4444';
 
-      // ── Suplementos — % de adherencia (días tomados / 7)
-      const medNames = ['roacuttan','finasteride','minoxidil','creatine','magnesium'];
-      const medAdherence = medNames.map(m=>({
-        name: m==='creatine'?'Creatina':m==='magnesium'?'Magnesio':m.charAt(0).toUpperCase()+m.slice(1),
-        pct: Math.round(Object.values(tracker).filter(d=>d?.meds?.[m]).length / 7 * 100)
-      }));
-
       // ── Días de entrenamiento
       const trainingDays = Object.values(getRoutineAssignments(weekData)).filter(v=>v!=='').length;
 
@@ -3531,7 +3524,6 @@
               sleep_avg: Number(sleepAvg.toFixed(2)),
               macros_week: wm,
               macro_adherence: macroAdh,
-              med_adherence: medAdherence,
               volume: volumeData
             }
           };
@@ -3629,24 +3621,6 @@
                 <//>
               </div>
             `}
-          <//>
-
-          <!-- SUPLEMENTOS -->
-          <${Card}>
-            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#EF4444;">💊 Adherencia Suplementos</p>
-            <div style="display:flex;flex-direction:column;gap:8px;">
-              ${medAdherence.map(({name,pct}) => html`
-                <div>
-                  <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
-                    <span style="font-size:12px;color:#cbd5e1;">${name}</span>
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${pct>=85?'#10B981':pct>=50?'#F59E0B':'#EF4444'};">${pct}%</span>
-                  </div>
-                  <div style="width:100%;height:5px;background:#1E2D45;border-radius:3px;overflow:hidden;">
-                    <div style="width:${pct}%;height:100%;background:${pct>=85?'#10B981':pct>=50?'#F59E0B':'#EF4444'};border-radius:3px;transition:width 0.5s;"></div>
-                  </div>
-                </div>
-              `)}
-            </div>
           <//>
 
           <!-- VOLUMEN MUSCULAR con zonas MEV/MAV/MRV -->
@@ -6330,6 +6304,9 @@
       });
       const weekRoaccutanTakes = weekRealTakes.filter(entry => entry?.type === 'roaccutan_take').length;
       const weekDinnerTakes = weekRealTakes.filter(entry => entry?.type === 'dinner_combo_take').length;
+      const roaccutanAdherencePct = Math.min(100, Math.round((weekRoaccutanTakes / 7) * 100));
+      const dinnerAdherencePct = Math.min(100, Math.round((weekDinnerTakes / 7) * 100));
+      const adherenceColor = (pct) => pct >= 85 ? '#10B981' : pct >= 50 ? '#F59E0B' : '#EF4444';
       const filteredHistory = fullHistory.filter(entry => {
         if(historyFilter === 'all') return true;
         if(historyFilter === 'takes') return entry?.type === 'roaccutan_take' || entry?.type === 'dinner_combo_take';
@@ -6418,27 +6395,33 @@
                       <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#F59E0B;">Mediodia</p>
                       <p style="margin:0 0 8px;font-size:12px;color:#CBD5E1;">Roaccutan</p>
                       <p style="margin:0 0 8px;font-size:10px;color:#64748b;">Ultimo registro: ${stock.last_roaccutan_at ? new Date(stock.last_roaccutan_at).toLocaleString('es-AR') : 'Sin registro'}</p>
-                      <button onClick=${registerRoaccutanTake} style="padding:8px 12px;border-radius:8px;border:none;background:#F59E0B;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                        ${saving ? 'GUARDANDO...' : 'REGISTRAR ROACCUTAN'}
+                      <button
+                        onClick=${registerRoaccutanTake}
+                        disabled=${saving || !!todayMedsState.roacuttan}
+                        style=${`padding:8px 12px;border-radius:8px;border:none;background:${todayMedsState.roacuttan?'#334155':'#F59E0B'};color:${todayMedsState.roacuttan?'#CBD5E1':'#041018'};font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${saving || todayMedsState.roacuttan?'not-allowed':'pointer'};letter-spacing:0.05em;opacity:${saving || todayMedsState.roacuttan?'0.8':'1'};`}>
+                        ${saving ? 'GUARDANDO...' : todayMedsState.roacuttan ? 'YA REGISTRADO' : 'REGISTRAR ROACCUTAN'}
                       </button>
                     </div>
                     <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
                       <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#10B981;">Cena</p>
                       <p style="margin:0 0 8px;font-size:12px;color:#CBD5E1;">Minoxidil + Finasteride</p>
                       <p style="margin:0 0 8px;font-size:10px;color:#64748b;">Ultimo registro: ${stock.last_dinner_meds_at ? new Date(stock.last_dinner_meds_at).toLocaleString('es-AR') : 'Sin registro'}</p>
-                      <button onClick=${registerDinnerTake} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                        ${saving ? 'GUARDANDO...' : 'REGISTRAR MEDS CENA'}
+                      <button
+                        onClick=${registerDinnerTake}
+                        disabled=${saving || dinnerDone}
+                        style=${`padding:8px 12px;border-radius:8px;border:none;background:${dinnerDone?'#334155':'#10B981'};color:${dinnerDone?'#CBD5E1':'#041018'};font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${saving || dinnerDone?'not-allowed':'pointer'};letter-spacing:0.05em;opacity:${saving || dinnerDone?'0.8':'1'};`}>
+                        ${saving ? 'GUARDANDO...' : dinnerDone ? `YA REGISTRADO (${dinnerTarget.label.toUpperCase()})` : 'REGISTRAR MEDS CENA'}
                       </button>
                     </div>
                   </div>
                 </div>
 
                 <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
-                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
-                    <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
-                      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Semana</p>
-                      <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${weekRealTakes.length}</p>
-                      <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Tomas reales</p>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+                  <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
+                    <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Semana</p>
+                    <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${weekRealTakes.length}</p>
+                    <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Tomas reales</p>
                     </div>
                     <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
                       <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Roaccutan</p>
@@ -6447,11 +6430,30 @@
                     </div>
                     <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
                       <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Cena</p>
-                      <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#86EFAC;">${weekDinnerTakes}</p>
-                      <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
-                    </div>
+                    <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#86EFAC;">${weekDinnerTakes}</p>
+                    <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
                   </div>
-                  <p style="margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Historial reciente</p>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+                  ${[
+                    { label:'Adherencia Roaccutan', pct:roaccutanAdherencePct, detail:`${weekRoaccutanTakes}/7 dias` },
+                    { label:'Adherencia Cena', pct:dinnerAdherencePct, detail:`${weekDinnerTakes}/7 dias` }
+                  ].map(({label,pct,detail}) => html`
+                    <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                        <div>
+                          <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">${label}</p>
+                          <p style="margin:3px 0 0;font-size:10px;color:#94A3B8;">${detail}</p>
+                        </div>
+                        <p style=${`margin:0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:${adherenceColor(pct)};`}>${pct}%</p>
+                      </div>
+                      <div style="width:100%;height:6px;background:#1E2D45;border-radius:999px;overflow:hidden;">
+                        <div style=${`width:${pct}%;height:100%;background:${adherenceColor(pct)};border-radius:999px;transition:width 0.4s ease;`}></div>
+                      </div>
+                    </div>
+                  `)}
+                </div>
+                <p style="margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Historial reciente</p>
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
                     ${[
                       ['all','Todo'],
