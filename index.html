@@ -2198,6 +2198,51 @@
         };
       };
 
+      const getRecipeUsageFactor = (recipe, item) => {
+        const baseQty = parseFloat(recipe?.base_qty) || 1;
+        const baseUnit = normalizeStockUnit(recipe?.base_unit || '');
+        const stockUnit = normalizeStockUnit(recipe?.stock_unit || '');
+        const delta = parseFloat(item?.stock_delta);
+        const deltaUnit = normalizeStockUnit(item?.stock_delta_unit || item?.stock_unit || '');
+
+        if(delta > 0 && deltaUnit) {
+          const deltaGrams = unitToGrams(delta, deltaUnit);
+          const baseGrams = unitToGrams(baseQty, baseUnit);
+          if(deltaGrams && baseGrams) return deltaGrams / baseGrams;
+
+          const deltaPortions = unitToPortions(delta, deltaUnit);
+          const basePortions = unitToPortions(baseQty, baseUnit);
+          if(deltaPortions && basePortions) return deltaPortions / basePortions;
+
+          if(deltaUnit === 'unidad' && (baseUnit === 'unidad' || stockUnit === 'unidad')) {
+            return delta / baseQty;
+          }
+          if(deltaUnit === 'porcion' && baseUnit === 'porcion') {
+            return delta / baseQty;
+          }
+        }
+
+        const baseCals = parseFloat(recipe?.macros?.cals) || 0;
+        const itemCals = parseFloat(item?.cals) || 0;
+        if(baseCals > 0 && itemCals > 0) return itemCals / baseCals;
+        return 1;
+      };
+
+      const rebuildMealItemFromRecipe = (recipe, item) => {
+        const factor = getRecipeUsageFactor(recipe, item);
+        const nextMacros = scaleRecipeMacros(recipe, factor);
+        return {
+          ...item,
+          name: recipe.recipe_name || item.name,
+          recipe_name: recipe.recipe_name || item.recipe_name,
+          nota: recipe.notes || item.nota || 'Receta guardada',
+          stock_qty: recipe.stock_qty,
+          stock_unit: recipe.stock_unit || '',
+          low_stock_threshold: recipe.low_stock_threshold,
+          ...nextMacros
+        };
+      };
+
       const findRecipeMatch = (recipes, inputText) => {
         const raw = String(inputText || '').trim();
         const normalizedFull = normalizeRecipeText(raw);
@@ -2728,6 +2773,7 @@
 
           recipesRef.current = null;
           setSavedRecipes(prev => prev.map(r => r.id === recipeId ? data : r));
+          recalculateMealsUsingRecipe(data);
           cancelEditRecipe();
         } catch(e) {
           setRecipesError(e.message || 'No se pudo editar la receta.');
@@ -3877,7 +3923,7 @@
       otro_dulce_stock: ''
     };
 
-    const RecipesView = ({session}) => {
+    const RecipesView = ({session, onRecipeUpdated}) => {
       const [rows, setRows] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState('');
@@ -4165,6 +4211,7 @@
               .single();
             if(error) throw error;
             setRows(prev => prev.map(r => r.id === editingId ? data : r));
+            onRecipeUpdated?.(data);
           } else {
             const { data, error } = await supabase.from('user_recipes')
               .insert(payload)
@@ -8116,6 +8163,47 @@
         if(['unidad','unidades','u'].includes(u)) return 'unidad';
         return u;
       };
+      const recalculateMealsUsingRecipe = useCallback((updatedRecipe) => {
+        if(!updatedRecipe?.id) return;
+        setHasUnsaved(true);
+        setAllWeeks(prev => {
+          let changed = false;
+          const next = { ...prev };
+          Object.entries(prev).forEach(([wkKey, wkData]) => {
+            if(!wkData?.tracker) return;
+            let weekChanged = false;
+            const nextTracker = { ...wkData.tracker };
+            Object.entries(wkData.tracker).forEach(([dayIdx, dayData]) => {
+              const meals = Array.isArray(dayData?.meals) ? dayData.meals : [];
+              let dayChanged = false;
+              const nextMeals = meals.map(meal => {
+                const items = Array.isArray(meal?.items) ? meal.items : [];
+                let mealChanged = false;
+                const nextItems = items.map(item => {
+                  if(item?.recipe_id !== updatedRecipe.id) return item;
+                  mealChanged = true;
+                  dayChanged = true;
+                  weekChanged = true;
+                  changed = true;
+                  return rebuildMealItemFromRecipe(updatedRecipe, item);
+                });
+                return mealChanged ? { ...meal, items: nextItems } : meal;
+              });
+              if(dayChanged) {
+                nextTracker[dayIdx] = {
+                  ...dayData,
+                  meals: nextMeals,
+                  _updatedAt: new Date().toISOString()
+                };
+              }
+            });
+            if(weekChanged) {
+              next[wkKey] = { ...wkData, tracker: nextTracker };
+            }
+          });
+          return changed ? next : prev;
+        });
+      }, []);
       // updateMeal: solo para firstBite/lastBite (los macros vienen de items)
       const updateMeal  = (i,f,v) => upd(w=>{const meals=[...w.tracker[activeDay].meals];meals[i]={...meals[i],[f]:v};return{...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meals}}};});
 
@@ -8674,7 +8762,7 @@
             ${view==='week'     && html`<${WeekSummary} weekData=${wd}/>`}
             ${view==='progress' && html`<${ProgressView} allWeeks=${allWeeks} onMount=${loadFullHistory}/>`}
             ${view==='tasks'    && html`<${ProductivityView} session=${session}/>`}
-            ${view==='recipes'  && html`<${RecipesView} session=${session}/>`}
+            ${view==='recipes'  && html`<${RecipesView} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe}/>`}
             ${view==='study'    && html`<${StudyView} session=${session}/>`}
             ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight}/>`}
             ${view==='books'    && html`<${BooksView} session=${session}/>`}
