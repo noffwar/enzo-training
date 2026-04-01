@@ -8175,6 +8175,94 @@
         if(['unidad','unidades','u'].includes(u)) return 'unidad';
         return u;
       };
+      const normalizeRecipeTextApp = (s='') =>
+        String(s)
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, ' ')
+          .trim()
+          .replace(/\s+/g, ' ');
+      const singularizeRecipeWordApp = (word='') => {
+        const w = String(word || '').trim();
+        if(!w) return '';
+        if(w.endsWith('es') && w.length > 4) return w.slice(0, -2);
+        if(w.endsWith('s') && w.length > 3) return w.slice(0, -1);
+        return w;
+      };
+      const normalizeRecipeKeyApp = (text='') =>
+        normalizeRecipeTextApp(text)
+          .split(' ')
+          .filter(Boolean)
+          .map(singularizeRecipeWordApp)
+          .join(' ');
+      const unitToGramsApp = (value, unit) => {
+        const u = String(unit || '').toLowerCase();
+        if(u === 'kg') return value * 1000;
+        if(u === 'g' || u === 'gramo' || u === 'gramos') return value;
+        return null;
+      };
+      const unitToPortionsApp = (value, unit) => {
+        const u = String(unit || '').toLowerCase();
+        if(u === 'porcion' || u === 'porciones') return value;
+        return null;
+      };
+      const scaleRecipeMacrosApp = (recipe, factor) => {
+        const macrosBase = recipe.macros || {};
+        return {
+          cals: Math.round((parseFloat(macrosBase.cals) || 0) * factor),
+          prot: Math.round((parseFloat(macrosBase.prot) || 0) * factor),
+          carb: Math.round((parseFloat(macrosBase.carb) || 0) * factor),
+          fat: Math.round((parseFloat(macrosBase.fat) || 0) * factor)
+        };
+      };
+      const getRecipeUsageFactorApp = (recipe, item) => {
+        const baseQty = parseFloat(recipe?.base_qty) || 1;
+        const baseUnit = normalizeInventoryUnit(recipe?.base_unit || '');
+        const stockUnit = normalizeInventoryUnit(recipe?.stock_unit || '');
+        const delta = parseFloat(item?.stock_delta);
+        const deltaUnit = normalizeInventoryUnit(item?.stock_delta_unit || item?.stock_unit || '');
+        if(delta > 0 && deltaUnit) {
+          const deltaGrams = unitToGramsApp(delta, deltaUnit);
+          const baseGrams = unitToGramsApp(baseQty, baseUnit);
+          if(deltaGrams && baseGrams) return deltaGrams / baseGrams;
+          const deltaPortions = unitToPortionsApp(delta, deltaUnit);
+          const basePortions = unitToPortionsApp(baseQty, baseUnit);
+          if(deltaPortions && basePortions) return deltaPortions / basePortions;
+          if(deltaUnit === 'unidad' && (baseUnit === 'unidad' || stockUnit === 'unidad')) return delta / baseQty;
+          if(deltaUnit === 'porcion' && baseUnit === 'porcion') return delta / baseQty;
+        }
+        const baseCals = parseFloat(recipe?.macros?.cals) || 0;
+        const itemCals = parseFloat(item?.cals) || 0;
+        if(baseCals > 0 && itemCals > 0) return itemCals / baseCals;
+        return 1;
+      };
+      const rebuildMealItemFromRecipeApp = (recipe, item) => {
+        const factor = getRecipeUsageFactorApp(recipe, item);
+        return {
+          ...item,
+          name: recipe.recipe_name || item.name,
+          recipe_name: recipe.recipe_name || item.recipe_name,
+          nota: recipe.notes || item.nota || 'Receta guardada',
+          stock_qty: recipe.stock_qty,
+          stock_unit: recipe.stock_unit || '',
+          low_stock_threshold: recipe.low_stock_threshold,
+          ...scaleRecipeMacrosApp(recipe, factor)
+        };
+      };
+      const mealItemUsesRecipeApp = (recipe, item) => {
+        if(!recipe || !item) return false;
+        if(item.recipe_id && recipe.id && item.recipe_id === recipe.id) return true;
+        const recipeKeys = [recipe.recipe_name, ...((Array.isArray(recipe.aliases) ? recipe.aliases : []))]
+          .filter(Boolean)
+          .map(normalizeRecipeKeyApp);
+        const itemKeys = [item.recipe_name, item.name]
+          .filter(Boolean)
+          .map(normalizeRecipeKeyApp);
+        return itemKeys.some(key =>
+          key && recipeKeys.some(recipeKey => recipeKey && (key === recipeKey || key.includes(recipeKey) || recipeKey.includes(key)))
+        );
+      };
       const recalculateMealsUsingRecipe = useCallback((updatedRecipe) => {
         if(!updatedRecipe?.id) return;
         const touchedDays = [];
@@ -8193,12 +8281,12 @@
                 const items = Array.isArray(meal?.items) ? meal.items : [];
                 let mealChanged = false;
                 const nextItems = items.map(item => {
-                  if(!mealItemUsesRecipe(updatedRecipe, item)) return item;
+                  if(!mealItemUsesRecipeApp(updatedRecipe, item)) return item;
                   mealChanged = true;
                   dayChanged = true;
                   weekChanged = true;
                   changed = true;
-                  return rebuildMealItemFromRecipe(updatedRecipe, item);
+                  return rebuildMealItemFromRecipeApp(updatedRecipe, item);
                 });
                 return mealChanged ? { ...meal, items: nextItems } : meal;
               });
