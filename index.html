@@ -2411,6 +2411,15 @@
         };
       };
 
+      const recipeHasIngredientList = (recipe) =>
+        Array.isArray(recipe?.ingredients) && recipe.ingredients.some(it => String(it?.name || '').trim());
+
+      const recipeTracksPantryStock = (recipe) => {
+        if(!recipe) return false;
+        if(recipeHasIngredientList(recipe)) return false;
+        return !(recipe.stock_qty == null || recipe.stock_qty === '') && !!normalizeStockUnit(recipe.stock_unit || '');
+      };
+
       const getRecipeUsageFactor = (recipe, item) => {
         const baseQty = parseFloat(recipe?.base_qty) || 1;
         const baseUnit = normalizeStockUnit(recipe?.base_unit || '');
@@ -2557,9 +2566,10 @@
             nota: recipe.notes || 'Receta guardada',
             recipe_id: recipe.id,
             recipe_name: recipe.recipe_name,
-            stock_qty: recipe.stock_qty,
-            stock_unit: recipe.stock_unit || '',
+            stock_qty: recipeTracksPantryStock(recipe) ? recipe.stock_qty : null,
+            stock_unit: recipeTracksPantryStock(recipe) ? (recipe.stock_unit || '') : '',
             low_stock_threshold: recipe.low_stock_threshold,
+            stock_trackable: recipeTracksPantryStock(recipe),
             stock_delta: stockDelta,
             stock_delta_unit: stockDeltaUnit,
             ...scaleRecipeMacros(recipe, factor)
@@ -2887,6 +2897,7 @@
 
       const discountItemStock = async (mealIndex, item) => {
         if(!item?.recipe_id) return;
+        if(item?.stock_trackable === false) return;
 
         const stockKey = `${mealIndex}:${item.recipe_id}`;
         const recipeName = item.recipe_name || item.name || 'Ingrediente';
@@ -2915,6 +2926,7 @@
             || (await getRecipes()).find(r => r.id === item.recipe_id);
 
           if(!currentRecipe) throw new Error('No encontre la receta para descontar stock.');
+          if(!recipeTracksPantryStock(currentRecipe)) throw new Error('Ese item no se controla por stock automatico.');
           if(currentRecipe.stock_qty == null || currentRecipe.stock_qty === '') throw new Error('Ese item no tiene stock configurado.');
 
           const nextQty = Math.max(0, (parseFloat(currentRecipe.stock_qty) || 0) - delta);
@@ -4194,6 +4206,7 @@
         aliases: '',
         base_qty: '1',
         base_unit: 'porcion',
+        track_stock: false,
         stock_qty: '',
         stock_unit: '',
         low_stock_threshold: '',
@@ -4241,7 +4254,7 @@
           const local = JSON.parse(localStorage.getItem(SWEETS_STOCK_KEY) || 'null');
           const { data, error } = await supabase
             .from('app_inventory')
-            .select('data')
+            .select('data, updated_at')
             .eq('key', 'sweets_sauces_stock')
             .maybeSingle();
           if(error) {
@@ -4314,6 +4327,7 @@
           aliases: '',
           base_qty: '1',
           base_unit: 'porcion',
+          track_stock: false,
           stock_qty: '',
           stock_unit: '',
           low_stock_threshold: '',
@@ -4336,6 +4350,7 @@
           aliases: Array.isArray(recipe.aliases) ? recipe.aliases.join(', ') : '',
           base_qty: String(recipe.base_qty ?? 1),
           base_unit: recipe.base_unit || 'porcion',
+          track_stock: !(recipe.stock_qty == null || recipe.stock_qty === '') || !!String(recipe.stock_unit || '').trim(),
           stock_qty: recipe.stock_qty == null ? '' : String(recipe.stock_qty),
           stock_unit: recipe.stock_unit || '',
           low_stock_threshold: recipe.low_stock_threshold == null ? '' : String(recipe.low_stock_threshold),
@@ -4427,9 +4442,9 @@
             aliases: form.aliases.split(',').map(v => v.trim()).filter(Boolean),
             base_qty: parseFloat(String(form.base_qty).replace(',', '.')) || 1,
             base_unit: form.base_unit.trim() || 'porcion',
-            stock_qty: form.stock_qty === '' ? null : (parseFloat(String(form.stock_qty).replace(',', '.')) || 0),
-            stock_unit: form.stock_unit.trim() || null,
-            low_stock_threshold: form.low_stock_threshold === '' ? null : (parseFloat(String(form.low_stock_threshold).replace(',', '.')) || 0),
+            stock_qty: form.track_stock ? (form.stock_qty === '' ? null : (parseFloat(String(form.stock_qty).replace(',', '.')) || 0)) : null,
+            stock_unit: form.track_stock ? (form.stock_unit.trim() || null) : null,
+            low_stock_threshold: form.track_stock ? (form.low_stock_threshold === '' ? null : (parseFloat(String(form.low_stock_threshold).replace(',', '.')) || 0)) : null,
             macros: {
               cals: Math.max(0, Math.round(parseFloat(form.cals) || 0)),
               prot: Math.max(0, Math.round(parseFloat(form.prot) || 0)),
@@ -4511,12 +4526,13 @@
         return next;
       };
       const persistSweetsPayload = async (payload, okMsg) => {
-        try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(payload)); } catch(_) {}
+        const stampedPayload = { ...payload, _updatedAt: new Date().toISOString() };
+        try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(stampedPayload)); } catch(_) {}
         const { error } = await supabase
           .from('app_inventory')
           .upsert({
             key: 'sweets_sauces_stock',
-            data: payload,
+            data: stampedPayload,
             updated_at: new Date().toISOString()
           }, { onConflict: 'key' });
         if(error) {
@@ -4531,7 +4547,7 @@
         setSweetsSaving(true);
         setSweetsMsg('');
         try {
-          const payload = { ...SWEETS_STOCK_DEFAULT, ...sweetsStock };
+          const payload = { ...SWEETS_STOCK_DEFAULT, ...sweetsStock, _updatedAt: new Date().toISOString() };
           try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(payload)); } catch(_) {}
           const { error } = await supabase
             .from('app_inventory')
@@ -4661,7 +4677,12 @@
 
       const filtered = rows.filter(recipe => {
         const kind = classifyRecipe(recipe);
-        const hay = `${recipe.recipe_name || ''} ${(recipe.notes || '')}`.toLowerCase();
+        const hay = [
+          recipe.recipe_name || '',
+          Array.isArray(recipe.aliases) ? recipe.aliases.join(' ') : '',
+          Array.isArray(recipe.ingredients) ? recipe.ingredients.map(it => `${it.qty || ''} ${it.name || ''}`).join(' ') : '',
+          recipe.notes || ''
+        ].join(' ').toLowerCase();
         if(typeFilter !== 'all' && kind !== typeFilter) return false;
         if(search.trim() && !hay.includes(search.trim().toLowerCase())) return false;
         return true;
@@ -4736,12 +4757,31 @@
                   }))} placeholder="Unidad base (g, porcion, unidad...)" />
                 </div>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Cantidad base + unidad base: la porcion sobre la que cargas los macros. Ejemplo: 1 unidad, 100 g, 1 porcion.</p>
+                <label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(15,23,41,0.55);border:1px solid #1E2D45;">
+                  <input
+                    type="checkbox"
+                    checked=${!!form.track_stock}
+                    onChange=${e=>setForm(prev => ({
+                      ...prev,
+                      track_stock: e.target.checked,
+                      stock_qty: e.target.checked ? prev.stock_qty : '',
+                      stock_unit: e.target.checked ? (prev.stock_unit || prev.base_unit || '') : '',
+                      low_stock_threshold: e.target.checked ? prev.low_stock_threshold : ''
+                    }))}
+                  />
+                  <div>
+                    <p style="margin:0;font-size:12px;color:#E2E8F0;font-weight:700;">Controlar stock en casa</p>
+                    <p style="margin:2px 0 0;font-size:11px;color:#94A3B8;">Activarlo solo si queres que este item descuente inventario al usarlo.</p>
+                  </div>
+                </label>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
-                  <input class="inp" value=${form.stock_qty} onInput=${e=>setForm(prev => ({ ...prev, stock_qty:e.target.value }))} placeholder="Stock actual" />
-                  <input class="inp" value=${form.stock_unit} onInput=${e=>setForm(prev => ({ ...prev, stock_unit:e.target.value }))} placeholder="Unidad stock" />
-                  <input class="inp" value=${form.low_stock_threshold} onInput=${e=>setForm(prev => ({ ...prev, low_stock_threshold:e.target.value }))} placeholder="Minimo de reposicion" />
+                  <input class="inp" value=${form.stock_qty} disabled=${!form.track_stock} onInput=${e=>setForm(prev => ({ ...prev, stock_qty:e.target.value }))} placeholder="Stock actual" />
+                  <input class="inp" value=${form.stock_unit} disabled=${!form.track_stock} onInput=${e=>setForm(prev => ({ ...prev, stock_unit:e.target.value }))} placeholder="Unidad stock" />
+                  <input class="inp" value=${form.low_stock_threshold} disabled=${!form.track_stock} onInput=${e=>setForm(prev => ({ ...prev, low_stock_threshold:e.target.value }))} placeholder="Minimo de reposicion" />
                 </div>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Stock actual: cuanto te queda en casa ahora mismo. Unidad stock: en que lo medis para descontar, por ejemplo g, porcion o unidad.</p>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Si esta opcion esta apagada, el item sirve para macros y reconocimiento, pero no mueve stock. Ideal para cumpleaños, comidas afuera o cosas que no compras para tu casa.</p>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Ademas, el descuento automatico de stock queda pensado para ingredientes simples como huevo, pollo, arvejas o lentejas. Las recetas compuestas no descuentan stock automatico.</p>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Minimo de reposicion: cuando el stock llegue a ese valor, la app te va a marcar que conviene reponer.</p>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                   <input class="inp" value=${form.cals} onInput=${e=>setForm(prev => ({ ...prev, cals:e.target.value }))} placeholder="Kcal" />
@@ -4811,6 +4851,16 @@
                               <span style="font-size:10px;color:#EF4444;font-family:'JetBrains Mono',monospace;">${Math.round(parseFloat(recipe.macros?.fat)||0)}g G</span>
                             </div>
                             <p style="margin:6px 0 0;font-size:11px;color:#94A3B8;">Base: ${recipe.base_qty || 1} ${recipe.base_unit || 'porcion'}</p>
+                            ${(recipe.stock_qty === null || recipe.stock_qty === undefined || recipe.stock_qty === '' || !String(recipe.stock_unit || '').trim()) && html`
+                              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                                <span style="font-size:10px;color:#94A3B8;font-family:'JetBrains Mono',monospace;">Sin control de stock</span>
+                              </div>
+                            `}
+                            ${recipeHasIngredientList(recipe) && html`
+                              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+                                <span style="font-size:10px;color:#94A3B8;font-family:'JetBrains Mono',monospace;">Receta compuesta · sin stock automatico</span>
+                              </div>
+                            `}
                             ${(recipe.stock_qty !== null && recipe.stock_qty !== undefined && recipe.stock_qty !== '') && html`
                               <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
                                 <span style="font-size:10px;color:#7DD3FC;font-family:'JetBrains Mono',monospace;">Stock: ${recipe.stock_qty} ${recipe.stock_unit || ''}</span>
@@ -5376,7 +5426,17 @@
         }
       }, []);
 
-      useEffect(() => { loadStudy(); }, [loadStudy]);
+      useEffect(() => {
+        loadStudy();
+        const onFocus = () => loadStudy();
+        const onVisible = () => { if(document.visibilityState === 'visible') loadStudy(); };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          window.removeEventListener('focus', onFocus);
+          document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [loadStudy]);
 
       const saveSubjectTopics = async (row, nextTopics) => {
         setSaving(row.subject, true);
@@ -5426,6 +5486,7 @@
         setNotice('');
         try {
           const payload = {
+            user_id: session.user.id,
             title: `${row.subject}: ${topic.name}`,
             details: `Tema de estudio pendiente de ${row.subject}`,
             priority: 'normal',
@@ -5580,8 +5641,10 @@
           ]);
           if(invErr) throw invErr;
           if(notesErr) throw notesErr;
-          setBook({ ...BOOK_DEFAULT, ...(invRow?.data || {}) });
-          setNotes(noteRows || []);
+          const nextBook = { ...BOOK_DEFAULT, ...(invRow?.data || {}) };
+          setBook(nextBook);
+          const activeTitle = String(nextBook.title || BOOK_DEFAULT.title).trim().toLowerCase();
+          setNotes((noteRows || []).filter(note => String(note.book_title || '').trim().toLowerCase() === activeTitle));
         } catch(e) {
           setError(e.message || 'No se pudo cargar Libros.');
         } finally {
@@ -5622,10 +5685,12 @@
         setSaving(true);
         setError('');
         try {
+          const totalPages = Math.max(1, parseInt(nextBook.total_pages || 1, 10) || 1);
+          const currentPage = Math.min(totalPages, Math.max(0, parseInt(nextBook.current_page || 0, 10) || 0));
           const payload = {
             ...nextBook,
-            current_page: Math.max(0, parseInt(nextBook.current_page || 0, 10) || 0),
-            total_pages: Math.max(1, parseInt(nextBook.total_pages || 1, 10) || 1)
+            current_page: currentPage,
+            total_pages: totalPages
           };
           const { error } = await supabase
             .from('app_inventory')
@@ -9185,6 +9250,7 @@
 
       const restoreRemovedItemStock = (removedItem) => {
         if(!removedItem?.recipe_id) return;
+        if(removedItem?.stock_trackable === false) return;
         const stockUnit = normalizeInventoryUnit(removedItem.stock_unit || '');
         const deltaUnit = normalizeInventoryUnit(removedItem.stock_delta_unit || '');
         const delta = parseFloat(removedItem.stock_delta);
