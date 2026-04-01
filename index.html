@@ -8601,21 +8601,7 @@
         return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
       });
 
-      const replaceMealItem = (mealIndex, itemIndex, item) => upd(w => {
-        const meals = [...w.tracker[activeDay].meals];
-        const nextItems = [...(meals[mealIndex].items || [])];
-        nextItems[itemIndex] = item;
-        meals[mealIndex] = { ...meals[mealIndex], items: nextItems };
-        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
-      });
-
-      const removeMealItem = (mealIndex, itemIndex, removedItem=null) => {
-        upd(w => {
-          const meals = [...w.tracker[activeDay].meals];
-          meals[mealIndex] = { ...meals[mealIndex], items: (meals[mealIndex].items||[]).filter((_,i)=>i!==itemIndex) };
-          return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
-        });
-
+      const restoreRemovedItemStock = (removedItem) => {
         if(!removedItem?.recipe_id) return;
         const stockUnit = normalizeInventoryUnit(removedItem.stock_unit || '');
         const deltaUnit = normalizeInventoryUnit(removedItem.stock_delta_unit || '');
@@ -8637,6 +8623,28 @@
           })
           .then(()=>{})
           .catch((e)=>console.warn('[STOCK_RESTORE]', e?.message || e));
+      };
+
+      const replaceMealItem = (mealIndex, itemIndex, item) => {
+        let previousItem = null;
+        upd(w => {
+          const meals = [...w.tracker[activeDay].meals];
+          const nextItems = [...(meals[mealIndex].items || [])];
+          previousItem = nextItems[itemIndex] || null;
+          nextItems[itemIndex] = item;
+          meals[mealIndex] = { ...meals[mealIndex], items: nextItems };
+          return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+        });
+        if(previousItem) restoreRemovedItemStock(previousItem);
+      };
+
+      const removeMealItem = (mealIndex, itemIndex, removedItem=null) => {
+        upd(w => {
+          const meals = [...w.tracker[activeDay].meals];
+          meals[mealIndex] = { ...meals[mealIndex], items: (meals[mealIndex].items||[]).filter((_,i)=>i!==itemIndex) };
+          return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+        });
+        restoreRemovedItemStock(removedItem);
       };
 
       const handleRoutineChange = v => {
