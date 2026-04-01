@@ -591,6 +591,13 @@
         .replace(/[^a-zA-Z0-9]+/g, ' ')
         .trim()
         .toLowerCase();
+    const normalizeFoodText = (text='') =>
+      String(text || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, ' ')
+        .trim()
+        .toLowerCase();
 
     const resolveMuscleInfo = (exerciseName='') => {
       if(muscleMap[exerciseName]) return muscleMap[exerciseName];
