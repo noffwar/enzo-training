@@ -6226,6 +6226,31 @@
       });
       const [loading, setLoading] = useState(true);
       const [weather, setWeather] = useState({ loading:true, data:null, error:'' });
+      const weatherGymAdvice = useMemo(() => {
+        const w = weather.data;
+        if(!w) return { label:'Sin recomendación de tiempo', color:'#94A3B8', detail:'' };
+        const severe = w.zonda || w.hail_risk || w.lightning_risk || w.storm_risk_today === 'alto' || (Number(w.wind_gusts) || 0) >= 60;
+        const caution = !severe && (w.storm_risk_today === 'medio' || (Number(w.rain_probability) || 0) >= 55 || (Number(w.wind_gusts) || 0) >= 40);
+        if(severe) {
+          return {
+            label:'Hoy mejor evaluar antes de ir al gym',
+            color:'#FCA5A5',
+            detail:'Tiempo inestable o con alerta fuerte. Si salís, revisá condiciones al momento.'
+          };
+        }
+        if(caution) {
+          return {
+            label:'Gym con cautela',
+            color:'#FBBF24',
+            detail:'Hay inestabilidad o viento marcado. Conviene chequear el tiempo antes de salir.'
+          };
+        }
+        return {
+          label:'Tiempo favorable para salir',
+          color:'#86EFAC',
+          detail:'No se ve un riesgo fuerte en las próximas horas.'
+        };
+      }, [weather.data]);
 
       const loadSummary = useCallback(async () => {
         setLoading(true);
@@ -6471,7 +6496,7 @@
           </div>
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
             <div style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.25);background:rgba(56,189,248,0.08);">
-              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#7DD3FC;font-weight:700;">San Rafael clima</p>
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#7DD3FC;font-weight:700;">Tiempo San Rafael</p>
               <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${weather.loading ? 'Cargando...' : weather.data ? `${weather.data.temp_current}° ahora · prox 24h ${weather.data.temp_next24_max}/${weather.data.temp_next24_min}°` : 'Sin datos'}</p>
               <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">
                 ${weather.data
@@ -6488,7 +6513,9 @@
                   </span>
                 </div>
               `}
-              <p style="margin:6px 0 0;font-size:10px;color:#64748b;">Fuente: Open-Meteo para horario/24h + SMN para alertas.</p>
+              <p style="margin:6px 0 0;font-size:11px;color:${weatherGymAdvice.color};font-weight:700;">${weatherGymAdvice.label}</p>
+              ${weatherGymAdvice.detail && html`<p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${weatherGymAdvice.detail}</p>`}
+              <p style="margin:6px 0 0;font-size:10px;color:#64748b;">Fuente: Open-Meteo para tiempo horario/24h + SMN para alertas.</p>
               ${weather.data && html`
                 <p style="margin:6px 0 0;font-size:11px;color:${weather.data.zonda || weather.data.hail_risk || weather.data.lightning_risk ? '#FCA5A5' : '#86EFAC'};">
                   ${[
@@ -8315,6 +8342,7 @@
       const yesterdayFastMsg = getYesterdayFast(allWeeks, currentWk, activeDay);
       const routineId  = routineAssignments[activeDay];
       const routineInfo = routineId ? getRoutineForWeek(routineId, routineData, currentWk) : null;
+      const effectiveGymSession = routineId ? gymSession : [];
       const activeDateKey = getDayDate(currentWk, parseInt(activeDay, 10));
       const previousSnapshot = getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1);
       const activeDayClosed = isGymClosedDate(activeDateKey);
@@ -9067,8 +9095,9 @@
                   const active=activeDay===day.key;
                   const hasR=routineAssignments[day.key]!=='';
                   const sess=wd.sessions[day.key]||[];
-                  const done=sess.reduce((a,ex)=>a+ex.sets.filter(s=>s.completed).length,0);
-                  const total=sess.reduce((a,ex)=>a+ex.sets.length,0);
+                  const safeSess = hasR ? sess : [];
+                  const done=safeSess.reduce((a,ex)=>a+ex.sets.filter(s=>s.completed).length,0);
+                  const total=safeSess.reduce((a,ex)=>a+ex.sets.length,0);
                   const dateKey = getDayDate(currentWk, parseInt(day.key, 10));
                   const closed = isGymClosedDate(dateKey);
                   return html`
@@ -9167,9 +9196,9 @@
                   previousTracker=${previousSnapshot.tracker}/>
                 <${SmartCena} currentProt=${dayTotals(tracker.meals||[]).prot} tracker=${tracker}/>
 
-                <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleInput} onHabit=${updateHabit} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSessionQuick} onResetSessionChecks=${handleResetSessionChecksQuick}/>
+                <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleInput} onHabit=${updateHabit} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSessionQuick} onResetSessionChecks=${handleResetSessionChecksQuick}/>
 
-                ${gymSession.length===0 && !routineId && html`
+                ${effectiveGymSession.length===0 && !routineId && html`
                   <${Card}>
                     <div style="text-align:center;padding:24px 0;">
                       <p style="font-size:36px;margin:0 0 8px;">🛌</p>
