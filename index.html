@@ -77,6 +77,13 @@
     .rpe-slider::-moz-range-thumb { width:18px; height:18px; background:white; border-radius:50%; border:2px solid #6366F1; }
     /* Recharts overrides */
     .recharts-tooltip-wrapper { font-family:'JetBrains Mono',monospace !important; }
+    /* Mobile meal legend */
+    .meal-items-list > div { display:flex !important; flex-direction:column !important; gap:6px !important; }
+    .meal-items-list > div > div:first-child { align-items:flex-start !important; gap:8px !important; }
+    .meal-items-list > div > div:first-child > div:first-child { display:flex !important; flex-wrap:wrap !important; gap:6px 8px !important; }
+    .meal-items-list > div > div:last-child { display:flex !important; align-items:center !important; gap:8px !important; flex-wrap:wrap !important; }
+    .meal-items-list span, .meal-items-list p { white-space:normal !important; word-break:break-word !important; }
+    .meal-items-list p { margin:0 !important; line-height:1.35 !important; }
   </style>
 </head>
 <body>
@@ -2661,7 +2668,7 @@
 
                     <!-- LEYENDA de alimentos -->
                     ${items.length > 0 && html`
-                      <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">
+                      <div class="meal-items-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">
                         ${items.map((item, idx) => html`
                           <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(10,15,30,0.4);padding:8px 12px;border-radius:8px;border:1px solid #1E2D45;">
                             <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
