@@ -4249,7 +4249,10 @@
             setSweetsMsg('Stock local cargado. El guardado remoto está restringido por permisos.');
             return;
           }
-          const merged = { ...SWEETS_STOCK_DEFAULT, ...(local || {}), ...(data?.data || {}) };
+          const localTs = new Date(local?._updatedAt || 0).getTime() || 0;
+          const remoteTs = new Date(data?.data?._updatedAt || data?.updated_at || 0).getTime() || 0;
+          const freshest = localTs >= remoteTs ? (local || {}) : (data?.data || {});
+          const merged = { ...SWEETS_STOCK_DEFAULT, ...freshest };
           setSweetsStock(merged);
           try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(merged)); } catch(_) {}
         } catch(e) {
@@ -5941,7 +5944,7 @@
       `;
     };
 
-    const HealthView = ({session, onSyncDailyMeds, bodyWeight, onBodyWeight, todayMeds, previousDayMeds}) => {
+    const HealthView = ({session, onSyncDailyMeds, bodyWeight, onBodyWeight, todayMeds, previousDayMeds, weekTracker, healthWeekKey, onOpenDay}) => {
       const [stock, setStock] = useState(MEDS_STOCK_DEFAULT);
       const [loading, setLoading] = useState(true);
       const [saving, setSaving] = useState(false);
@@ -6308,6 +6311,40 @@
       const roaccutanAdherencePct = Math.min(100, Math.round((weekRoaccutanTakes / 7) * 100));
       const dinnerAdherencePct = Math.min(100, Math.round((weekDinnerTakes / 7) * 100));
       const adherenceColor = (pct) => pct >= 85 ? '#10B981' : pct >= 50 ? '#F59E0B' : '#EF4444';
+      const trackerDays = Object.values(weekTracker || {});
+      const weekRoaccutanChecks = trackerDays.filter(day => !!day?.meds?.roacuttan).length;
+      const weekDinnerChecks = trackerDays.filter(day => !!day?.meds?.finasteride && !!day?.meds?.minoxidil).length;
+      const weekConsistency = [
+        {
+          label:'Roaccutan',
+          checks: weekRoaccutanChecks,
+          takes: weekRoaccutanTakes,
+          diff: weekRoaccutanChecks - weekRoaccutanTakes
+        },
+        {
+          label:'Cena',
+          checks: weekDinnerChecks,
+          takes: weekDinnerTakes,
+          diff: weekDinnerChecks - weekDinnerTakes
+        }
+      ];
+      const hasWeekMismatch = weekConsistency.some(row => row.diff !== 0);
+      const weekDiagnostics = Object.keys(weekTracker || {}).sort((a,b)=>parseInt(a,10)-parseInt(b,10)).flatMap(dayIdx => {
+        const trackerDay = weekTracker?.[dayIdx] || {};
+        const meds = trackerDay.meds || {};
+        const dateKey = getDayDate(healthWeekKey, parseInt(dayIdx, 10));
+        const label = DAYS.find(d => d.key === String(dayIdx))?.abbr || dateKey;
+        const desiredRoaccutan = hasRemainingTakeForDate(fullHistory, 'roaccutan', dateKey);
+        const desiredDinner = hasRemainingTakeForDate(fullHistory, 'combo', dateKey);
+        const issues = [];
+        if(!!meds.roacuttan !== desiredRoaccutan) {
+          issues.push({ dateKey, label, text: desiredRoaccutan ? 'Toma real sin check de Roaccutan' : 'Check de Roaccutan sin toma real' });
+        }
+        if((!!meds.finasteride && !!meds.minoxidil) !== desiredDinner) {
+          issues.push({ dateKey, label, text: desiredDinner ? 'Toma real de cena sin checks completos' : 'Checks de cena sin toma real' });
+        }
+        return issues;
+      });
       const filteredHistory = fullHistory.filter(entry => {
         if(historyFilter === 'all') return true;
         if(historyFilter === 'takes') return entry?.type === 'roaccutan_take' || entry?.type === 'dinner_combo_take';
@@ -6315,6 +6352,31 @@
         if(historyFilter === 'adjustments') return entry?.type === 'manual_adjust' || entry?.type === 'restock';
         return true;
       });
+      const reconcileWeekChecks = async () => {
+        if(typeof onSyncDailyMeds !== 'function' || !healthWeekKey) return;
+        try {
+          const updates = [];
+          for(const dayIdx of Object.keys(weekTracker || {})) {
+            const dateKey = getDayDate(healthWeekKey, parseInt(dayIdx, 10));
+            const desiredRoaccutan = hasRemainingTakeForDate(fullHistory, 'roaccutan', dateKey);
+            const desiredDinner = hasRemainingTakeForDate(fullHistory, 'combo', dateKey);
+            const trackerDay = weekTracker?.[dayIdx] || {};
+            const meds = trackerDay.meds || {};
+            const patch = {};
+            if(!!meds.roacuttan !== desiredRoaccutan) patch.roacuttan = desiredRoaccutan;
+            if(!!meds.finasteride !== desiredDinner) patch.finasteride = desiredDinner;
+            if(!!meds.minoxidil !== desiredDinner) patch.minoxidil = desiredDinner;
+            if(Object.keys(patch).length) updates.push({ dateKey, patch });
+          }
+          for(const update of updates) {
+            await onSyncDailyMeds(update.patch, update.dateKey);
+          }
+          setNotice(updates.length ? 'Checks reconciliados segun las tomas registradas.' : 'No habia diferencias para reconciliar.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo reconciliar la semana.');
+        }
+      };
 
       return html`
         <div class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
@@ -6453,6 +6515,53 @@
                       </div>
                     </div>
                   `)}
+                </div>
+                <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;margin-bottom:10px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+                    <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Control de consistencia</p>
+                    ${hasWeekMismatch && html`
+                      <button
+                        onClick=${reconcileWeekChecks}
+                        style="padding:5px 9px;border-radius:999px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#C7D2FE;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                        RECONCILIAR
+                      </button>
+                    `}
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    ${weekConsistency.map(({label,checks,takes,diff}) => html`
+                      <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${diff===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
+                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                          <div>
+                            <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
+                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} · Tomas: ${takes}</p>
+                          </div>
+                          <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
+                            ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
+                          </span>
+                        </div>
+                        <p style="margin:6px 0 0;font-size:10px;color:${diff===0?'#64748B':'#FCD34D'};">
+                          ${diff===0 ? 'Checks y tomas reales coinciden.' : diff > 0 ? 'Hay mas checks que tomas reales registradas.' : 'Hay mas tomas reales que checks marcados.'}
+                        </p>
+                      </div>
+                    `)}
+                  </div>
+                  ${weekDiagnostics.length > 0 && html`
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                      ${weekDiagnostics.map(issue => html`
+                        <div style="padding:8px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.22);display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                          <span style="font-size:11px;color:#FCD34D;font-weight:700;min-width:38px;">${issue.label}</span>
+                          <span style="flex:1;font-size:11px;color:#CBD5E1;">${issue.text}</span>
+                          ${typeof onOpenDay === 'function' && html`
+                            <button
+                              onClick=${()=>onOpenDay(issue.dateKey)}
+                              style="padding:5px 8px;border-radius:999px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#C7D2FE;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              IR AL DIA
+                            </button>
+                          `}
+                        </div>
+                      `)}
+                    </div>
+                  `}
                 </div>
                 <p style="margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Historial reciente</p>
                   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
@@ -7543,7 +7652,7 @@
         if(note.kind === 'converted') return false;
         if(noteKindFilter !== 'all' && (note.kind || 'idea') !== noteKindFilter) return false;
         if(!searchNeedle) return true;
-        return String(note.content || '').toLowerCase().includes(searchNeedle);
+        return `${String(note.note_title || '')} ${String(note.content || '')}`.toLowerCase().includes(searchNeedle);
       });
       const archivedTasks = filteredTasks.filter(t => t.status === 'archived');
       const pendingTasks = filteredTasks.filter(t => t.status !== 'done' && t.status !== 'archived');
@@ -7552,7 +7661,9 @@
       const now = new Date();
       const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
       const endOfTomorrow = new Date(now); endOfTomorrow.setDate(now.getDate() + 1); endOfTomorrow.setHours(23,59,59,999);
-      const endOfWeek = new Date(now); endOfWeek.setDate(now.getDate() + 7); endOfWeek.setHours(23,59,59,999);
+      const endOfWeek = new Date(now);
+      endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
+      endOfWeek.setHours(23,59,59,999);
       const groupedPending = {
         today: pendingTasks.filter(t => t.due_at && new Date(t.due_at) <= endOfToday),
         tomorrow: pendingTasks.filter(t => t.due_at && new Date(t.due_at) > endOfToday && new Date(t.due_at) <= endOfTomorrow),
@@ -7573,19 +7684,23 @@
           if(pending.length === 0) return;
           const now = Date.now();
           const alerts = loadTaskAlerts();
-          const candidate = pending
+          const dueSoon = pending
             .map(task => ({ task, dueMs: new Date(task.due_at).getTime() }))
             .filter(item => !Number.isNaN(item.dueMs))
             .sort((a,b) => a.dueMs - b.dueMs)
-            .find(item => item.dueMs <= (now + 15 * 60000));
-          if(!candidate) return;
-          const key = `${candidate.task.id}:${candidate.task.due_at}`;
-          if(alerts[key]) return;
-          alerts[key] = new Date().toISOString();
+            .filter(item => item.dueMs <= (now + 15 * 60000));
+          if(dueSoon.length === 0) return;
+          const unseen = dueSoon.filter(item => !alerts[`${item.task.id}:${item.task.due_at}`]);
+          if(unseen.length === 0) return;
+          unseen.forEach(item => {
+            alerts[`${item.task.id}:${item.task.due_at}`] = new Date().toISOString();
+          });
           saveTaskAlerts(alerts);
+          const candidate = unseen[0];
           const diffMin = Math.round((candidate.dueMs - now) / 60000);
           const timing = diffMin <= 0 ? 'ya vencio' : diffMin === 1 ? 'vence en 1 minuto' : `vence en ${diffMin} minutos`;
-          const message = `Tarea: ${candidate.task.title} - ${timing}.`;
+          const extra = unseen.length > 1 ? ` Hay ${unseen.length - 1} mas cerca.` : '';
+          const message = `Tarea: ${candidate.task.title} - ${timing}.${extra}`;
           setTaskNotice(message);
           setTimeout(() => setTaskNotice(''), 6000);
           if(typeof Notification !== 'undefined' && Notification.permission === 'granted' && 'serviceWorker' in navigator) {
@@ -8756,6 +8871,14 @@
           dateKey
         };
       };
+      const openDayFromDateKey = useCallback((dateKey) => {
+        if(!dateKey) return;
+        const { weekKey, dayIdx } = getWeekAndDayFromDateKey(dateKey);
+        setAllWeeks(prev => prev[weekKey] ? prev : { ...prev, [weekKey]: newWeek(weekKey) });
+        setCurrentWk(weekKey);
+        setActiveDay(dayIdx);
+        setView('today');
+      }, []);
       const syncTodayMedsFromHealth = useCallback(async (partialMeds, targetDateKey) => {
         const baseDate = targetDateKey ? new Date(`${targetDateKey}T12:00:00`) : new Date();
         const todayWk = getWeekKey(baseDate);
@@ -9633,7 +9756,7 @@
             ${view==='tasks'    && html`<${ProductivityView} session=${session}/>`}
             ${view==='recipes'  && html`<${RecipesView} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe}/>`}
             ${view==='study'    && html`<${StudyView} session=${session}/>`}
-            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight} todayMeds=${realTodayTracker.meds||{}} previousDayMeds=${realPreviousTracker.meds||{}}/>`}
+            ${view==='health'   && html`<${HealthView} session=${session} onSyncDailyMeds=${syncTodayMedsFromHealth} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${updateBodyWeight} todayMeds=${realTodayTracker.meds||{}} previousDayMeds=${realPreviousTracker.meds||{}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} onOpenDay=${openDayFromDateKey}/>`}
             ${view==='books'    && html`<${BooksView} session=${session}/>`}
             ${view==='notif'    && html`<${NotifView} session=${session}/>`}
             ${view==='routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
