@@ -3712,6 +3712,9 @@
       const [salesRange, setSalesRange] = useState('all');
       const [editingSaleAt, setEditingSaleAt] = useState('');
       const [soldDraft, setSoldDraft] = useState(SWEETS_SOLD_DEFAULT);
+      const [recipeAiPrompt, setRecipeAiPrompt] = useState('');
+      const [recipeAiLoading, setRecipeAiLoading] = useState(false);
+      const [recipeAiMsg, setRecipeAiMsg] = useState('');
       const [form, setForm] = useState({
         recipe_name: '',
         aliases: '',
@@ -3826,6 +3829,9 @@
 
       const resetForm = () => {
         setEditingId(null);
+        setRecipeAiPrompt('');
+        setRecipeAiLoading(false);
+        setRecipeAiMsg('');
         setForm({
           recipe_name: '',
           aliases: '',
@@ -3845,6 +3851,9 @@
 
       const hydrateForm = (recipe) => {
         setEditingId(recipe.id);
+        setRecipeAiPrompt('');
+        setRecipeAiLoading(false);
+        setRecipeAiMsg('');
         setForm({
           recipe_name: recipe.recipe_name || '',
           aliases: Array.isArray(recipe.aliases) ? recipe.aliases.join(', ') : '',
@@ -3862,6 +3871,73 @@
             : '',
           notes: recipe.notes || ''
         });
+      };
+
+      const applyRecipeAiEdit = async () => {
+        if(!editingId) return;
+        if(!String(recipeAiPrompt || '').trim()) {
+          setRecipeAiMsg('Escribi primero la instruccion para la IA.');
+          return;
+        }
+        setRecipeAiLoading(true);
+        setRecipeAiMsg('');
+        try {
+          const response = await fetch('/.netlify/functions/edit-recipe-with-ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              instruction: recipeAiPrompt,
+              recipe: {
+                recipe_name: form.recipe_name,
+                aliases: form.aliases.split(',').map(v => v.trim()).filter(Boolean),
+                base_qty: form.base_qty,
+                base_unit: form.base_unit,
+                macros: {
+                  cals: form.cals,
+                  prot: form.prot,
+                  carb: form.carb,
+                  fat: form.fat
+                },
+                ingredients: form.ingredients
+                  .split('\n')
+                  .map(line => line.trim())
+                  .filter(Boolean)
+                  .map(line => {
+                    const [qtyPart, ...nameParts] = line.split('|');
+                    return {
+                      qty: (qtyPart || '').trim() || '1 porcion',
+                      name: nameParts.join('|').trim() || qtyPart.trim() || 'Ingrediente'
+                    };
+                  }),
+                notes: form.notes || ''
+              }
+            })
+          });
+          const data = await response.json().catch(() => ({}));
+          if(!response.ok) throw new Error(data?.error || 'No se pudo aplicar el cambio con IA.');
+
+          const nextIngredients = Array.isArray(data.ingredients)
+            ? data.ingredients.map(it => `${String(it.qty || '1 porcion').trim()} | ${String(it.name || 'Ingrediente').trim()}`).join('\n')
+            : form.ingredients;
+
+          setForm(prev => ({
+            ...prev,
+            recipe_name: String(data.recipe_name || prev.recipe_name || '').trim(),
+            base_qty: String(data.base_qty ?? prev.base_qty ?? '1'),
+            base_unit: String(data.base_unit || prev.base_unit || 'porcion').trim() || 'porcion',
+            cals: String(Math.max(0, Math.round(parseFloat(data.macros?.cals) || 0))),
+            prot: String(Math.max(0, Math.round(parseFloat(data.macros?.prot) || 0))),
+            carb: String(Math.max(0, Math.round(parseFloat(data.macros?.carb) || 0))),
+            fat: String(Math.max(0, Math.round(parseFloat(data.macros?.fat) || 0))),
+            ingredients: nextIngredients,
+            notes: String(data.notes ?? prev.notes ?? '').trim()
+          }));
+          setRecipeAiMsg('Cambios aplicados al formulario.');
+        } catch(e) {
+          setRecipeAiMsg(e.message || 'No se pudo aplicar el cambio con IA.');
+        } finally {
+          setRecipeAiLoading(false);
+        }
       };
 
       const saveRecipe = async () => {
@@ -4200,6 +4276,19 @@
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Ingredientes: util si es una receta compuesta. Si es un ingrediente simple, lo podes dejar vacio.</p>
                 <textarea value=${form.notes} onInput=${e=>setForm(prev => ({ ...prev, notes:e.target.value }))} placeholder="Nota opcional" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Nota: aclaraciones tuyas, por ejemplo marca, cocido/crudo o donde lo compras.</p>
+                ${editingId && html`
+                  <div style="padding:10px;border-radius:10px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);display:flex;flex-direction:column;gap:8px;">
+                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;">IA para editar receta</p>
+                    <p style="margin:0;font-size:11px;color:#94A3B8;">Escribi cambios naturales, por ejemplo: bajale 10 g de carne y recalcula las macros.</p>
+                    <textarea value=${recipeAiPrompt} onInput=${e=>setRecipeAiPrompt(e.target.value)} placeholder="Ej: bajale 10 g de carne a la receta y ajusta las macros" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                      <button onClick=${applyRecipeAiEdit} disabled=${recipeAiLoading} style=${`padding:8px 12px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.16);color:#C7D2FE;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${recipeAiLoading?'not-allowed':'pointer'};letter-spacing:0.06em;opacity:${recipeAiLoading?'0.7':'1'};`}>
+                        ${recipeAiLoading ? 'APLICANDO...' : 'APLICAR CON IA'}
+                      </button>
+                      ${recipeAiMsg && html`<span style="font-size:11px;color:${String(recipeAiMsg).includes('aplicados')?'#86EFAC':'#FCA5A5'};">${recipeAiMsg}</span>`}
+                    </div>
+                  </div>
+                `}
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                   <button onClick=${saveRecipe} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
                     ${saving ? 'GUARDANDO...' : (editingId ? 'GUARDAR CAMBIOS' : 'AGREGAR A LA BIBLIOTECA')}
@@ -4611,6 +4700,19 @@
               <p style="margin:0;font-size:11px;color:#94A3B8;">Ingredientes: útil si es una receta compuesta. Si es un ingrediente simple, lo podés dejar vacio.</p>
               <textarea value=${form.notes} onInput=${e=>setForm(prev => ({ ...prev, notes:e.target.value }))} placeholder="Nota opcional" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
               <p style="margin:0;font-size:11px;color:#94A3B8;">Nota: aclaraciones tuyas, por ejemplo marca, cocido/crudo o donde lo comprás.</p>
+              ${editingId && html`
+                <div style="padding:10px;border-radius:10px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);display:flex;flex-direction:column;gap:8px;">
+                  <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;">IA para editar receta</p>
+                  <p style="margin:0;font-size:11px;color:#94A3B8;">Escribi cambios naturales, por ejemplo: bajale 10 g de carne y recalcula las macros.</p>
+                  <textarea value=${recipeAiPrompt} onInput=${e=>setRecipeAiPrompt(e.target.value)} placeholder="Ej: bajale 10 g de carne a la receta y ajusta las macros" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:64px;"></textarea>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button onClick=${applyRecipeAiEdit} disabled=${recipeAiLoading} style=${`padding:8px 12px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.16);color:#C7D2FE;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${recipeAiLoading?'not-allowed':'pointer'};letter-spacing:0.06em;opacity:${recipeAiLoading?'0.7':'1'};`}>
+                      ${recipeAiLoading ? 'APLICANDO...' : 'APLICAR CON IA'}
+                    </button>
+                    ${recipeAiMsg && html`<span style="font-size:11px;color:${String(recipeAiMsg).includes('aplicados')?'#86EFAC':'#FCA5A5'};">${recipeAiMsg}</span>`}
+                  </div>
+                </div>
+              `}
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <button onClick=${saveRecipe} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
                   ${saving ? 'GUARDANDO...' : (editingId ? 'GUARDAR CAMBIOS' : 'AGREGAR A LA BIBLIOTECA')}
