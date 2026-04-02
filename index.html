@@ -2695,7 +2695,11 @@
         const normalized = raw.replace(/\s+/g, ' ').trim();
         const normalizedForSplit = normalized
           .replace(/\s+y\s+(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ')
-          .replace(/,\s*(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ');
+          .replace(/,\s*(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ')
+          .replace(/\s+(?:con|mas|más|acompañado de|acompanado de)\s+(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ')
+          .replace(/\s*\+\s*(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ')
+          .replace(/\s+(?:postre|de postre|bebida|de bebida)\s*:\s*(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ')
+          .replace(/\s+(?:postre|de postre|bebida|de bebida)\s+(?=(?:\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\b)/ig, ' | ');
         const parts = normalizedForSplit
           .split(/\s*\|\s*/i)
           .map(part => part.trim())
@@ -2714,6 +2718,11 @@
 
         return parts.every(looksIndependent) ? parts : [normalized];
       };
+
+      const cleanMealPartPrefix = (text='') =>
+        String(text || '')
+          .replace(/^(?:con|mas|más|acompañado de|acompanado de|postre|de postre|bebida|de bebida)\s*:?\s+/i, '')
+          .trim();
 
       const analyzeSingleMealEntry = async (mealIndex, text) => {
         try {
@@ -2785,7 +2794,7 @@
           const parts = splitMealDraftParts(text);
           if(parts.length > 1) {
             for(const part of parts) {
-              await analyzeSingleMealEntry(mealIndex, part);
+              await analyzeSingleMealEntry(mealIndex, cleanMealPartPrefix(part));
             }
             onMeal(mealIndex, 'aiDraft', '');
             return;
@@ -3113,6 +3122,9 @@
                 const loading  = aiLoading[i];
                 const errMsg   = aiError[i];
                 const draftText = String(m.aiDraft || '').trim();
+                const draftPreviewParts = draftText
+                  ? splitMealDraftParts(draftText).map(cleanMealPartPrefix).filter(Boolean)
+                  : [];
                 const recipeSuggestions = (savedRecipes || [])
                   .filter(r => {
                     const name = String(r.recipe_name || '').trim();
@@ -3161,6 +3173,21 @@
                         <span>${loading?'...':'IA'}</span>
                       </button>
                     </div>
+
+                    ${draftPreviewParts.length > 1 && html`
+                      <div style="margin:-2px 0 8px;padding:8px 10px;border-radius:8px;background:rgba(14,165,233,0.08);border:1px solid rgba(56,189,248,0.2);">
+                        <p style="margin:0 0 6px;font-size:10px;font-weight:700;color:#7DD3FC;text-transform:uppercase;letter-spacing:0.06em;">Vista previa</p>
+                        <p style="margin:0 0 6px;font-size:10px;color:#94A3B8;">La app va a cargar ${draftPreviewParts.length} filas separadas:</p>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                          ${draftPreviewParts.map((part, partIndex) => html`
+                            <div style="display:flex;gap:6px;align-items:flex-start;">
+                              <span style="min-width:16px;font-size:10px;font-weight:700;color:#38BDF8;font-family:'JetBrains Mono',monospace;">${partIndex + 1}.</span>
+                              <span style="font-size:11px;color:#E2E8F0;line-height:1.35;word-break:break-word;">${part}</span>
+                            </div>
+                          `)}
+                        </div>
+                      </div>
+                    `}
 
                     ${recipeSuggestions.length > 0 && html`
                       <div style="display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 8px;">
