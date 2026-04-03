@@ -6588,6 +6588,26 @@
           combo: acc.combo + deltas.combo
         };
       }, { roaccutan: 0, combo: 0 });
+      const weekAdjustmentBreakdown = weekHistory.reduce((acc, entry) => {
+        if(!entry) return acc;
+        const targetField = entry?.field === 'roaccutan'
+          ? 'roaccutan'
+          : entry?.field === 'minoxidil_finasteride'
+            ? 'combo'
+            : null;
+        if(entry?.type === 'restock' && targetField) {
+          acc[targetField].restock += pn(entry.delta);
+        } else if(entry?.type === 'manual_adjust' && targetField) {
+          acc[targetField].manual += pn(entry.delta);
+        } else if(entry?.type === 'habit_toggle') {
+          acc.roaccutan.checks += pn(entry.delta_roaccutan);
+          acc.combo.checks += pn(entry.delta_combo);
+        }
+        return acc;
+      }, {
+        roaccutan: { restock: 0, manual: 0, checks: 0 },
+        combo: { restock: 0, manual: 0, checks: 0 }
+      });
       const weekOpeningStock = {
         roaccutan: Math.max(0, roaccutanCount - weekAllDeltas.roaccutan),
         combo: Math.max(0, minoxCount - weekAllDeltas.combo)
@@ -6604,7 +6624,8 @@
           expected: expectedStockThisWeek.roaccutan,
           opening: weekOpeningStock.roaccutan,
           takesDelta: weekMedicationDeltas.roaccutan,
-          drift: roaccutanCount - expectedStockThisWeek.roaccutan
+          drift: roaccutanCount - expectedStockThisWeek.roaccutan,
+          breakdown: weekAdjustmentBreakdown.roaccutan
         },
         {
           label:'Cena',
@@ -6613,7 +6634,8 @@
           expected: expectedStockThisWeek.combo,
           opening: weekOpeningStock.combo,
           takesDelta: weekMedicationDeltas.combo,
-          drift: minoxCount - expectedStockThisWeek.combo
+          drift: minoxCount - expectedStockThisWeek.combo,
+          breakdown: weekAdjustmentBreakdown.combo
         }
       ];
       const weekConsistency = [
@@ -6865,7 +6887,7 @@
                     </div>
                   </div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    ${stockConsistency.map(({label,actual,expected,opening,takesDelta,drift}) => html`
+                    ${stockConsistency.map(({label,actual,expected,opening,takesDelta,drift,breakdown}) => html`
                       <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${drift===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
                         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
                           <div>
@@ -6879,6 +6901,13 @@
                         <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">Inicio: ${opening} · Tomas/checks: ${takesDelta > 0 ? '+' : ''}${takesDelta}</p>
                         <p style="margin:4px 0 0;font-size:10px;color:${drift===0?'#64748B':'#FCD34D'};">
                           ${drift===0 ? 'Sin diferencia manual en esta semana.' : `La diferencia viene de ajustes o reposiciones netas: ${drift > 0 ? '+' : ''}${drift}.`}
+                        </p>
+                        <p style="margin:4px 0 0;font-size:10px;color:#94A3B8;">
+                          ${[
+                            breakdown?.restock ? `Reposiciones ${breakdown.restock > 0 ? '+' : ''}${breakdown.restock}` : '',
+                            breakdown?.manual ? `Ajustes ${breakdown.manual > 0 ? '+' : ''}${breakdown.manual}` : '',
+                            breakdown?.checks ? `Checks ${breakdown.checks > 0 ? '+' : ''}${breakdown.checks}` : ''
+                          ].filter(Boolean).join(' · ') || 'Sin movimientos manuales ni checks registrados en la semana.'}
                         </p>
                       </div>
                     `)}
