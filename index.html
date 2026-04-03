@@ -6571,6 +6571,51 @@
       const trackerDays = Object.values(weekTracker || {});
       const weekRoaccutanChecks = trackerDays.filter(day => !!day?.meds?.roacuttan).length;
       const weekDinnerChecks = trackerDays.filter(day => !!day?.meds?.finasteride && !!day?.meds?.minoxidil).length;
+      const weekAllDeltas = weekHistory.reduce((acc, entry) => {
+        const deltas = entryDeltas(entry);
+        return {
+          roaccutan: acc.roaccutan + deltas.roaccutan,
+          combo: acc.combo + deltas.combo
+        };
+      }, { roaccutan: 0, combo: 0 });
+      const weekMedicationDeltas = weekHistory.reduce((acc, entry) => {
+        if(entry?.type !== 'roaccutan_take' && entry?.type !== 'dinner_combo_take' && entry?.type !== 'habit_toggle') {
+          return acc;
+        }
+        const deltas = entryDeltas(entry);
+        return {
+          roaccutan: acc.roaccutan + deltas.roaccutan,
+          combo: acc.combo + deltas.combo
+        };
+      }, { roaccutan: 0, combo: 0 });
+      const weekOpeningStock = {
+        roaccutan: Math.max(0, roaccutanCount - weekAllDeltas.roaccutan),
+        combo: Math.max(0, minoxCount - weekAllDeltas.combo)
+      };
+      const expectedStockThisWeek = {
+        roaccutan: Math.max(0, weekOpeningStock.roaccutan + weekMedicationDeltas.roaccutan),
+        combo: Math.max(0, weekOpeningStock.combo + weekMedicationDeltas.combo)
+      };
+      const stockConsistency = [
+        {
+          label:'Roaccutan',
+          field:'roaccutan',
+          actual: roaccutanCount,
+          expected: expectedStockThisWeek.roaccutan,
+          opening: weekOpeningStock.roaccutan,
+          takesDelta: weekMedicationDeltas.roaccutan,
+          drift: roaccutanCount - expectedStockThisWeek.roaccutan
+        },
+        {
+          label:'Cena',
+          field:'minoxidil_finasteride',
+          actual: minoxCount,
+          expected: expectedStockThisWeek.combo,
+          opening: weekOpeningStock.combo,
+          takesDelta: weekMedicationDeltas.combo,
+          drift: minoxCount - expectedStockThisWeek.combo
+        }
+      ];
       const weekConsistency = [
         {
           label:'Roaccutan',
@@ -6632,6 +6677,35 @@
           setTimeout(() => setNotice(''), 2500);
         } catch(e) {
           setError(e.message || 'No se pudo reconciliar la semana.');
+        }
+      };
+      const hasStockMismatch = stockConsistency.some(row => row.drift !== 0);
+      const reconcileExpectedStock = async () => {
+        try {
+          const patch = {};
+          stockConsistency.forEach(row => {
+            if(row.drift !== 0) patch[row.field] = Math.max(0, row.expected);
+          });
+          if(!Object.keys(patch).length) {
+            setNotice('El stock ya coincide con lo esperado para la semana visible.');
+            setTimeout(() => setNotice(''), 2500);
+            return;
+          }
+          await applyHealthAction({
+            patch,
+            entry: {
+              at: new Date().toISOString(),
+              type: 'manual_adjust',
+              field: 'weekly_reconcile',
+              delta: 0,
+              note: `Reconciliacion semanal: ${Object.entries(patch).map(([field,val]) => `${field}=${val}`).join(', ')}`,
+              logical_date: weekEndKey
+            },
+            okMsg: 'Stock alineado con el esperado de la semana visible.'
+          });
+          setTimeout(() => setNotice(''), 2500);
+        } catch (e) {
+          setError(e.message || 'No se pudo reconciliar el stock.');
         }
       };
 
@@ -6775,6 +6849,43 @@
                 </div>
                 <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;margin-bottom:10px;">
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+                    <div>
+                      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Stock esperado vs real</p>
+                      <p style="margin:4px 0 0;font-size:10px;color:#94A3B8;">Solo semana visible. Ignora semanas anteriores para simplificar el control.</p>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                      ${hasStockMismatch && html`
+                        <button
+                          onClick=${reconcileExpectedStock}
+                          style="padding:5px 9px;border-radius:999px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                          RECONCILIAR STOCK
+                        </button>
+                      `}
+                      <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${weekStartKey} → ${weekEndKey}</span>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    ${stockConsistency.map(({label,actual,expected,opening,takesDelta,drift}) => html`
+                      <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${drift===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
+                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                          <div>
+                            <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
+                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Real: ${actual} · Esperado: ${expected}</p>
+                          </div>
+                          <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${drift===0?'#86EFAC':'#FCD34D'};`}>
+                            ${drift===0 ? 'OK' : drift > 0 ? `+${drift}` : String(drift)}
+                          </span>
+                        </div>
+                        <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">Inicio: ${opening} · Tomas/checks: ${takesDelta > 0 ? '+' : ''}${takesDelta}</p>
+                        <p style="margin:4px 0 0;font-size:10px;color:${drift===0?'#64748B':'#FCD34D'};">
+                          ${drift===0 ? 'Sin diferencia manual en esta semana.' : `La diferencia viene de ajustes o reposiciones netas: ${drift > 0 ? '+' : ''}${drift}.`}
+                        </p>
+                      </div>
+                    `)}
+                  </div>
+                </div>
+                <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;margin-bottom:10px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
                     <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Control de consistencia</p>
                     ${hasWeekMismatch && html`
                       <button
@@ -6875,6 +6986,8 @@
                                 ? `Check diario: ${entry.med === 'roacuttan'
                                     ? `Roaccutan ${entry.delta_roaccutan > 0 ? '+' : ''}${entry.delta_roaccutan}`
                                     : `Combo noche ${entry.delta_combo > 0 ? '+' : ''}${entry.delta_combo}`}`
+                              : entry.note
+                                ? entry.note
                               : entry.type === 'restock'
                                 ? `Reposicion: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} +${entry.delta}`
                                 : `Ajuste: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} ${entry.delta}`
