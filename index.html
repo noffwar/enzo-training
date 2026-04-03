@@ -2226,6 +2226,8 @@
       const [open,setOpen] = useState(true);
       const [aiLoading, setAiLoading] = useState([false,false,false]);
       const [aiError,   setAiError]   = useState(['','','']);
+      const [mealSplitEditOpen, setMealSplitEditOpen] = useState([false,false,false]);
+      const [mealSplitDrafts, setMealSplitDrafts] = useState(['','','']);
       const [recipeSaving, setRecipeSaving] = useState([false,false,false]);
       const [recipeMsg, setRecipeMsg] = useState(['','','']);
       const [savedRecipes, setSavedRecipes] = useState([]);
@@ -2670,11 +2672,25 @@
             next = `${current}, ${recipeName}`;
           }
         }
-        onMeal(mealIndex, 'aiDraft', next);
+        updateMealDraft(mealIndex, next);
+      };
+
+      const updateMealDraft = (mealIndex, value) => {
+        onMeal(mealIndex, 'aiDraft', value);
+        setMealSplitEditOpen(prev => {
+          const next = [...prev];
+          next[mealIndex] = false;
+          return next;
+        });
+        setMealSplitDrafts(prev => {
+          const next = [...prev];
+          next[mealIndex] = '';
+          return next;
+        });
       };
 
       const clearMealDraft = (mealIndex) => {
-        onMeal(mealIndex, 'aiDraft', '');
+        updateMealDraft(mealIndex, '');
         setAiError(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
         setRecipeMsg(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
         if(editingMealItem.mealIndex === mealIndex) {
@@ -2684,7 +2700,7 @@
 
       const startEditMealItem = (mealIndex, itemIndex, item) => {
         const draft = `${String(item?.qty || '').trim()} ${String(item?.name || '').trim()}`.trim();
-        onMeal(mealIndex, 'aiDraft', draft);
+        updateMealDraft(mealIndex, draft);
         setEditingMealItem({ mealIndex, itemIndex });
         setAiError(prev => { const n=[...prev]; n[mealIndex]=''; return n; });
       };
@@ -2723,6 +2739,66 @@
         String(text || '')
           .replace(/^(?:con|mas|más|acompañado de|acompanado de|postre|de postre|bebida|de bebida)\s*:?\s+/i, '')
           .trim();
+
+      const getMealAnalysisParts = (mealIndex, sourceText='') => {
+        const draft = String(sourceText || '').trim();
+        const manualParts = String(mealSplitDrafts[mealIndex] || '')
+          .split(/\r?\n/)
+          .map(cleanMealPartPrefix)
+          .map(part => part.trim())
+          .filter(Boolean);
+        if(mealSplitEditOpen[mealIndex] && manualParts.length > 0) return manualParts;
+        return splitMealDraftParts(draft).map(cleanMealPartPrefix).filter(Boolean);
+      };
+
+      const prepareMealSplitEditor = (mealIndex, text='') => {
+        const parts = splitMealDraftParts(text).map(cleanMealPartPrefix).filter(Boolean);
+        setMealSplitDrafts(prev => {
+          const next = [...prev];
+          next[mealIndex] = parts.join('\n');
+          return next;
+        });
+        setMealSplitEditOpen(prev => {
+          const next = [...prev];
+          next[mealIndex] = true;
+          return next;
+        });
+      };
+
+      const analyzeMealParts = async (mealIndex, parts=[]) => {
+        for(const part of parts) {
+          await analyzeSingleMealEntry(mealIndex, cleanMealPartPrefix(part));
+        }
+        updateMealDraft(mealIndex, '');
+        setMealSplitEditOpen(prev => {
+          const next = [...prev];
+          next[mealIndex] = false;
+          return next;
+        });
+        setMealSplitDrafts(prev => {
+          const next = [...prev];
+          next[mealIndex] = '';
+          return next;
+        });
+      };
+
+      const confirmMealSplitPreview = async (mealIndex, sourceText='') => {
+        const parts = getMealAnalysisParts(mealIndex, sourceText);
+        if(parts.length <= 1) {
+          await analyzeMeal(mealIndex);
+          return;
+        }
+        setAiLoading(prev => { const next=[...prev]; next[mealIndex]=true; return next; });
+        setAiError(prev => { const next=[...prev]; next[mealIndex]=''; return next; });
+        try {
+          await analyzeMealParts(mealIndex, parts);
+        } catch (e) {
+          console.error('[MEAL_SPLIT]', e);
+          setAiError(prev => { const next=[...prev]; next[mealIndex]=e.message||'Error'; return next; });
+        } finally {
+          setAiLoading(prev => { const next=[...prev]; next[mealIndex]=false; return next; });
+        }
+      };
 
       const analyzeSingleMealEntry = async (mealIndex, text) => {
         try {
@@ -2787,16 +2863,18 @@
         const text = String(t.meals?.[mealIndex]?.aiDraft || '').trim();
         if(!text) return;
 
+        const parts = getMealAnalysisParts(mealIndex, text);
+        if(parts.length > 1 && !mealSplitEditOpen[mealIndex] && !String(mealSplitDrafts[mealIndex] || '').trim()) {
+          prepareMealSplitEditor(mealIndex, text);
+          return;
+        }
+
         setAiLoading(prev => { const n=[...prev]; n[mealIndex]=true; return n; });
         setAiError(prev   => { const n=[...prev]; n[mealIndex]='';   return n; });
 
         try {
-          const parts = splitMealDraftParts(text);
           if(parts.length > 1) {
-            for(const part of parts) {
-              await analyzeSingleMealEntry(mealIndex, cleanMealPartPrefix(part));
-            }
-            onMeal(mealIndex, 'aiDraft', '');
+            await analyzeMealParts(mealIndex, parts);
             return;
           }
           try {
@@ -2821,7 +2899,7 @@
               } else {
                 onAddItem(mealIndex, recipeHit);
               }
-              onMeal(mealIndex, 'aiDraft', '');
+              updateMealDraft(mealIndex, '');
               if(recipeHit.stock_unit && recipeHit.stock_delta_unit && normalizeStockUnit(recipeHit.stock_unit) === normalizeStockUnit(recipeHit.stock_delta_unit)) {
                 await discountItemStock(mealIndex, recipeHit);
               }
@@ -2856,7 +2934,7 @@
             onAddItem(mealIndex, nextItem);
           }
 
-          onMeal(mealIndex, 'aiDraft', '');
+          updateMealDraft(mealIndex, '');
         } catch(e) {
           console.error('[IA]', e);
           setAiError(prev => { const n=[...prev]; n[mealIndex]=e.message||'Error'; return n; });
@@ -3145,7 +3223,7 @@
                       <input
                         type="text"
                         value=${m.aiDraft || ''}
-                        onInput=${e=>onMeal(i,'aiDraft',e.target.value)}
+                        onInput=${e=>updateMealDraft(i, e.target.value)}
                         onKeyDown=${e=>{ if(e.key==='Enter'&&!loading) analyzeMeal(i); }}
                         placeholder="Sumar alimento a la leyenda..."
                         style="flex:1;background:#0a0f1e;border:1px solid #2A3F5F;border-radius:8px;padding:7px 10px;font-size:12px;color:#e2e8f0;font-family:'Barlow',sans-serif;"
@@ -3178,13 +3256,55 @@
                       <div style="margin:-2px 0 8px;padding:8px 10px;border-radius:8px;background:rgba(14,165,233,0.08);border:1px solid rgba(56,189,248,0.2);">
                         <p style="margin:0 0 6px;font-size:10px;font-weight:700;color:#7DD3FC;text-transform:uppercase;letter-spacing:0.06em;">Vista previa</p>
                         <p style="margin:0 0 6px;font-size:10px;color:#94A3B8;">La app va a cargar ${draftPreviewParts.length} filas separadas:</p>
-                        <div style="display:flex;flex-direction:column;gap:4px;">
-                          ${draftPreviewParts.map((part, partIndex) => html`
-                            <div style="display:flex;gap:6px;align-items:flex-start;">
-                              <span style="min-width:16px;font-size:10px;font-weight:700;color:#38BDF8;font-family:'JetBrains Mono',monospace;">${partIndex + 1}.</span>
-                              <span style="font-size:11px;color:#E2E8F0;line-height:1.35;word-break:break-word;">${part}</span>
-                            </div>
-                          `)}
+                        ${mealSplitEditOpen[i]
+                          ? html`
+                              <textarea
+                                value=${mealSplitDrafts[i] || draftPreviewParts.join('\n')}
+                                onInput=${e=>setMealSplitDrafts(prev => {
+                                  const next = [...prev];
+                                  next[i] = e.target.value;
+                                  return next;
+                                })}
+                                placeholder="Una fila por linea"
+                                style="width:100%;min-height:92px;resize:vertical;background:#0A0F1E;border:1px solid #1E3A5F;border-radius:8px;padding:8px 10px;font-size:11px;color:#E2E8F0;font-family:'Barlow',sans-serif;line-height:1.4;"
+                              ></textarea>
+                            `
+                          : html`
+                              <div style="display:flex;flex-direction:column;gap:4px;">
+                                ${draftPreviewParts.map((part, partIndex) => html`
+                                  <button
+                                    onClick=${()=>setMealSplitEditOpen(prev => {
+                                      const next = [...prev];
+                                      next[i] = true;
+                                      return next;
+                                    })}
+                                    style="display:flex;gap:6px;align-items:flex-start;text-align:left;background:none;border:none;padding:0;cursor:pointer;"
+                                    title="Tocá para editar las partes"
+                                  >
+                                    <span style="min-width:16px;font-size:10px;font-weight:700;color:#38BDF8;font-family:'JetBrains Mono',monospace;">${partIndex + 1}.</span>
+                                    <span style="font-size:11px;color:#E2E8F0;line-height:1.35;word-break:break-word;">${part}</span>
+                                  </button>
+                                `)}
+                              </div>
+                            `}
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                          <button
+                            onClick=${()=>confirmMealSplitPreview(i, draftText)}
+                            disabled=${loading}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;cursor:pointer;"
+                          >
+                            AGREGAR COMO ${getMealAnalysisParts(i, draftText).length} FILAS
+                          </button>
+                          <button
+                            onClick=${()=>setMealSplitEditOpen(prev => {
+                              const next = [...prev];
+                              next[i] = !next[i];
+                              return next;
+                            })}
+                            style="padding:6px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.28);background:rgba(99,102,241,0.10);color:#A5B4FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;cursor:pointer;"
+                          >
+                            ${mealSplitEditOpen[i] ? 'VER LISTA' : 'EDITAR PARTES'}
+                          </button>
                         </div>
                       </div>
                     `}
@@ -6432,21 +6552,17 @@
             bg:'rgba(245,158,11,0.12)',
             border:'rgba(245,158,11,0.35)'
           };
-      const startOfWeek = (() => {
-        const now = new Date();
-        const d = new Date(now);
-        d.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-        d.setHours(0,0,0,0);
-        return d;
-      })();
-      const startOfWeekKey = localDateKey(startOfWeek);
-      const weekRealTakes = fullHistory.filter(entry => {
+      const weekStartKey = healthWeekKey || getWeekKey(new Date());
+      const weekDateKeys = Array.from({ length: 7 }, (_, idx) => getDayDate(weekStartKey, idx));
+      const weekEndKey = weekDateKeys[6];
+      const weekHistory = fullHistory.filter(entry => {
         const logicalKey = entry?.logical_date || (entry?.at ? localDateKey(new Date(entry.at)) : '');
         if(!logicalKey) return false;
-        const logicalDate = new Date(`${logicalKey}T12:00:00`);
-        if(Number.isNaN(logicalDate.getTime()) || logicalKey < startOfWeekKey) return false;
-        return entry?.type === 'roaccutan_take' || entry?.type === 'dinner_combo_take';
+        return logicalKey >= weekStartKey && logicalKey <= weekEndKey;
       });
+      const weekRealTakes = weekHistory.filter(entry =>
+        entry?.type === 'roaccutan_take' || entry?.type === 'dinner_combo_take'
+      );
       const weekRoaccutanTakes = weekRealTakes.filter(entry => entry?.type === 'roaccutan_take').length;
       const weekDinnerTakes = weekRealTakes.filter(entry => entry?.type === 'dinner_combo_take').length;
       const roaccutanAdherencePct = Math.min(100, Math.round((weekRoaccutanTakes / 7) * 100));
@@ -6475,8 +6591,8 @@
         const meds = trackerDay.meds || {};
         const dateKey = getDayDate(healthWeekKey, parseInt(dayIdx, 10));
         const label = DAYS.find(d => d.key === String(dayIdx))?.abbr || dateKey;
-        const desiredRoaccutan = hasRemainingTakeForDate(fullHistory, 'roaccutan', dateKey);
-        const desiredDinner = hasRemainingTakeForDate(fullHistory, 'combo', dateKey);
+        const desiredRoaccutan = hasRemainingTakeForDate(weekHistory, 'roaccutan', dateKey);
+        const desiredDinner = hasRemainingTakeForDate(weekHistory, 'combo', dateKey);
         const issues = [];
         if(!!meds.roacuttan !== desiredRoaccutan) {
           issues.push({ dateKey, label, text: desiredRoaccutan ? 'Toma real sin check de Roaccutan' : 'Check de Roaccutan sin toma real' });
@@ -6499,8 +6615,8 @@
           const updates = [];
           for(const dayIdx of Object.keys(weekTracker || {})) {
             const dateKey = getDayDate(healthWeekKey, parseInt(dayIdx, 10));
-            const desiredRoaccutan = hasRemainingTakeForDate(fullHistory, 'roaccutan', dateKey);
-            const desiredDinner = hasRemainingTakeForDate(fullHistory, 'combo', dateKey);
+            const desiredRoaccutan = hasRemainingTakeForDate(weekHistory, 'roaccutan', dateKey);
+            const desiredDinner = hasRemainingTakeForDate(weekHistory, 'combo', dateKey);
             const trackerDay = weekTracker?.[dayIdx] || {};
             const meds = trackerDay.meds || {};
             const patch = {};
