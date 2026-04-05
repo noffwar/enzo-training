@@ -1,5 +1,6 @@
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast';
 const SMN_ALERTS_URL = 'https://ws2.smn.gob.ar/alertas';
+const FETCH_TIMEOUT_MS = 6000;
 const SAN_RAFAEL = {
   name: 'San Rafael, Mendoza',
   latitude: -34.6177,
@@ -15,6 +16,16 @@ function minOf(list=[]) {
   return list.reduce((acc, n) => Math.min(acc, Number.isFinite(n) ? n : Infinity), Infinity);
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 exports.handler = async () => {
   try {
     const url = new URL(OPEN_METEO_URL);
@@ -27,8 +38,8 @@ exports.handler = async () => {
     url.searchParams.set('hourly', 'temperature_2m,relative_humidity_2m,precipitation_probability,wind_speed_10m,wind_gusts_10m,weather_code');
 
     const [weatherRes, alertsRes] = await Promise.allSettled([
-      fetch(url.toString()),
-      fetch(SMN_ALERTS_URL)
+      fetchWithTimeout(url.toString()),
+      fetchWithTimeout(SMN_ALERTS_URL)
     ]);
 
     if(weatherRes.status !== 'fulfilled' || !weatherRes.value.ok) {
@@ -85,7 +96,9 @@ exports.handler = async () => {
       try {
         const alertsJson = await alertsRes.value.json();
         alertsText = JSON.stringify(alertsJson);
-      } catch(_) {}
+      } catch(e) {
+        console.warn('[weather] SMN parse error:', e.message);
+      }
     }
     const alertsLower = String(alertsText || '').toLowerCase();
     const thunderCodes = weatherCodes.some(code => [95, 96, 99].includes(code));

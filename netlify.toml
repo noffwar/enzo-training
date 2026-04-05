@@ -11,6 +11,7 @@
 [functions]
   # Usamos esbuild para una compilación más rápida y moderna
   node_bundler = "esbuild"
+  timeout = 10
   # Tiempo de espera máximo (por si Gemini tarda en responder)
   included_files = ["netlify/functions/**"]
 

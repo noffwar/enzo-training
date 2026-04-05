@@ -1,5 +1,16 @@
 const { GEMINI_API_KEY } = process.env;
 const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
+const FETCH_TIMEOUT_MS = 6000;
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function collectResponseText(data) {
   const candidate = data?.candidates?.[0];
@@ -111,7 +122,7 @@ exports.handler = async (event) => {
       }
     };
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+    const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

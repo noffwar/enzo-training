@@ -1,5 +1,16 @@
 const { GEMINI_API_KEY } = process.env;
 const GEMINI_MODEL = 'gemini-3.1-flash-lite-preview';
+const FETCH_TIMEOUT_MS = 6000;
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function extractFirstJsonObject(text) {
   if(!text) return null;
@@ -87,7 +98,7 @@ Devuelve SOLO JSON con este schema exacto:
 `;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

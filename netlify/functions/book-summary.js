@@ -33,14 +33,13 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || '{}');
     const title = String(body.title || '').trim();
     const author = String(body.author || '').trim();
-    const question = String(body.question || '').trim();
     const currentPage = Math.max(1, parseInt(body.current_page || 1, 10) || 1);
 
-    if(!title || !question) {
+    if(!title) {
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Faltan datos para consultar el libro.' })
+        body: JSON.stringify({ error: 'Faltan datos del libro.' })
       };
     }
 
@@ -56,11 +55,12 @@ exports.handler = async (event) => {
             Rol: asistente literario en espanol neutro.
             Libro: ${title}${author ? ` de ${author}` : ''}.
             Limite critico: el usuario solo leyo hasta la pagina ${currentPage}.
+            Tarea: crear un resumen seguro de lo leido hasta esa pagina.
             Reglas obligatorias:
             1. Tienes estrictamente prohibido revelar hechos, giros, interpretaciones o personajes nuevos posteriores a la pagina ${currentPage}.
-            2. Si la pregunta exige informacion posterior, responde que no podes avanzar sin spoilear y ofrece una alternativa segura.
-            3. Habla solo de temas, tono, ideas, simbolos o escenas compatibles con lo ya leido.
-            4. Responde en espanol claro y util.
+            2. Resume solo lo compatible con lo ya leido.
+            3. Escribe 5 puntos maximo y un cierre breve.
+            4. Habla en espanol claro.
             5. No uses markdown complejo ni bloques de codigo.
             6. Si hay duda sobre si algo ocurre despues, elige la opcion mas conservadora.
           ` }]
@@ -68,12 +68,12 @@ exports.handler = async (event) => {
         contents: [{
           role: 'user',
           parts: [{
-            text: `Pregunta sobre ${title}: ${question}\n\nRecorda: responder solo con informacion segura hasta la pagina ${currentPage}.`
+            text: `Dame un resumen seguro de ${title} hasta la pagina ${currentPage}, con ideas principales, tono y conflictos visibles hasta ese punto.`
           }]
         }],
         generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 500
+          temperature: 0.3,
+          maxOutputTokens: 450
         }
       })
     });
@@ -84,7 +84,7 @@ exports.handler = async (event) => {
       return {
         statusCode: response.status,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: `Gemini ${response.status}: ${errText || 'No se pudo consultar el libro.'}` })
+        body: JSON.stringify({ error: `Gemini ${response.status}: ${errText || 'No se pudo resumir el libro.'}` })
       };
     }
 
@@ -98,7 +98,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 502,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'La IA no devolvio una respuesta utilizable.' })
+        body: JSON.stringify({ error: 'La IA no devolvio un resumen utilizable.' })
       };
     }
 
@@ -111,7 +111,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: error.message || 'Error inesperado al consultar el libro.' })
+      body: JSON.stringify({ error: error.message || 'Error inesperado al resumir el libro.' })
     };
   }
 };
