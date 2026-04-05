@@ -5801,6 +5801,12 @@
       current_page: 122,
       total_pages: 450
     };
+    const SERIES_DEFAULT = {
+      title: 'Sin serie',
+      season: 1,
+      episode: 1,
+      episodes_total: 10
+    };
     const MEDS_STOCK_KEY = 'enzo_meds_stock_v1';
     const MEDS_STOCK_DEFAULT = {
       roaccutan: 10,
@@ -5815,14 +5821,19 @@
 
     const BooksView = ({session}) => {
       const [book, setBook] = useState(BOOK_DEFAULT);
+      const [series, setSeries] = useState(SERIES_DEFAULT);
       const [notes, setNotes] = useState([]);
+      const [seriesNotes, setSeriesNotes] = useState([]);
       const [loading, setLoading] = useState(true);
       const [error, setError] = useState('');
       const [notice, setNotice] = useState('');
       const [saving, setSaving] = useState(false);
       const [noteDraft, setNoteDraft] = useState('');
+      const [seriesNoteDraft, setSeriesNoteDraft] = useState('');
       const [chatDraft, setChatDraft] = useState('');
+      const [seriesChatDraft, setSeriesChatDraft] = useState('');
       const [chatLoading, setChatLoading] = useState(false);
+      const [seriesChatLoading, setSeriesChatLoading] = useState(false);
       const [summaryLoading, setSummaryLoading] = useState(false);
       const [pomodoroActive, setPomodoroActive] = useState(false);
       const [pomodoroLeft, setPomodoroLeft] = useState(25 * 60);
@@ -5831,16 +5842,21 @@
         setLoading(true);
         setError('');
         try {
-          const [{ data: invRow, error: invErr }, { data: noteRows, error: notesErr }] = await Promise.all([
-            supabase.from('app_inventory').select('data').eq('key', 'reading_progress').maybeSingle(),
+          const [{ data: invRows, error: invErr }, { data: noteRows, error: notesErr }] = await Promise.all([
+            supabase.from('app_inventory').select('key,data').in('key', ['reading_progress', 'watching_progress']),
             supabase.from('book_notes').select('id, book_title, current_page, question, answer, kind, created_at').order('created_at', { ascending:false }).limit(20)
           ]);
           if(invErr) throw invErr;
           if(notesErr) throw notesErr;
-          const nextBook = { ...BOOK_DEFAULT, ...(invRow?.data || {}) };
+          const inventory = Object.fromEntries((invRows || []).map(row => [row.key, row.data || {}]));
+          const nextBook = { ...BOOK_DEFAULT, ...(inventory.reading_progress || {}) };
+          const nextSeries = { ...SERIES_DEFAULT, ...(inventory.watching_progress || {}) };
           setBook(nextBook);
+          setSeries(nextSeries);
           const activeTitle = String(nextBook.title || BOOK_DEFAULT.title).trim().toLowerCase();
+          const activeSeriesTitle = `series::${String(nextSeries.title || SERIES_DEFAULT.title).trim().toLowerCase()}`;
           setNotes((noteRows || []).filter(note => String(note.book_title || '').trim().toLowerCase() === activeTitle));
+          setSeriesNotes((noteRows || []).filter(note => String(note.book_title || '').trim().toLowerCase() === activeSeriesTitle));
         } catch(e) {
           setError(e.message || 'No se pudo cargar Libros.');
         } finally {
@@ -5906,6 +5922,37 @@
         }
       };
 
+      const saveSeries = async (nextSeries) => {
+        setSaving(true);
+        setError('');
+        try {
+          const totalEpisodes = Math.max(1, parseInt(nextSeries.episodes_total || 1, 10) || 1);
+          const currentSeason = Math.max(1, parseInt(nextSeries.season || 1, 10) || 1);
+          const currentEpisode = Math.min(totalEpisodes, Math.max(1, parseInt(nextSeries.episode || 1, 10) || 1));
+          const payload = {
+            ...nextSeries,
+            season: currentSeason,
+            episode: currentEpisode,
+            episodes_total: totalEpisodes
+          };
+          const { error } = await supabase
+            .from('app_inventory')
+            .upsert({
+              key: 'watching_progress',
+              data: payload,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'key' });
+          if(error) throw error;
+          setSeries(payload);
+          setNotice('Progreso de serie guardado.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo guardar el progreso de la serie.');
+        } finally {
+          setSaving(false);
+        }
+      };
+
       const addBookNote = async () => {
         const text = String(noteDraft || '').trim();
         if(!text) return;
@@ -5926,6 +5973,29 @@
           setTimeout(() => setNotice(''), 2500);
         } catch(e) {
           setError(e.message || 'No se pudo guardar la nota.');
+        }
+      };
+
+      const addSeriesNote = async () => {
+        const text = String(seriesNoteDraft || '').trim();
+        if(!text) return;
+        setError('');
+        try {
+          const payload = {
+            book_title: `SERIES::${series.title || SERIES_DEFAULT.title}`,
+            current_page: Math.max(1, parseInt(series.episode || 1, 10) || 1),
+            question: `[T${Math.max(1, parseInt(series.season || 1, 10) || 1)}E${Math.max(1, parseInt(series.episode || 1, 10) || 1)}] ${text}`,
+            answer: '',
+            kind: 'series-note'
+          };
+          const { data, error } = await supabase.from('book_notes').insert(payload).select().single();
+          if(error) throw error;
+          setSeriesNotes(prev => [data, ...prev]);
+          setSeriesNoteDraft('');
+          setNotice('Nota de la serie guardada.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo guardar la nota de la serie.');
         }
       };
 
@@ -6053,6 +6123,45 @@
         }
       };
 
+      const askSeriesAi = async () => {
+        const question = String(seriesChatDraft || '').trim();
+        if(!question) return;
+        setSeriesChatLoading(true);
+        setError('');
+        try {
+          const res = await fetch('/.netlify/functions/series-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: series.title || SERIES_DEFAULT.title,
+              season: Math.max(1, parseInt(series.season || 1, 10) || 1),
+              episode: Math.max(1, parseInt(series.episode || 1, 10) || 1),
+              question
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+          const payload = {
+            book_title: `SERIES::${series.title || SERIES_DEFAULT.title}`,
+            current_page: Math.max(1, parseInt(series.episode || 1, 10) || 1),
+            question: `[T${Math.max(1, parseInt(series.season || 1, 10) || 1)}E${Math.max(1, parseInt(series.episode || 1, 10) || 1)}] ${question}`,
+            answer: data.reply || '',
+            kind: 'series-qa'
+          };
+          const { data: saved, error } = await supabase.from('book_notes').insert(payload).select().single();
+          if(error) throw error;
+          setSeriesNotes(prev => [saved, ...prev]);
+          setSeriesChatDraft('');
+          setNotice('Respuesta guardada en SERIES.');
+          setTimeout(() => setNotice(''), 2500);
+        } catch(e) {
+          setError(e.message || 'No se pudo consultar la serie en Gemini.');
+        } finally {
+          setSeriesChatLoading(false);
+        }
+      };
+
       const summarizeBookSafe = async () => {
         setSummaryLoading(true);
         setError('');
@@ -6089,6 +6198,7 @@
       };
 
       const pct = Math.max(0, Math.min(100, Math.round(((parseInt(book.current_page || 0,10) || 0) / Math.max(1, parseInt(book.total_pages || 1,10) || 1)) * 100)));
+      const seriesPct = Math.max(0, Math.min(100, Math.round(((parseInt(series.episode || 0,10) || 0) / Math.max(1, parseInt(series.episodes_total || 1,10) || 1)) * 100)));
       const fmtPomodoro = `${String(Math.floor(pomodoroLeft / 60)).padStart(2,'0')}:${String(pomodoroLeft % 60).padStart(2,'0')}`;
 
       return html`
@@ -6135,6 +6245,64 @@
                     <button onClick=${exportBookNotes} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                       EXPORTAR NOTAS
                     </button>
+                  </div>
+                </div>
+
+                <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
+                    <div>
+                      <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#A78BFA;">Serie actual</p>
+                      <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Seguimiento y chat anti-spoiler hasta el episodio actual.</p>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1.4fr 0.8fr 0.8fr 0.8fr;gap:8px;margin-bottom:8px;">
+                    <input class="inp" value=${series.title || ''} onInput=${e=>setSeries(prev => ({ ...prev, title:e.target.value }))} placeholder="Serie" />
+                    <input class="inp" value=${series.season || ''} onInput=${e=>setSeries(prev => ({ ...prev, season:e.target.value }))} placeholder="Temporada" />
+                    <input class="inp" value=${series.episode || ''} onInput=${e=>setSeries(prev => ({ ...prev, episode:e.target.value }))} placeholder="Episodio" />
+                    <input class="inp" value=${series.episodes_total || ''} onInput=${e=>setSeries(prev => ({ ...prev, episodes_total:e.target.value }))} placeholder="Total" />
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                    <span style="font-size:11px;color:#94A3B8;">Progreso serie</span>
+                    <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#C4B5FD;">${seriesPct}%</span>
+                  </div>
+                  <div style="height:8px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;margin-bottom:10px;">
+                    <div style=${`height:100%;width:${seriesPct}%;background:linear-gradient(90deg,#A78BFA,#6366F1);transition:width 0.2s;`}></div>
+                  </div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                    <button onClick=${()=>saveSeries(series)} style="padding:8px 12px;border-radius:8px;border:none;background:#A78BFA;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                      ${saving ? 'GUARDANDO...' : 'GUARDAR SERIE'}
+                    </button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                      <p style="margin:0 0 8px;font-size:10px;text-transform:uppercase;color:#10B981;">Notas de la serie</p>
+                      <textarea value=${seriesNoteDraft} onInput=${e=>setSeriesNoteDraft(e.target.value)} placeholder="Anota algo de la serie sin spoilearte..." style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:76px;"></textarea>
+                      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                        <button onClick=${addSeriesNote} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                          GUARDAR NOTA
+                        </button>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
+                        ${seriesNotes.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay notas de la serie.</p>` : seriesNotes.map(note => html`
+                          <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
+                            <p style="margin:0 0 6px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${note.book_title} - ep ${note.current_page}</p>
+                            <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.answer || note.question || ''}</p>
+                          </div>
+                        `)}
+                      </div>
+                    </div>
+                    <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                      <p style="margin:0 0 8px;font-size:10px;text-transform:uppercase;color:#6366F1;">Chat serie sin spoilers</p>
+                      <div style="margin-bottom:8px;padding:8px 10px;border-radius:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);color:#C7D2FE;font-size:12px;">
+                        Gemini debe responder solo con informacion segura hasta T${Math.max(1, parseInt(series.season || 1, 10) || 1)}E${Math.max(1, parseInt(series.episode || 1, 10) || 1)}.
+                      </div>
+                      <textarea value=${seriesChatDraft} onInput=${e=>setSeriesChatDraft(e.target.value)} placeholder="Preguntale algo de la serie hasta tu episodio actual..." style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:76px;"></textarea>
+                      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                        <button onClick=${askSeriesAi} style="padding:8px 12px;border-radius:8px;border:none;background:#6366F1;color:#F8FAFC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                          ${seriesChatLoading ? 'PREGUNTANDO...' : 'PREGUNTAR A GEMINI'}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -6741,6 +6909,18 @@
           setError(e.message || 'No se pudo reconciliar el stock.');
         }
       };
+      const showWeeklyMedsRecap = () => {
+        const missingDays = weekDiagnostics.map(item => `${item.label}: ${item.text}`).join(' · ');
+        const summary = [
+          `Semana ${weekStartKey} a ${weekEndKey}.`,
+          `Roaccutan: ${weekRoaccutanTakes}/7 tomas reales (${roaccutanAdherencePct}%).`,
+          `Cena: ${weekDinnerTakes}/7 tomas reales (${dinnerAdherencePct}%).`,
+          hasWeekMismatch ? 'Hay diferencias entre checks y tomas reales.' : 'Checks y tomas reales coinciden.',
+          missingDays ? `Dias a revisar: ${missingDays}` : 'No hay dias marcados para revisar.'
+        ].join(' ');
+        setNotice(summary);
+        setTimeout(() => setNotice(''), 7000);
+      };
 
       return html`
         <div class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
@@ -6866,6 +7046,13 @@
                     <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#86EFAC;">${weekDinnerTakes}</p>
                     <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
                   </div>
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin:-2px 0 10px;">
+                  <button
+                    onClick=${showWeeklyMedsRecap}
+                    style="padding:6px 10px;border-radius:999px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                    RECUENTO SEMANAL
+                  </button>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
                   ${[
