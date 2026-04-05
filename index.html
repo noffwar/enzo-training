@@ -222,6 +222,15 @@
               });
             };
 
+            db.get = function(store, key) {
+              return new Promise(function(r, j) {
+                var tx = db.transaction(store, 'readonly');
+                var req2 = tx.objectStore(store).get(key);
+                req2.onsuccess = function() { r(req2.result); };
+                req2.onerror   = function() { j(req2.error); };
+              });
+            };
+
             db.getAllKeys = function(store) {
               return new Promise(function(r, j) {
                 var tx = db.transaction(store, 'readonly');
@@ -423,7 +432,6 @@
       "2026-12-25": "Navidad"
     };
 
-    const ROUTINES_SUPA_KEY = 'routines_v1'; // clave legacy en weekly_configs (ya no se usa para writes)
     const DEFAULT_ROUTINES = trainingPlanRoutines;
 
     const loadRoutines = () => {
@@ -453,9 +461,6 @@
         saveRoutineRemote(id, data, prevRevisions[id] || null).catch(()=>{});
       });
     };
-
-    // loadRoutinesFromCloud ya no se usa — bootstrap lo cubre
-    const loadRoutinesFromCloud = async () => null;
 
     const muscleMap = {
       "Press banca plano":{direct:["Pecho"],indirect:["Hombros","Tríceps"]},
