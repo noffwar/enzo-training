@@ -6539,6 +6539,17 @@
         ? { label:'Hecha hoy', color:'#86EFAC', bg:'rgba(16,185,129,0.12)', border:'rgba(16,185,129,0.35)' }
         : { label:'Pendiente', color:'#FCD34D', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.35)' };
       const dinnerDone = !!dinnerTarget.medsState.finasteride && !!dinnerTarget.medsState.minoxidil;
+      const todayHealthIssues = [];
+      const todayRoaccutanExpected = hasRemainingTakeForDate(fullHistory, 'roaccutan', localDateKey());
+      const todayDinnerExpected = hasRemainingTakeForDate(fullHistory, 'combo', dinnerTarget.dateKey);
+      if(!!todayMedsState.roacuttan !== todayRoaccutanExpected) {
+        todayHealthIssues.push(todayRoaccutanExpected ? 'Roaccutan con toma real sin check' : 'Roaccutan marcado sin toma real');
+      }
+      if(dinnerDone !== todayDinnerExpected) {
+        todayHealthIssues.push(todayDinnerExpected
+          ? (dinnerTarget.label === 'ayer' ? 'Cena de ayer con toma real sin checks completos' : 'Cena con toma real sin checks completos')
+          : (dinnerTarget.label === 'ayer' ? 'Cena de ayer marcada sin toma real' : 'Cena marcada sin toma real'));
+      }
       const dinnerStatus = dinnerDone
         ? {
             label: dinnerTarget.label === 'ayer' ? 'Hecha para ayer' : 'Hecha hoy',
@@ -6796,6 +6807,12 @@
                     <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;">${stock.last_taken_at ? new Date(stock.last_taken_at).toLocaleString('es-AR') : 'Sin registro'}</span>
                   </div>
                   <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Roaccutan va al mediodia. Minoxidil y Finasteride van con la cena. Si las tomas entre 00:00 y 06:00, cuentan para el dia anterior. Los botones de stock son solo ajustes de inventario; para marcar tomas reales usa los botones de registrar.</p>
+                  ${todayHealthIssues.length > 0 && html`
+                    <div style="margin:0 0 10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);">
+                      <p style="margin:0 0 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#FCD34D;">Hoy desalineado</p>
+                      <p style="margin:0;font-size:12px;color:#FDE68A;">${todayHealthIssues.join(' · ')}</p>
+                    </div>
+                  `}
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
                     <div style=${`padding:8px 10px;border-radius:8px;border:1px solid ${roaccutanStatus.border};background:${roaccutanStatus.bg};`}>
                       <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">Estado mediodia</p>
