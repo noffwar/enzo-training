@@ -2738,7 +2738,7 @@
         if(recipesRef.current) return recipesRef.current;
         const { data, error } = await supabase
           .from('user_recipes')
-          .select('id, recipe_name, aliases, base_qty, base_unit, stock_qty, stock_unit, low_stock_threshold, macros, ingredients, notes')
+          .select('id, recipe_name, aliases, base_qty, base_unit, stock_qty, stock_unit, low_stock_threshold, macros, ingredients, notes, updated_at')
           .order('updated_at', { ascending: false });
         if(error) throw error;
         recipesRef.current = data || [];
@@ -3089,6 +3089,10 @@
 
         try {
           const totals = mealTotals(meal);
+          const ingredients = items.map(item => ({
+            name: item.name || 'Ingrediente',
+            qty: item.qty || '1 porcion'
+          }));
           const payload = {
             recipe_name: recipeName.trim(),
             aliases: [],
@@ -3100,10 +3104,10 @@
               carb: Math.round(totals.carb || 0),
               fat: Math.round(totals.fat || 0)
             },
-            ingredients: items.map(item => ({
-              name: item.name || 'Ingrediente',
-              qty: item.qty || '1 porcion'
-            })),
+            stock_qty: null,
+            stock_unit: null,
+            low_stock_threshold: null,
+            ingredients,
             notes: 'Guardada desde una comida del diario',
             updated_at: new Date().toISOString()
           };
@@ -4634,6 +4638,7 @@
       };
 
       const hydrateForm = (recipe) => {
+        const hasIngredients = Array.isArray(recipe.ingredients) && recipe.ingredients.some(it => String(it?.name || '').trim());
         setEditingId(recipe.id);
         setRecipeAiPrompt('');
         setRecipeAiLoading(false);
@@ -4643,7 +4648,7 @@
           aliases: Array.isArray(recipe.aliases) ? recipe.aliases.join(', ') : '',
           base_qty: String(recipe.base_qty ?? 1),
           base_unit: recipe.base_unit || 'porcion',
-          track_stock: !(recipe.stock_qty == null || recipe.stock_qty === '') || !!String(recipe.stock_unit || '').trim(),
+          track_stock: !hasIngredients && (!(recipe.stock_qty == null || recipe.stock_qty === '') || !!String(recipe.stock_unit || '').trim()),
           stock_qty: recipe.stock_qty == null ? '' : String(recipe.stock_qty),
           stock_unit: recipe.stock_unit || '',
           low_stock_threshold: recipe.low_stock_threshold == null ? '' : String(recipe.low_stock_threshold),
@@ -4729,31 +4734,33 @@
         setSaving(true);
         setError('');
         try {
+          const ingredients = form.ingredients
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean)
+            .map(line => {
+              const [qtyPart, ...nameParts] = line.split('|');
+              return {
+                qty: (qtyPart || '').trim() || '1 porcion',
+                name: nameParts.join('|').trim() || qtyPart.trim() || 'Ingrediente'
+              };
+            });
+          const canTrackStock = ingredients.length === 0;
           const payload = {
             recipe_name: form.recipe_name.trim(),
             aliases: form.aliases.split(',').map(v => v.trim()).filter(Boolean),
             base_qty: parseFloat(String(form.base_qty).replace(',', '.')) || 1,
             base_unit: form.base_unit.trim() || 'porcion',
-            stock_qty: form.track_stock ? (form.stock_qty === '' ? null : (parseFloat(String(form.stock_qty).replace(',', '.')) || 0)) : null,
-            stock_unit: form.track_stock ? (form.stock_unit.trim() || null) : null,
-            low_stock_threshold: form.track_stock ? (form.low_stock_threshold === '' ? null : (parseFloat(String(form.low_stock_threshold).replace(',', '.')) || 0)) : null,
+            stock_qty: (canTrackStock && form.track_stock) ? (form.stock_qty === '' ? null : (parseFloat(String(form.stock_qty).replace(',', '.')) || 0)) : null,
+            stock_unit: (canTrackStock && form.track_stock) ? (form.stock_unit.trim() || null) : null,
+            low_stock_threshold: (canTrackStock && form.track_stock) ? (form.low_stock_threshold === '' ? null : (parseFloat(String(form.low_stock_threshold).replace(',', '.')) || 0)) : null,
             macros: {
               cals: Math.max(0, Math.round(parseFloat(form.cals) || 0)),
               prot: Math.max(0, Math.round(parseFloat(form.prot) || 0)),
               carb: Math.max(0, Math.round(parseFloat(form.carb) || 0)),
               fat: Math.max(0, Math.round(parseFloat(form.fat) || 0))
             },
-            ingredients: form.ingredients
-              .split('\n')
-              .map(line => line.trim())
-              .filter(Boolean)
-              .map(line => {
-                const [qtyPart, ...nameParts] = line.split('|');
-                return {
-                  qty: (qtyPart || '').trim() || '1 porcion',
-                  name: nameParts.join('|').trim() || qtyPart.trim() || 'Ingrediente'
-                };
-              }),
+            ingredients,
             notes: form.notes.trim() || null,
             updated_at: new Date().toISOString()
           };
@@ -9812,16 +9819,34 @@
         if(baseCals > 0 && itemCals > 0) return itemCals / baseCals;
         return 1;
       };
+      const recipeHasIngredientListApp = (recipe) =>
+        Array.isArray(recipe?.ingredients) && recipe.ingredients.some(it => String(it?.name || '').trim());
+      const recipeTracksPantryStockApp = (recipe) => {
+        if(!recipe) return false;
+        if(recipeHasIngredientListApp(recipe)) return false;
+        return !(recipe.stock_qty == null || recipe.stock_qty === '') && !!normalizeInventoryUnit(recipe.stock_unit || '');
+      };
       const rebuildMealItemFromRecipeApp = (recipe, item) => {
         const factor = getRecipeUsageFactorApp(recipe, item);
+        const trackStock = recipeTracksPantryStockApp(recipe);
+        const stockDelta = trackStock
+          ? (parseFloat(item?.stock_delta) > 0 ? item.stock_delta : (parseFloat(recipe?.base_qty) || 1))
+          : null;
+        const stockDeltaUnit = trackStock
+          ? (item?.stock_delta_unit || item?.stock_unit || recipe?.base_unit || recipe?.stock_unit || '')
+          : '';
         return {
           ...item,
+          recipe_id: recipe.id || item.recipe_id,
           name: recipe.recipe_name || item.name,
           recipe_name: recipe.recipe_name || item.recipe_name,
           nota: recipe.notes || item.nota || 'Receta guardada',
-          stock_qty: recipe.stock_qty,
-          stock_unit: recipe.stock_unit || '',
-          low_stock_threshold: recipe.low_stock_threshold,
+          stock_trackable: trackStock,
+          stock_qty: trackStock ? recipe.stock_qty : null,
+          stock_unit: trackStock ? (recipe.stock_unit || '') : '',
+          stock_delta: stockDelta,
+          stock_delta_unit: trackStock ? stockDeltaUnit : '',
+          low_stock_threshold: trackStock ? recipe.low_stock_threshold : null,
           ...scaleRecipeMacrosApp(recipe, factor)
         };
       };
@@ -9834,13 +9859,11 @@
         const itemKeys = [item.recipe_name, item.name]
           .filter(Boolean)
           .map(normalizeRecipeKeyApp);
-        return itemKeys.some(key =>
-          key && recipeKeys.some(recipeKey => recipeKey && (key === recipeKey || key.includes(recipeKey) || recipeKey.includes(key)))
-        );
+        return itemKeys.some(key => key && recipeKeys.includes(key));
       };
       const recalculateMealsUsingRecipe = useCallback((updatedRecipe) => {
         if(!updatedRecipe?.id) return;
-        const touchedDays = [];
+        const touchedDays = new Map();
         setHasUnsaved(true);
         setAllWeeks(prev => {
           let changed = false;
@@ -9866,16 +9889,18 @@
                 return mealChanged ? { ...meal, items: nextItems } : meal;
               });
               if(dayChanged) {
-                nextTracker[dayIdx] = {
+                const nextDayTracker = {
                   ...dayData,
                   meals: nextMeals,
                   _updatedAt: new Date().toISOString()
                 };
-                touchedDays.push({
+                nextTracker[dayIdx] = nextDayTracker;
+                const dateKey = getDayDate(wkKey, parseInt(dayIdx, 10));
+                touchedDays.set(dateKey, {
                   wkKey,
                   dayIdx,
-                  dateKey: getDayDate(wkKey, parseInt(dayIdx, 10)),
-                  tracker: nextTracker[dayIdx],
+                  dateKey,
+                  tracker: nextDayTracker,
                   session: wkData.sessions?.[dayIdx] || null
                 });
               }
@@ -9887,7 +9912,7 @@
           return changed ? next : prev;
         });
         setTimeout(() => {
-          touchedDays.forEach(day => {
+          [...touchedDays.values()].forEach(day => {
             saveDayRemote(day.dateKey, day.tracker, day.session, day.tracker?._revision || null).catch(()=>{});
           });
         }, 0);
