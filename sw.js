@@ -14,6 +14,7 @@
 const CACHE_NAME = 'enzo-training-v3.3';
 const DATA_CACHE = 'enzo-data-v2';
 const SUPA_URL   = 'https://qflajqvveuyoclmtrjtg.supabase.co';
+const FETCH_TIMEOUT_MS = 6000;
 // SUPA_ANON: solo para apikey header (identificación del proyecto)
 // NUNCA se usa como Authorization Bearer para writes de usuario autenticado
 const SUPA_ANON  = 'sb_publishable_lwzGrcNCL3QuDHiDafwuAQ_jJd82jAa';
@@ -27,6 +28,27 @@ const authIsValid = () => {
   if(!_authCtx?.access_token) return false;
   if(!_authCtx?.expiry) return true;
   return (Date.now() / 1000) < (_authCtx.expiry - 60); // 60s de margen
+};
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const getLocalDateKey = (now = new Date()) => {
+  const local = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+  return local.toISOString().split('T')[0];
+};
+
+const getDinnerLogicalDateKey = (now = new Date()) => {
+  const base = new Date(now);
+  if(base.getHours() < 6) base.setDate(base.getDate() - 1);
+  return getLocalDateKey(base);
 };
 
 // ═══ INSTALL ═══
@@ -239,24 +261,27 @@ self.addEventListener('notificationclick', event => {
     if(notifData.id === 'meds' || notifData.id === 'meds_urgent') {
       _medsFired['meds_done'] = true;
     }
+    if(notifData.id === 'meds2') {
+      _medsFired['meds2_done'] = true;
+    }
 
     event.waitUntil(
       self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async clients => {
-        // Fecha local Argentina (GMT-3) — evitar que a las 21hs UTC quede como "mañana"
-        const now   = new Date();
-        const local = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
-        const today = local.toISOString().split('T')[0];
+        const now = new Date();
+        const effectiveDate = notifData.id === 'meds2'
+          ? getDinnerLogicalDateKey(now)
+          : getLocalDateKey(now);
 
         if(clients.length > 0) {
           // App abierta: la app ejecuta patch_med_status con su sesión activa
-          clients.forEach(c => c.postMessage({ type: 'MEDS_DONE', id: notifData.id }));
+          clients.forEach(c => c.postMessage({ type: 'MEDS_DONE', id: notifData.id, logicalDate: effectiveDate }));
           clients[0].focus();
           return;
         }
 
         // App cerrada + auth fresca: SW ejecuta patch_med_status directamente
         if(authIsValid()) {
-          const ok = await markMedWithUserToken(notifData.id, today);
+          const ok = await markMedWithUserToken(notifData.id, effectiveDate);
           if(ok) return;
           // Si falló (ej: sin red), caer al fallback de abrir app
         }
@@ -264,7 +289,7 @@ self.addEventListener('notificationclick', event => {
         // Sin app + sin auth válida: abrir app con acción pendiente en URL
         // La app leerá ?pending_med= y completará la persistencia al arrancar
         const url = './?pending_med=' + encodeURIComponent(notifData.id) +
-                    '&pending_date=' + encodeURIComponent(today);
+                    '&pending_date=' + encodeURIComponent(effectiveDate);
         self.clients.openWindow(url);
       })
     );
@@ -285,33 +310,39 @@ self.addEventListener('notificationclick', event => {
 // Usa el access_token JWT real recibido via SW_SET_AUTH_CONTEXT
 // NUNCA usa la publishable key como Bearer token
 const markMedWithUserToken = async (notifId, dateStr) => {
-  const medMap = { meds: 'roacuttan', meds2: 'magnesium' };
-  const medKey = medMap[notifId];
-  if(!medKey || !_authCtx?.access_token) return false;
+  if(!_authCtx?.access_token) return false;
+  const medKeys = notifId === 'meds2'
+    ? ['finasteride', 'minoxidil']
+    : (notifId === 'meds' || notifId === 'meds_urgent')
+      ? ['roacuttan']
+      : [];
+  if(medKeys.length === 0) return false;
 
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/rpc/patch_med_status`, {
-      method:  'POST',
-      headers: {
-        'apikey':        SUPA_ANON,
-        'Authorization': `Bearer ${_authCtx.access_token}`, // JWT real del usuario
-        'Content-Type':  'application/json'
-      },
-      body: JSON.stringify({
-        p_date:      dateStr,
-        p_med:       medKey,
-        p_val:       true,
-        p_device_id: _authCtx.device_id || 'sw'
-      })
-    });
+    for(const medKey of medKeys) {
+      const res = await fetchWithTimeout(`${SUPA_URL}/rest/v1/rpc/patch_med_status`, {
+        method:  'POST',
+        headers: {
+          'apikey':        SUPA_ANON,
+          'Authorization': `Bearer ${_authCtx.access_token}`, // JWT real del usuario
+          'Content-Type':  'application/json'
+        },
+        body: JSON.stringify({
+          p_date:      dateStr,
+          p_med:       medKey,
+          p_val:       true,
+          p_device_id: _authCtx.device_id || 'sw'
+        })
+      });
 
-    if(res.ok) {
-      console.log('[SW] Med marcado ok:', medKey, dateStr);
-      return true;
+      if(!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.warn('[SW] patch_med_status error', res.status, errText.slice(0, 100));
+        return false;
+      }
     }
-    const errText = await res.text().catch(() => '');
-    console.warn('[SW] patch_med_status error', res.status, errText.slice(0, 100));
-    return false;
+    console.log('[SW] Med marcado ok:', medKeys.join(','), dateStr);
+    return true;
   } catch(e) {
     console.warn('[SW] markMedWithUserToken network error:', e.message);
     return false;

@@ -12,6 +12,14 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS)
   }
 }
 
+function safeJsonParse(raw) {
+  try {
+    return { value: JSON.parse(raw || '{}'), error: null };
+  } catch(_) {
+    return { value: null, error: 'JSON invalido en la solicitud.' };
+  }
+}
+
 exports.handler = async (event) => {
   if(event.httpMethod !== 'POST') {
     return {
@@ -30,7 +38,15 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
+    const parsedBody = safeJsonParse(event.body);
+    if(parsedBody.error) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: parsedBody.error })
+      };
+    }
+    const body = parsedBody.value || {};
     const title = String(body.title || '').trim();
     const author = String(body.author || '').trim();
     const question = String(body.question || '').trim();

@@ -46,14 +46,40 @@ function collectResponseText(data) {
   return texts.join('\n').trim();
 }
 
+function safeJsonParse(raw) {
+  try {
+    return { value: JSON.parse(raw || '{}'), error: null };
+  } catch(_) {
+    return { value: null, error: 'JSON invalido en la solicitud.' };
+  }
+}
+
 exports.handler = async (event) => {
-  if(event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
+  if(event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Method Not Allowed' })
+    };
+  }
   if(!GEMINI_API_KEY) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'GEMINI_API_KEY no configurada en Netlify' }) };
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'GEMINI_API_KEY no configurada en Netlify' })
+    };
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
+    const parsedBody = safeJsonParse(event.body);
+    if(parsedBody.error) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: parsedBody.error })
+      };
+    }
+    const body = parsedBody.value || {};
     const meals = Array.isArray(body.meals) ? body.meals : [];
     const totals = body.totals || {};
     const reviewDate = String(body.date || '').trim();
