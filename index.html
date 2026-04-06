@@ -5944,6 +5944,10 @@
       const [seriesNoteDraft, setSeriesNoteDraft] = useState('');
       const [chatDraft, setChatDraft] = useState('');
       const [seriesChatDraft, setSeriesChatDraft] = useState('');
+      const [collapsedBookNotes, setCollapsedBookNotes] = useState({});
+      const [collapsedSeriesNotes, setCollapsedSeriesNotes] = useState({});
+      const [allBookNotesCollapsed, setAllBookNotesCollapsed] = useState(false);
+      const [allSeriesNotesCollapsed, setAllSeriesNotesCollapsed] = useState(false);
       const [chatLoading, setChatLoading] = useState(false);
       const [seriesChatLoading, setSeriesChatLoading] = useState(false);
       const [summaryLoading, setSummaryLoading] = useState(false);
@@ -6143,9 +6147,54 @@
           const { error } = await supabase.from('book_notes').delete().eq('id', id);
           if(error) throw error;
           setNotes(prev => prev.filter(n => n.id !== id));
+          setCollapsedBookNotes(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
         } catch(e) {
           setError(e.message || 'No se pudo borrar la nota.');
         }
+      };
+
+      const deleteSeriesNote = async (id) => {
+        setError('');
+        try {
+          const { error } = await supabase.from('book_notes').delete().eq('id', id);
+          if(error) throw error;
+          setSeriesNotes(prev => prev.filter(n => n.id !== id));
+          setCollapsedSeriesNotes(prev => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+        } catch(e) {
+          setError(e.message || 'No se pudo borrar la nota de la serie.');
+        }
+      };
+
+      const toggleBookNoteCollapsed = (id) => {
+        setCollapsedBookNotes(prev => ({ ...prev, [id]: !prev[id] }));
+      };
+
+      const toggleSeriesNoteCollapsed = (id) => {
+        setCollapsedSeriesNotes(prev => ({ ...prev, [id]: !prev[id] }));
+      };
+
+      const toggleAllBookNotes = () => {
+        const nextCollapsed = !allBookNotesCollapsed;
+        setAllBookNotesCollapsed(nextCollapsed);
+        setCollapsedBookNotes(
+          Object.fromEntries((notes || []).map(note => [note.id, nextCollapsed]))
+        );
+      };
+
+      const toggleAllSeriesNotes = () => {
+        const nextCollapsed = !allSeriesNotesCollapsed;
+        setAllSeriesNotesCollapsed(nextCollapsed);
+        setCollapsedSeriesNotes(
+          Object.fromEntries((seriesNotes || []).map(note => [note.id, nextCollapsed]))
+        );
       };
 
       const passBookNoteToTask = async (note) => {
@@ -6390,12 +6439,29 @@
                         <button onClick=${addSeriesNote} style="padding:8px 12px;border-radius:8px;border:none;background:#10B981;color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                           GUARDAR NOTA
                         </button>
+                        ${seriesNotes.length > 0 && html`
+                          <button onClick=${toggleAllSeriesNotes} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,0.3);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                            ${allSeriesNotesCollapsed ? 'EXPANDIR TODO' : 'PLEGAR TODO'}
+                          </button>
+                        `}
                       </div>
                       <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
                         ${seriesNotes.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay notas de la serie.</p>` : seriesNotes.map(note => html`
                           <div style="padding:10px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
-                            <p style="margin:0 0 6px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${note.book_title} - ep ${note.current_page}</p>
-                            <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.answer || note.question || ''}</p>
+                            <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                              <div style="flex:1;">
+                                <p style="margin:0 0 6px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${note.book_title} - ep ${note.current_page}</p>
+                                ${!collapsedSeriesNotes[note.id] && html`<p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.answer || note.question || ''}</p>`}
+                              </div>
+                              <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                                <button onClick=${()=>toggleSeriesNoteCollapsed(note.id)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(148,163,184,0.3);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                  ${collapsedSeriesNotes[note.id] ? 'ABRIR' : 'PLEGAR'}
+                                </button>
+                                <button onClick=${()=>deleteSeriesNote(note.id)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                                  BORRAR
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         `)}
                       </div>
@@ -6440,6 +6506,11 @@
                     <button onClick=${passBookDraftToTask} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                       PASAR A TAREA
                     </button>
+                    ${notes.length > 0 && html`
+                      <button onClick=${toggleAllBookNotes} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,0.3);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                        ${allBookNotesCollapsed ? 'EXPANDIR TODO' : 'PLEGAR TODO'}
+                      </button>
+                    `}
                   </div>
                   <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px;">
                     ${notes.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay notas guardadas.</p>` : notes.map(note => html`
@@ -6447,9 +6518,12 @@
                         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
                           <div style="flex:1;">
                             <p style="margin:0 0 6px;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${note.book_title} - pag ${note.current_page}</p>
-                            <p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.question || note.answer || ''}</p>
+                            ${!collapsedBookNotes[note.id] && html`<p style="margin:0;font-size:13px;color:#E2E8F0;white-space:pre-wrap;">${note.question || note.answer || ''}</p>`}
                           </div>
                           <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">
+                            <button onClick=${()=>toggleBookNoteCollapsed(note.id)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(148,163,184,0.3);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                              ${collapsedBookNotes[note.id] ? 'ABRIR' : 'PLEGAR'}
+                            </button>
                             <button onClick=${()=>passBookNoteToTask(note)} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                               TAREA
                             </button>
