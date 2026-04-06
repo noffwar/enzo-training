@@ -848,6 +848,50 @@
       if(base.getHours() < 6) base.setDate(base.getDate() - 1);
       return localDateKey(base);
     };
+    const pickNewestPayload = (local, remote, remoteUpdatedAt = '', fallback = null) => {
+      const localTs = new Date(local?._updatedAt || 0).getTime() || 0;
+      const remoteTs = new Date(remote?._updatedAt || remoteUpdatedAt || 0).getTime() || 0;
+      if(!local && !remote) return fallback;
+      return localTs >= remoteTs ? (local || remote || fallback) : (remote || local || fallback);
+    };
+    const getDinnerLogicalTargetState = ({ todayMedsState = {}, previousMedsState = {}, now = new Date() } = {}) => {
+      const logicalDateKey = getDinnerLogicalDateKey(now);
+      const calendarTodayKey = localDateKey(now);
+      const usesPreviousDay = logicalDateKey !== calendarTodayKey;
+      return {
+        dateKey: logicalDateKey,
+        medsState: usesPreviousDay ? (previousMedsState || {}) : (todayMedsState || {}),
+        label: usesPreviousDay ? 'ayer' : 'hoy',
+        usesPreviousDay,
+        calendarTodayKey
+      };
+    };
+    const getMedicationStatusForView = ({ selectedDateKey = '', medsState = {}, now = new Date() } = {}) => {
+      const calendarTodayKey = localDateKey(now);
+      const dinnerLogicalKey = getDinnerLogicalDateKey(now);
+      const viewDateKey = String(selectedDateKey || calendarTodayKey);
+      const roaccutanDone = !!medsState.roacuttan;
+      const dinnerDone = !!medsState.finasteride && !!medsState.minoxidil;
+      const dinnerRelevant = viewDateKey === dinnerLogicalKey;
+      return {
+        calendarTodayKey,
+        dinnerLogicalKey,
+        viewDateKey,
+        roaccutanDone,
+        dinnerDone,
+        dinnerRelevant,
+        roaccutanLabel: roaccutanDone
+          ? (viewDateKey === calendarTodayKey ? 'Hecha hoy' : 'Hecha')
+          : 'Pendiente',
+        dinnerLabel: dinnerDone
+          ? (dinnerRelevant
+              ? (calendarTodayKey === dinnerLogicalKey ? 'Hecha hoy' : 'Hecha para ayer')
+              : 'No corresponde')
+          : (dinnerRelevant
+              ? (calendarTodayKey === dinnerLogicalKey ? 'Pendiente' : 'Pendiente de ayer')
+              : 'No corresponde')
+      };
+    };
 
     const getDayDate = (wkKey, dayIdx) => {
       const d = new Date(wkKey+'T12:00:00');
@@ -2241,22 +2285,13 @@
 
       // Totales diarios calculados desde items
       const macros = dayTotals(t.meals);
-      const visibleNow = new Date();
-      const calendarTodayKey = localDateKey(visibleNow);
-      const visibleDinnerLogicalKey = getDinnerLogicalDateKey(visibleNow);
-      const currentViewDateKey = String(selectedDateKey || calendarTodayKey);
-      const isCurrentCalendarDay = currentViewDateKey === calendarTodayKey;
-      const isCurrentDinnerLogicalDay = currentViewDateKey === visibleDinnerLogicalKey;
-      const roaccutanStatusLabel = t.meds?.roacuttan
-        ? (isCurrentCalendarDay ? 'Hecha hoy' : 'Hecha')
-        : (isCurrentCalendarDay ? 'Pendiente' : 'Pendiente');
-      const dinnerStatusLabel = (t.meds?.finasteride && t.meds?.minoxidil)
-        ? (isCurrentDinnerLogicalDay
-            ? (calendarTodayKey === visibleDinnerLogicalKey ? 'Hecha hoy' : 'Hecha para ayer')
-            : 'No corresponde')
-        : (isCurrentDinnerLogicalDay
-            ? (calendarTodayKey === visibleDinnerLogicalKey ? 'Pendiente' : 'Pendiente de ayer')
-            : 'No corresponde');
+      const mealMedStatus = getMedicationStatusForView({
+        selectedDateKey,
+        medsState: t.meds || {},
+        now: new Date()
+      });
+      const roaccutanStatusLabel = mealMedStatus.roaccutanLabel;
+      const dinnerStatusLabel = mealMedStatus.dinnerLabel;
 
       const normalizeRecipeText = (s='') =>
         String(s)
@@ -4413,9 +4448,7 @@
             setSweetsMsg('Stock local cargado. El guardado remoto está restringido por permisos.');
             return;
           }
-          const localTs = new Date(local?._updatedAt || 0).getTime() || 0;
-          const remoteTs = new Date(data?.data?._updatedAt || data?.updated_at || 0).getTime() || 0;
-          const freshest = localTs >= remoteTs ? (local || {}) : (data?.data || {});
+          const freshest = pickNewestPayload(local, data?.data || null, data?.updated_at || '', {});
           const merged = { ...SWEETS_STOCK_DEFAULT, ...freshest };
           setSweetsStock(merged);
           try { localStorage.setItem(SWEETS_STOCK_KEY, JSON.stringify(merged)); } catch(_) {}
@@ -6372,22 +6405,11 @@
       const [historyFilter, setHistoryFilter] = useState('all');
       const todayMedsState = todayMeds || {};
       const previousMedsState = previousDayMeds || {};
-      const getDinnerLogicalTarget = () => {
-        const now = new Date();
-        const baseDate = new Date(now);
-        let medsState = todayMedsState;
-        let label = 'hoy';
-        if(now.getHours() < 6) {
-          baseDate.setDate(baseDate.getDate() - 1);
-          medsState = previousMedsState;
-          label = 'ayer';
-        }
-        return {
-          dateKey: getDinnerLogicalDateKey(now),
-          medsState: medsState || {},
-          label
-        };
-      };
+      const getDinnerLogicalTarget = () => getDinnerLogicalTargetState({
+        todayMedsState,
+        previousMedsState,
+        now: new Date()
+      });
 
       const entryDeltas = (entry) => {
         if(!entry) return { roaccutan: 0, combo: 0 };
@@ -6448,12 +6470,6 @@
         await persistHealth(next, okMsg);
         return next;
       };
-      const pickNewestHealthPayload = (local, remote, remoteUpdatedAt='') => {
-        const localTs = new Date(local?._updatedAt || 0).getTime() || 0;
-        const remoteTs = new Date(remote?._updatedAt || remoteUpdatedAt || 0).getTime() || 0;
-        return localTs >= remoteTs ? (local || remote || MEDS_STOCK_DEFAULT) : (remote || local || MEDS_STOCK_DEFAULT);
-      };
-
       const loadHealth = useCallback(async () => {
         setLoading(true);
         setError('');
@@ -6467,7 +6483,7 @@
           if(error) {
             setStock({ ...MEDS_STOCK_DEFAULT, ...(local || {}) });
           } else {
-            const freshest = pickNewestHealthPayload(local, data?.data || null, data?.updated_at || '');
+            const freshest = pickNewestPayload(local, data?.data || null, data?.updated_at || '', MEDS_STOCK_DEFAULT);
             const merged = { ...MEDS_STOCK_DEFAULT, ...(freshest || {}) };
             setStock(merged);
             try { localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(merged)); } catch(_) {}
@@ -7454,13 +7470,11 @@
       }, [loadWeather]);
 
       const medDashboardStatus = useMemo(() => {
-        const medsState = tracker?.meds || {};
-        const now = new Date();
-        const todayKey = localDateKey(now);
-        const dinnerLogicalKey = getDinnerLogicalDateKey(now);
-        const viewDateKey = String(selectedDateKey || todayKey);
-        const roaccutanDone = !!medsState.roacuttan;
-        const dinnerDone = !!medsState.finasteride && !!medsState.minoxidil;
+        const medsView = getMedicationStatusForView({
+          selectedDateKey,
+          medsState: tracker?.meds || {},
+          now: new Date()
+        });
         const roaccTime = summary.meds?.last_roaccutan_at
           ? new Date(summary.meds.last_roaccutan_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})
           : '-';
@@ -7468,20 +7482,20 @@
           ? new Date(summary.meds.last_dinner_meds_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})
           : '-';
 
-        if(!roaccutanDone) {
+        if(!medsView.roaccutanDone) {
           return {
             label:'Roaccutan pendiente',
-            detail: viewDateKey === todayKey ? 'Mediodia' : `Sin marcar en ${viewDateKey}`
+            detail: medsView.viewDateKey === medsView.calendarTodayKey ? 'Mediodia' : `Sin marcar en ${medsView.viewDateKey}`
           };
         }
-        if(viewDateKey === dinnerLogicalKey) {
-          return dinnerDone
+        if(medsView.dinnerRelevant) {
+          return medsView.dinnerDone
             ? { label:'Tomas del dia completas', detail:`Ultimos registros: R ${roaccTime} · C ${dinnerTime}` }
-            : { label:'Meds de cena pendientes', detail: todayKey === dinnerLogicalKey ? 'Cena' : 'Cena para ayer' };
+            : { label:'Meds de cena pendientes', detail: medsView.calendarTodayKey === medsView.dinnerLogicalKey ? 'Cena' : 'Cena para ayer' };
         }
         return {
-          label: dinnerDone ? 'Cena registrada para ese dia' : 'Cena no corresponde ahora',
-          detail: dinnerDone ? `Ultimo registro cena: ${dinnerTime}` : `Vista de ${viewDateKey}`
+          label: medsView.dinnerDone ? 'Cena registrada para ese dia' : 'Cena no corresponde ahora',
+          detail: medsView.dinnerDone ? `Ultimo registro cena: ${dinnerTime}` : `Vista de ${medsView.viewDateKey}`
         };
       }, [tracker, selectedDateKey, summary.meds]);
 
@@ -9549,9 +9563,7 @@
             .select('data, updated_at')
             .eq('key', 'meds_stock')
             .maybeSingle();
-          const localTs = new Date(local?._updatedAt || 0).getTime() || 0;
-          const remoteTs = new Date(data?.data?._updatedAt || data?.updated_at || 0).getTime() || 0;
-          const freshest = localTs >= remoteTs ? (local || {}) : (data?.data || {});
+          const freshest = pickNewestPayload(local, data?.data || null, data?.updated_at || '', {});
           const base = {
             ...MEDS_STOCK_DEFAULT,
             ...(error ? (local || {}) : freshest)
