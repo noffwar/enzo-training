@@ -106,19 +106,7 @@
 
   <div id="app"></div>
 
-  <script>
-    (function(){
-      var errorScreen = document.getElementById('error-screen');
-      if(!errorScreen) return;
-      var paragraphs = errorScreen.querySelectorAll('p');
-      if(paragraphs[0]) paragraphs[0].textContent = 'Error al cargar la app';
-      if(paragraphs[1]) paragraphs[1].textContent = 'Abri la consola (F12) para mas detalles.';
-    })();
-  </script>
-
-  <!-- React shim: Recharts usa window.React internamente. Este shim minimo
-       evita el error "Cannot read properties of undefined (reading 'forwardRef')"
-       cuando Recharts carga antes que cualquier React/Preact compat layer. -->
+  <!-- React shim minimo para librerias UMD que esperan window.React -->
   <script>
     var __noopValidator = function(){ return __noopValidator; };
     __noopValidator.isRequired = __noopValidator;
@@ -162,18 +150,16 @@
     window._rechartsLoaded = false;
     window._loadRecharts = function() {
       if(window._rechartsLoaded) return Promise.resolve();
-      // Bug 12 fix: NO marcar como cargado hasta que el script realmente cargue
       return new Promise(function(res, rej) {
         var s = document.createElement('script');
         s.src = 'https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js';
         s.crossOrigin = 'anonymous';
         s.onload = function() {
-          window._rechartsLoaded = true; // marcar DESPUES del exito
+          window._rechartsLoaded = true;
           window._RC = window.Recharts || {};
           res();
         };
         s.onerror = function(e) {
-          // No marcar como loaded: permite reintentar
           document.head.removeChild(s);
           rej(e);
         };
@@ -214,7 +200,6 @@
               });
             };
 
-            // BUG FIX: estos metodos faltaban; el outbox nunca funciono sin ellos
             db.put = function(store, val) {
               return new Promise(function(r, j) {
                 var tx = db.transaction(store, 'readwrite');
@@ -446,7 +431,6 @@
         _revision: prevRevisions[id] || data?._revision || null,
         _updatedAt: stampedAt
       }));
-      // Legado: mantener enzo_routines_v1 para compatibilidad con fallback
       try {
         const legacyPayload = Object.fromEntries(
           Object.entries(r).map(([id, data]) => [id, stripRoutineMeta(data)])
@@ -792,7 +776,6 @@
     const lsNotifSave = (did,v)  => { try { localStorage.setItem(V3.NOTIF+did, JSON.stringify(v)); } catch(e) {} };
     const lsNotifLoad = (did)    => { try { const v=localStorage.getItem(V3.NOTIF+did); return v?JSON.parse(v):null; } catch(e) { return null; } };
 
-    // Compat aliases para código legacy
     const lsSave = (k, v) => isDateKey(k) ? lsDaySave(k, v) : lsWeekSave(k, v);
     const lsLoad = (k)    => isDateKey(k) ? lsDayLoad(k)    : lsWeekLoad(k);
     const lsAllKeys = () => [...lsAllWeekKeys(), ...lsAllDayKeys()];
@@ -844,7 +827,6 @@
       });
 
       metaSet('migration_v3_done', true);
-      console.info('[Migration] v2→v3:', migrated, '/', oldKeys.length, 'keys');
     };
 
     // ─── HELPERS de fechas ───────────────────────────────────────
@@ -986,7 +968,6 @@
             const { data, error } = await supabase.rpc(rpcName, rpcArgs);
             if(error) throw new Error(error.message);
 
-            // BUG FIX: conflictos vienen en data.status, no en error
             if(data?.status === 'conflict') {
               metaSet('last_conflict', { entity_key: item.entity_key, server: data.server, at: new Date().toISOString() });
               await db.delete('outbox', item.entity_key); // no reintentar un conflicto
@@ -1024,7 +1005,6 @@
           }
         }
         metaSet('last_sync', new Date().toISOString());
-        console.info('[Outbox] flush ok');
       } catch(e) {
         metaSet('last_error', e.message?.slice(0,100));
         console.warn('[Outbox] flush error:', e.message);
@@ -1059,7 +1039,6 @@
           p_base_revision: baseRevision||null, p_device_id: DEVICE_ID
         });
         if(error) throw new Error(error.message);
-        // BUG FIX: conflicto viene en data.status, no en error
         if(data?.status === 'conflict') {
           metaSet('last_conflict', { type:'daily_log', entity:date, server:data.server, at:new Date().toISOString() });
           return { ok: false, queued: false, conflict: true, serverData: data.server };
@@ -1095,14 +1074,12 @@
         _updatedAt: nowIso
       });
       try {
-        // BUG FIX: convertir bodyWeight ES-AR string → numeric antes de enviar a Supabase
         const bwNumeric = bodyWeightToNumeric(bodyWeight);
         const { data, error } = await supabase.rpc('save_weekly_config', {
           p_week_key: weekKey, p_body_weight: bwNumeric,
           p_day_mapping: dayMapping||{}, p_base_revision: baseRevision||null, p_device_id: DEVICE_ID
         });
         if(error) throw new Error(error.message);
-        // BUG FIX: conflicto viene en data.status, no en error
         if(data?.status === 'conflict') {
           metaSet('last_conflict', { type:'weekly_config', entity:weekKey, server:data.server, at:new Date().toISOString() });
           return { ok: false, queued: false, conflict: true, serverData: data.server };
@@ -1140,7 +1117,6 @@
           p_routine_id: routineId, p_data: cleanRoutine, p_base_revision: baseRevision||null, p_device_id: DEVICE_ID
         });
         if(error) throw new Error(error.message);
-        // BUG FIX: conflicto viene en data.status, no en error
         if(data?.status === 'conflict') return { ok: false, queued: false, conflict: true };
         const local = lsRoutineLoad(routineId) || {};
         lsRoutineSave(routineId, {
@@ -1230,7 +1206,6 @@
         const localWk = weeklyCache[row.week_key];
         const localTs = localWk?._updatedAt;
         if(localTs && row.updated_at && localTs > row.updated_at) return;
-        // BUG FIX: body_weight llega como numeric de Postgres → convertir a string ES-AR
         const bwStr = (row.body_weight !== undefined && row.body_weight !== null)
           ? String(row.body_weight).replace('.', ',')
           : '';
@@ -9016,7 +8991,6 @@
         }
       };
 
-      // Bug 12 fix: si la app arranca con ?view=week o ?view=progress, cargar Recharts al inicio
       useEffect(()=>{
         const initView = new URLSearchParams(window.location.search).get('view');
         if(initView === 'week' || initView === 'progress') {
@@ -9113,7 +9087,6 @@
         setSyncLoadStatus('loading');
         setSyncLoadMsg('');
         try {
-          // BUG FIX: usar bootstrapRemoteState (RPC) en vez de selects directos prohibidos
           const bootstrapData = await bootstrapRemoteState();
           const { weeklyCache: wc, dailyCache: dc, routinesCache: rc } =
             applyBootstrapToState(bootstrapData, {}, {});
@@ -9217,12 +9190,10 @@
               if(localTs && row.updated_at && localTs > row.updated_at) return prev;
               const next = { ...prev };
               if(!next[wkKey]) next[wkKey] = hydrate(newWeek(wkKey));
-              // BUG FIX: usar row.tracker/row.session (schema nuevo) en vez de row.data (schema viejo)
               const tracker = row.tracker || {};
               const sess    = row.session  || null;
               if(sess) next[wkKey] = { ...next[wkKey], sessions: { ...next[wkKey].sessions, [dayIdx]: sess } };
               next[wkKey] = { ...next[wkKey], tracker: { ...next[wkKey].tracker, [dayIdx]: { ...newDay(), ...tracker, meals: Array.isArray(tracker?.meals) ? tracker.meals : newDay().meals } } };
-              // BUG FIX: lsDaySave (no lsSaveDay — función no existía)
               lsDaySave(row.date, { ...tracker, _session: sess, _revision: row.revision, _updatedAt: row.updated_at });
               return next;
             });
@@ -9234,7 +9205,6 @@
             setAllWeeks(prev => {
               const next = { ...prev };
               const existing = prev[row.week_key] || newWeek(row.week_key);
-              // BUG FIX: usar row.day_mapping/row.body_weight (schema nuevo)
               const bwStr = (row.body_weight !== undefined && row.body_weight !== null)
                 ? String(row.body_weight).replace('.', ',') : existing.bodyWeight;
               const newWkData = {
@@ -10276,7 +10246,6 @@
         <div style="min-height:100vh;background:#080D1A;">
 
           <!-- DEBUG PANEL (solo con ?debug=1) -->
-          <!-- BUG FIX: pasar session (auth) no gymSession -->
           ${showDebug && html`<${DebugPanel} session=${session} syncLog=${syncLog} outboxCount=${outboxCount}/>`}
 
           <!-- HEADER -->
@@ -10567,7 +10536,6 @@
       if(!isPreview) {
         window.addEventListener('load', ()=>{
           navigator.serviceWorker.register('./sw.js')
-            .then(r=>console.log('[PWA] SW registrado:',r.scope))
             .catch(e=>console.warn('[PWA] SW:',e.message));
         });
       }
