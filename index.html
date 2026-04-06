@@ -888,9 +888,36 @@
               ? (calendarTodayKey === dinnerLogicalKey ? 'Hecha hoy' : 'Hecha para ayer')
               : 'No corresponde')
           : (dinnerRelevant
-              ? (calendarTodayKey === dinnerLogicalKey ? 'Pendiente' : 'Pendiente de ayer')
-              : 'No corresponde')
+          ? (calendarTodayKey === dinnerLogicalKey ? 'Pendiente' : 'Pendiente de ayer')
+          : 'No corresponde')
       };
+    };
+    const CLIENT_FETCH_TIMEOUT_MS = 8000;
+    const parseJsonResponseSafe = async (res) => {
+      try {
+        const data = await res.json();
+        return (data && typeof data === 'object') ? data : {};
+      } catch(_) {
+        return {};
+      }
+    };
+    const fetchJsonWithTimeout = async (url, options = {}, timeoutMs = CLIENT_FETCH_TIMEOUT_MS) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        const data = await parseJsonResponseSafe(res);
+        return { res, data };
+      } catch(error) {
+        if(error?.name === 'AbortError') {
+          const timeoutError = new Error('La solicitud tardó demasiado. Probá de nuevo.');
+          timeoutError.code = 'TIMEOUT';
+          throw timeoutError;
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
     };
 
     const getDayDate = (wkKey, dayIdx) => {
@@ -1533,7 +1560,7 @@
 
         setReview(prev => ({ ...prev, [`loading${targetKey === 'today' ? 'Today' : 'Previous'}`]: true, error:'' }));
         try {
-          const res = await fetch('/.netlify/functions/daily-nutrition-review', {
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/daily-nutrition-review', {
             method:'POST',
             headers:{ 'Content-Type':'application/json' },
             body: JSON.stringify({
@@ -1542,7 +1569,6 @@
               totals: dayTotals(tracker.meals || [])
             })
           });
-          const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data?.error || 'No se pudo revisar la nutricion.');
           setReview(prev => ({ ...prev, [targetKey]: data }));
           try {
@@ -2858,11 +2884,10 @@
           }
         }
 
-        const res = await fetch('/.netlify/functions/get-macros', {
+        const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/get-macros', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({ meal: text })
         });
-        const data = await res.json().catch(() => ({}));
         if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
         const nextItem = {
@@ -2935,11 +2960,10 @@
             }
           }
 
-          const res = await fetch('/.netlify/functions/get-macros', {
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/get-macros', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ meal: text })
           });
-          const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
 
           const nextItem = {
@@ -4558,7 +4582,7 @@
         setRecipeAiLoading(true);
         setRecipeAiMsg('');
         try {
-          const response = await fetch('/.netlify/functions/edit-recipe-with-ai', {
+          const { res: response, data } = await fetchJsonWithTimeout('/.netlify/functions/edit-recipe-with-ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4589,7 +4613,6 @@
               }
             })
           });
-          const data = await response.json().catch(() => ({}));
           if(!response.ok) throw new Error(data?.error || 'No se pudo aplicar el cambio con IA.');
 
           const nextIngredients = Array.isArray(data.ingredients)
@@ -6112,7 +6135,7 @@
         setChatLoading(true);
         setError('');
         try {
-          const res = await fetch('/.netlify/functions/book-chat', {
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/book-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -6122,7 +6145,6 @@
               question
             })
           });
-          const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
           const payload = {
@@ -6151,7 +6173,7 @@
         setSeriesChatLoading(true);
         setError('');
         try {
-          const res = await fetch('/.netlify/functions/series-chat', {
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/series-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -6161,7 +6183,6 @@
               question
             })
           });
-          const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
           const payload = {
@@ -6188,7 +6209,7 @@
         setSummaryLoading(true);
         setError('');
         try {
-          const res = await fetch('/.netlify/functions/book-summary', {
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/book-summary', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -6197,7 +6218,6 @@
               current_page: Math.max(1, parseInt(book.current_page || 1, 10) || 1)
             })
           });
-          const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
           const payload = {
@@ -7447,8 +7467,7 @@
         } catch(_) {}
         setWeather(prev => ({ ...prev, loading:true, error:'' }));
         try {
-          const res = await fetch('/.netlify/functions/weather-san-rafael');
-          const data = await res.json().catch(() => ({}));
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/weather-san-rafael');
           if(!res.ok) throw new Error(data?.error || 'No se pudo cargar el clima.');
           setWeather({ loading:false, data, error:'' });
           try { localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data })); } catch(_) {}
@@ -8114,7 +8133,7 @@
         setSaving(`mail-${task.id}`);
         setError('');
         try {
-          const res = await fetch('/.netlify/functions/send-task-email', {
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/send-task-email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -8124,7 +8143,6 @@
               priority: task.priority || 'normal'
             })
           });
-          const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
           setError('Correo enviado correctamente.');
           setTimeout(() => setError(''), 2500);
@@ -8140,7 +8158,7 @@
         setError('');
         try {
           const currentQuestion = (aiDrafts[note.id] || '').trim();
-          const res = await fetch('/.netlify/functions/thought-chat', {
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/thought-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -8148,7 +8166,6 @@
               question: currentQuestion || 'Quiero debatir esta idea. Analizala con argumentos a favor, en contra y una conclusion provisoria.'
             })
           });
-          const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
           const nextThread = [
             ...(aiReplies[note.id] || []),
@@ -8181,7 +8198,7 @@
           const thread = aiReplies[note.id] || [];
           if(thread.length === 0) throw new Error('Todavia no hay debate para resumir.');
           const historyText = thread.map((item, idx) => `${idx + 1}. Pregunta: ${item.question}\nRespuesta: ${item.reply}`).join('\n\n');
-          const res = await fetch('/.netlify/functions/thought-chat', {
+          const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/thought-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -8189,7 +8206,6 @@
               question: `Resumi este debate en 5 puntos concretos, una conclusion breve y una siguiente pregunta util.\n\n${historyText}`
             })
           });
-          const data = await res.json().catch(() => ({}));
           if(!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
           const nextThread = [
             ...thread,

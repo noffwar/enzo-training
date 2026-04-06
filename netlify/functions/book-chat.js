@@ -124,10 +124,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({ reply })
     };
   } catch(error) {
+    const isTimeout = error?.name === 'AbortError';
     return {
-      statusCode: 500,
+      statusCode: isTimeout ? 504 : 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: error.message || 'Error inesperado al consultar el libro.' })
+      body: JSON.stringify({ error: isTimeout ? 'La IA tardo demasiado. Intenta de nuevo.' : (error.message || 'Error inesperado al consultar el libro.') })
     };
   }
 };

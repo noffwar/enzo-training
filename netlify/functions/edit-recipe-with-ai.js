@@ -20,6 +20,43 @@ function collectResponseText(data) {
   return partTexts.join('\n').trim();
 }
 
+function extractFirstJsonObject(text) {
+  if(!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch(_) {}
+
+  const start = text.indexOf('{');
+  if(start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for(let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if(inString) {
+      if(escaped) escaped = false;
+      else if(ch === '\\') escaped = true;
+      else if(ch === '"') inString = false;
+      continue;
+    }
+    if(ch === '"') { inString = true; continue; }
+    if(ch === '{') depth++;
+    if(ch === '}') depth--;
+    if(depth === 0) {
+      try {
+        return JSON.parse(text.slice(start, i + 1));
+      } catch(_) {
+        return null;
+      }
+    }
+  }
+
+  return null;
+}
+
 function safeJsonParse(raw) {
   try {
     return { value: JSON.parse(raw || '{}'), error: null };
@@ -157,7 +194,14 @@ exports.handler = async (event) => {
     }
 
     const text = collectResponseText(data);
-    const parsed = JSON.parse(text);
+    const parsed = extractFirstJsonObject(text);
+    if(!parsed) {
+      return {
+        statusCode: 502,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'La IA no devolvio JSON valido para la receta.' })
+      };
+    }
 
     return {
       statusCode: 200,
@@ -180,10 +224,11 @@ exports.handler = async (event) => {
       })
     };
   } catch(error) {
+    const isTimeout = error?.name === 'AbortError';
     return {
-      statusCode: 500,
+      statusCode: isTimeout ? 504 : 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: error.message || 'No se pudo editar la receta con IA.' })
+      body: JSON.stringify({ error: isTimeout ? 'La IA tardo demasiado. Intenta de nuevo.' : (error.message || 'No se pudo editar la receta con IA.') })
     };
   }
 };

@@ -84,7 +84,11 @@ exports.handler = async (event) => {
     const totals = body.totals || {};
     const reviewDate = String(body.date || '').trim();
     if(meals.length === 0) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'No hay comidas para revisar.' }) };
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'No hay comidas para revisar.' })
+      };
     }
 
     const prompt = `
