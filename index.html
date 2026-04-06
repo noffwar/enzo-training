@@ -122,6 +122,7 @@
       useRef: function(v){return {current:v};},
       useState: function(v){return [v,function(){}];},
       useEffect: function(){},
+      useLayoutEffect: function(){},
       useCallback: function(f){return f;},
       useMemo: function(f){return f();},
       useContext: function(c){return c._currentValue;},
@@ -273,12 +274,21 @@
   <!-- Preact + HTM — sin Babel, sin compilación, carga en <100ms -->
   <script type="module">
     // htm/preact standalone: todo en uno, sin bare specifiers
-    import { html, render, Component, useState, useEffect, useCallback, useRef, useMemo, useImperativeHandle } from 'https://unpkg.com/htm@3.1.1/preact/standalone.module.js';
+    import { html, render, Component, useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useContext, useImperativeHandle } from 'https://unpkg.com/htm@3.1.1/preact/standalone.module.js';
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
     // Inyectar el Component de Preact al shim de React para que Recharts pueda heredar
     window.React.Component = window.React.Component || Component;
     window.React.PureComponent = window.React.PureComponent || Component;
-    window.React.useImperativeHandle = window.React.useImperativeHandle || useImperativeHandle;
+    // Cuando la app ya cargó, exponer hooks reales de Preact reduce incompatibilidades
+    // con librerías UMD (por ejemplo Recharts) sin tocar el shim mínimo de arranque.
+    window.React.useState = useState;
+    window.React.useEffect = useEffect;
+    window.React.useLayoutEffect = useLayoutEffect;
+    window.React.useCallback = useCallback;
+    window.React.useRef = useRef;
+    window.React.useMemo = useMemo;
+    window.React.useContext = useContext;
+    window.React.useImperativeHandle = useImperativeHandle;
     
     // Getter dinámico — se evalúa en cada render, no al cargar el módulo
     // Necesario porque Recharts carga de forma diferida (lazy)
@@ -296,44 +306,6 @@
     // ═══════════════════════════════════════════════════
     //  DATOS BASE
     // ═══════════════════════════════════════════════════
-    // Rutinas base (se pueden editar desde la app)
-    const defaultRoutines = {
-      "1": { id:"1", name:"Torso A", fullName:"DÍA 1: Torso A", description:"Vector Primario: Empuje y Tensión Mecánica", exercises:[
-        { name:"Press banca plano", sets:[{reps:"10",weight:"65,0",rir:"2",restSecs:180,restStr:"3 min"},{reps:"9",weight:"65,0",rir:"1",restSecs:180,restStr:"3 min"},{reps:"8",weight:"65,0",rir:"1",restSecs:180,restStr:"3 min"}] },
-        { name:"Remo 45° con barra", sets:[{reps:"10",weight:"30,0",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"10",weight:"30,0",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"35,0",rir:"1",restSecs:150,restStr:"2,5 min"}] },
-        { name:"Press militar Smith", sets:[{reps:"12",weight:"30,0",rir:"2",restSecs:120,restStr:"2 min"},{reps:"10",weight:"32,5",rir:"1",restSecs:120,restStr:"2 min"},{reps:"8",weight:"35,0",rir:"1",restSecs:120,restStr:"2 min"}] },
-        { name:"Jalón Dorsal Isolateral", sets:[{reps:"12",weight:"40,0",rir:"2",restSecs:120,restStr:"2 min"},{reps:"10",weight:"45,0",rir:"1",restSecs:120,restStr:"2 min"},{reps:"8",weight:"50,0",rir:"1",restSecs:120,restStr:"2 min"}] },
-        { name:"Vuelo lateral hombro", sets:[{reps:"15",weight:"9,0",rir:"2",restSecs:60,restStr:"1 min"},{reps:"12",weight:"9,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"10",weight:"9,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] },
-        { name:"Encogimientos trapecio", sets:[{reps:"15",weight:"20,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"25,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"25,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Tríceps polea barra", sets:[{reps:"15",weight:"35,0",rir:"2",restSecs:60,restStr:"1 min"},{reps:"12",weight:"40,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"10",weight:"45,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] }
-      ]},
-      "2": { id:"2", name:"Pierna A", fullName:"DÍA 2: Pierna A", description:"Vector Primario: Cuádriceps y Gemelos", exercises:[
-        { name:"Sentadilla Smith", sets:[{reps:"10",weight:"30,0",rir:"2",restSecs:180,restStr:"3 min"},{reps:"8",weight:"40,0",rir:"1",restSecs:180,restStr:"3 min"},{reps:"8",weight:"40,0",rir:"1",restSecs:180,restStr:"3 min"}] },
-        { name:"Peso muerto rumano", sets:[{reps:"10",weight:"20,0",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"25,0",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"25,0",rir:"2",restSecs:150,restStr:"2,5 min"}] },
-        { name:"Extensión cuádriceps", sets:[{reps:"15",weight:"35,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"40,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"45,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Aductores máquina", sets:[{reps:"15",weight:"65,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"12",weight:"70,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] },
-        { name:"Gemelos de pie", sets:[{reps:"15",weight:"40,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"45,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"50,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Soleos banco", sets:[{reps:"20",weight:"20,0",rir:"2",restSecs:60,restStr:"1 min"},{reps:"18",weight:"22,5",rir:"1",restSecs:60,restStr:"1 min"},{reps:"15",weight:"25,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"15",weight:"25,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] }
-      ]},
-      "4": { id:"4", name:"Torso B", fullName:"DÍA 4: Torso B", description:"Vector Primario: Tracción y Postura", exercises:[
-        { name:"Dominadas prono/neutras", sets:[{reps:"Máx.",weight:"Propio",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"Máx.",weight:"Propio",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"Máx.",weight:"Propio",rir:"1",restSecs:150,restStr:"2,5 min"}] },
-        { name:"Press inclinado mancuernas", sets:[{reps:"12",weight:"17,5",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"10",weight:"20,0",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"20,0",rir:"1",restSecs:150,restStr:"2,5 min"}] },
-        { name:"Remo polea bilateral", sets:[{reps:"12",weight:"35,0",rir:"2",restSecs:120,restStr:"2 min"},{reps:"10",weight:"40,0",rir:"1",restSecs:120,restStr:"2 min"},{reps:"8",weight:"45,0",rir:"1",restSecs:120,restStr:"2 min"}] },
-        { name:"Mariposa pectoral", sets:[{reps:"15",weight:"40,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"50,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"55,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Facepull polea alta", sets:[{reps:"15",weight:"15,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"20,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"20,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Curl mancuernas bíceps", sets:[{reps:"15",weight:"10,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"12,5",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"12,5",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Tríceps polea soga", sets:[{reps:"15",weight:"25,0",rir:"2",restSecs:60,restStr:"1 min"},{reps:"12",weight:"30,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"10",weight:"35,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] }
-      ]},
-      "5": { id:"5", name:"Pierna B", fullName:"DÍA 5: Pierna B", description:"Vector Primario: Glúteos y Corrección", exercises:[
-        { name:"Hip Thrust con Barra", sets:[{reps:"12",weight:"60,0",rir:"2",restSecs:150,restStr:"2,5 min"},{reps:"10",weight:"70,0",rir:"1",restSecs:150,restStr:"2,5 min"},{reps:"8",weight:"80,0",rir:"1",restSecs:150,restStr:"2,5 min"}] },
-        { name:"Sentadilla Búlgara Smith", sets:[{reps:"12 c/u",weight:"20,0",rir:"2",restSecs:120,restStr:"2 min"},{reps:"10 c/u",weight:"25,0",rir:"1",restSecs:120,restStr:"2 min"},{reps:"10 c/u",weight:"25,0",rir:"1",restSecs:120,restStr:"2 min"}] },
-        { name:"Curl femoral", sets:[{reps:"15",weight:"25,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"30,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10",weight:"35,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Extensión cuádr. unilateral", sets:[{reps:"15 c/u",weight:"20,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12 c/u",weight:"25,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"10 c/u",weight:"30,0",rir:"0 (Fallo)",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Extensiones lumbares", sets:[{reps:"15",weight:"0,0",rir:"2",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"5,0",rir:"1",restSecs:90,restStr:"1,5 min"},{reps:"12",weight:"5,0",rir:"1",restSecs:90,restStr:"1,5 min"}] },
-        { name:"Abductores máquina", sets:[{reps:"15",weight:"50,0",rir:"1",restSecs:60,restStr:"1 min"},{reps:"12",weight:"55,0",rir:"0 (Fallo)",restSecs:60,restStr:"1 min"}] }
-      ]}
-    };
-
     const ROUTINES_KEY = 'enzo_routines_v1'; // legado — solo para migración inicial
     const mkSet = (reps, weight, rir, restSecs, restStr) => ({
       reps: String(reps),
@@ -462,7 +434,7 @@
       });
     };
 
-    const muscleMap = {
+    const muscleMap = Object.assign({
       "Press banca plano":{direct:["Pecho"],indirect:["Hombros","Tríceps"]},
       "Remo 45° con barra":{direct:["Espalda"],indirect:["Bíceps","Lumbares"]},
       "Press militar Smith":{direct:["Hombros"],indirect:["Tríceps"]},
@@ -489,12 +461,9 @@
       "Extensión cuádr. unilateral":{direct:["Cuádriceps"],indirect:[]},
       "Extensiones lumbares":{direct:["Lumbares"],indirect:["Glúteos","Femorales"]},
       "Abductores máquina":{direct:["Glúteos"],indirect:["Aductores"]}
-    };
-
-    const MUSCLES = ["Pecho","Espalda","Hombros","Tríceps","Bíceps","Trapecio","Cuádriceps","Femorales","Glúteos","Pantorrillas","Lumbares","Aductores"];
-    const DAYS = [{key:"1",label:"Lun",abbr:"L"},{key:"2",label:"Mar",abbr:"M"},{key:"3",label:"Mié",abbr:"X"},{key:"4",label:"Jue",abbr:"J"},{key:"5",label:"Vie",abbr:"V"},{key:"6",label:"Sáb",abbr:"S"},{key:"0",label:"Dom",abbr:"D"}];
-
-    Object.assign(muscleMap, {
+    }, {
+      // Variantes de nombres del plan nuevo / legacy. Se consolidan acá para
+      // evitar mutaciones posteriores y mantener el mapeo en un solo lugar.
       "Press militar en Smith":{direct:["Hombros"],indirect:["Triceps"]},
       "Maquina de Jalon Dorsal Isolateral":{direct:["Espalda"],indirect:["Biceps"]},
       "Encogimientos de Trapecio":{direct:["Trapecio"],indirect:[]},
@@ -528,6 +497,9 @@
       "Triceps polea soga":{direct:["Triceps"],indirect:[]},
       "Elevacion de rodillas colgado":{direct:["Core"],indirect:[]}
     });
+
+    const MUSCLES = ["Pecho","Espalda","Hombros","Tríceps","Bíceps","Trapecio","Cuádriceps","Femorales","Glúteos","Pantorrillas","Lumbares","Aductores"];
+    const DAYS = [{key:"1",label:"Lun",abbr:"L"},{key:"2",label:"Mar",abbr:"M"},{key:"3",label:"Mié",abbr:"X"},{key:"4",label:"Jue",abbr:"J"},{key:"5",label:"Vie",abbr:"V"},{key:"6",label:"Sáb",abbr:"S"},{key:"0",label:"Dom",abbr:"D"}];
 
     const DAY_KEYS = DAYS.map(d => d.key);
     ['Triceps','Biceps','Cuadriceps','Gluteos','Core'].forEach(m => {
