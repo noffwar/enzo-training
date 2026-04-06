@@ -106,7 +106,17 @@
 
   <div id="app"></div>
 
-  <!-- React shim: Recharts usa window.React internamente. Este shim mínimo
+  <script>
+    (function(){
+      var errorScreen = document.getElementById('error-screen');
+      if(!errorScreen) return;
+      var paragraphs = errorScreen.querySelectorAll('p');
+      if(paragraphs[0]) paragraphs[0].textContent = 'Error al cargar la app';
+      if(paragraphs[1]) paragraphs[1].textContent = 'Abri la consola (F12) para mas detalles.';
+    })();
+  </script>
+
+  <!-- React shim: Recharts usa window.React internamente. Este shim minimo
        evita el error "Cannot read properties of undefined (reading 'forwardRef')"
        cuando Recharts carga antes que cualquier React/Preact compat layer. -->
   <script>
@@ -147,7 +157,7 @@
     window.PropTypes = window.PropTypes || window.React.PropTypes;
   </script>
 
-  <!-- Recharts (UMD) — carga diferida: solo cuando se necesitan los gráficos -->
+  <!-- Recharts (UMD) - carga diferida: solo cuando se necesitan los graficos -->
   <script>
     window._rechartsLoaded = false;
     window._loadRecharts = function() {
@@ -158,12 +168,12 @@
         s.src = 'https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js';
         s.crossOrigin = 'anonymous';
         s.onload = function() {
-          window._rechartsLoaded = true; // marcar DESPUÉS del éxito
+          window._rechartsLoaded = true; // marcar DESPUES del exito
           window._RC = window.Recharts || {};
           res();
         };
         s.onerror = function(e) {
-          // No marcar como loaded → permite reintentar
+          // No marcar como loaded: permite reintentar
           document.head.removeChild(s);
           rej(e);
         };
@@ -171,7 +181,7 @@
       });
     };
 
-    // html2canvas — carga diferida: solo al presionar exportar
+    // html2canvas - carga diferida: solo al presionar exportar
     window._loadHtml2Canvas = function() {
       if(window.html2canvas) return Promise.resolve();
       return new Promise(function(res, rej) {
@@ -183,7 +193,7 @@
       });
     };
   </script>
-  <!-- idb helper: wrapper mínimo nativo para la cola de Background Sync -->
+  <!-- idb helper: wrapper minimo nativo para la cola de Background Sync -->
   <script>
     window.idb = {
       openDB: function(name, version, callbacks) {
@@ -204,7 +214,7 @@
               });
             };
 
-            // BUG FIX: estos métodos faltaban — el outbox nunca funcionó sin ellos
+            // BUG FIX: estos metodos faltaban; el outbox nunca funciono sin ellos
             db.put = function(store, val) {
               return new Promise(function(r, j) {
                 var tx = db.transaction(store, 'readwrite');
@@ -271,7 +281,7 @@
     };
   </script>
 
-  <!-- Preact + HTM — sin Babel, sin compilación, carga en <100ms -->
+  <!-- Preact + HTM - sin Babel, sin compilacion, carga en <100ms -->
   <script type="module">
     // htm/preact standalone: todo en uno, sin bare specifiers
     import { html, render, Component, useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useContext, useImperativeHandle } from 'https://unpkg.com/htm@3.1.1/preact/standalone.module.js';
@@ -279,8 +289,8 @@
     // Inyectar el Component de Preact al shim de React para que Recharts pueda heredar
     window.React.Component = window.React.Component || Component;
     window.React.PureComponent = window.React.PureComponent || Component;
-    // Cuando la app ya cargó, exponer hooks reales de Preact reduce incompatibilidades
-    // con librerías UMD (por ejemplo Recharts) sin tocar el shim mínimo de arranque.
+    // Cuando la app ya cargo, exponer hooks reales de Preact reduce incompatibilidades
+    // con librerias UMD (por ejemplo Recharts) sin tocar el shim minimo de arranque.
     window.React.useState = useState;
     window.React.useEffect = useEffect;
     window.React.useLayoutEffect = useLayoutEffect;
@@ -290,23 +300,23 @@
     window.React.useContext = useContext;
     window.React.useImperativeHandle = useImperativeHandle;
     
-    // Getter dinámico — se evalúa en cada render, no al cargar el módulo
+    // Getter dinamico: se evalua en cada render, no al cargar el modulo
     // Necesario porque Recharts carga de forma diferida (lazy)
     const getRC = () => window._RC || window.Recharts || {};
 
-    // ═══════════════════════════════════════════════════
-    //  CONFIGURACIÓN — SUPABASE (Sincronización PC/Móvil)
-    // ═══════════════════════════════════════════════════
+    // ===================================================
+    //  CONFIGURACION - SUPABASE (Sincronizacion PC/Movil)
+    // ===================================================
     const SUPA_URL = 'https://qflajqvveuyoclmtrjtg.supabase.co';
     const SUPA_KEY = 'sb_publishable_lwzGrcNCL3QuDHiDafwuAQ_jJd82jAa';
     const supabase = createClient(SUPA_URL, SUPA_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
     });
 
-    // ═══════════════════════════════════════════════════
+    // ===================================================
     //  DATOS BASE
-    // ═══════════════════════════════════════════════════
-    const ROUTINES_KEY = 'enzo_routines_v1'; // legado — solo para migración inicial
+    // ===================================================
+    const ROUTINES_KEY = 'enzo_routines_v1'; // legado - solo para migracion inicial
     const mkSet = (reps, weight, rir, restSecs, restStr) => ({
       reps: String(reps),
       weight: String(weight),
@@ -407,7 +417,7 @@
     const DEFAULT_ROUTINES = trainingPlanRoutines;
 
     const loadRoutines = () => {
-      // Prioridad: v3 namespace → legacy enzo_routines_v1 → defaults
+      // Prioridad: v3 namespace -> legacy enzo_routines_v1 -> defaults
       const v3Keys = lsAllRoutineKeys();
       if(v3Keys.length > 0) {
         const r = {};
@@ -428,7 +438,7 @@
       Object.entries(r).forEach(([id, data]) => lsRoutineSave(id, data));
       // Legado: mantener enzo_routines_v1 para compatibilidad con fallback
       try { localStorage.setItem(ROUTINES_KEY, JSON.stringify(r)); } catch(e) {}
-      // Sincronizar cada rutina vía RPC save_routine
+      // Sincronizar cada rutina via RPC save_routine
       Object.entries(r).forEach(([id, data]) => {
         saveRoutineRemote(id, data, prevRevisions[id] || null).catch(()=>{});
       });

@@ -1,5 +1,5 @@
 [build]
-  # Directorio donde están el index.html, sw.js y el manifest
+  # Directorio donde estan el index.html, sw.js y el manifest
   publish = "."
   # Directorio donde Claude y vos guardaron las funciones
   functions = "netlify/functions"
@@ -9,10 +9,10 @@
   NODE_VERSION = "20"
 
 [functions]
-  # Usamos esbuild para una compilación más rápida y moderna
+  # Usamos esbuild para una compilacion mas rapida y moderna
   node_bundler = "esbuild"
   timeout = 10
-  # Tiempo de espera máximo (por si Gemini tarda en responder)
+  # Tiempo de espera maximo (por si Gemini tarda en responder)
   included_files = ["netlify/functions/**"]
 
 [functions."send-task-reminders"]
@@ -20,7 +20,7 @@
 
 [[redirects]]
   # Manejo de rutas para Single Page Application (SPA)
-  # Evita errores 404 al recargar la página en Netlify
+  # Evita errores 404 al recargar la pagina en Netlify
   from = "/*"
   to = "/index.html"
   status = 200
