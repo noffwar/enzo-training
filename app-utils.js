@@ -38,6 +38,9 @@ export const formatRecipeIngredientsText = (ingredients) => Array.isArray(ingred
   ? ingredients.map((item) => `${item.qty || '1 porcion'} | ${item.name || 'Ingrediente'}`).join('\n')
   : '';
 
+export const recipeHasIngredientList = (recipe) =>
+  Array.isArray(recipe?.ingredients) && recipe.ingredients.some((it) => String(it?.name || '').trim());
+
 export const stripRoutineMeta = (routineData = {}) => {
   const { _revision, _updatedAt, _dirty, ...clean } = routineData || {};
   return clean;

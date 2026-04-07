@@ -280,7 +280,7 @@
     import { createRecipesView } from './app-recipes.js?v=20260407-1';
     import { createStudyView } from './app-study.js?v=20260407-1';
     import { loadTaskAlerts, saveTaskAlerts, loadThoughtDrafts, saveThoughtDrafts, loadThoughtThreads, saveThoughtThreads } from './app-productivity-store.js?v=20260407-1';
-    import { normalizeSubtasks, subtasksToEditorText, editorTextToSubtasks, parseRecipeIngredientsText, formatRecipeIngredientsText, stripRoutineMeta, getWeekKey, addWeeks, isCurrentWeek, formatWeekLabel, isDateKey, isBeforeStart, getDayDate, formatTaskDate, priorityColor, computeNextRecurringDueAt } from './app-utils.js?v=20260407-1';
+    import { normalizeSubtasks, subtasksToEditorText, editorTextToSubtasks, parseRecipeIngredientsText, formatRecipeIngredientsText, recipeHasIngredientList, stripRoutineMeta, getWeekKey, addWeeks, isCurrentWeek, formatWeekLabel, isDateKey, isBeforeStart, getDayDate, formatTaskDate, priorityColor, computeNextRecurringDueAt } from './app-utils.js?v=20260407-1';
     import { safeLocalSet, safeDispatch, readStoredJson, localDateKey, getDinnerLogicalDateKey, pickNewestPayload, getDinnerLogicalTargetState, getMedicationStatusForView, fetchJsonWithTimeout } from './app-core.js?v=20260407-1';
     import { createAppSync } from './app-sync.js?v=20260407-1';
     import { createRoutineStore } from './app-routines.js?v=20260407-1';
