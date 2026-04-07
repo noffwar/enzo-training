@@ -271,19 +271,19 @@
     // htm/preact standalone: todo en uno, sin bare specifiers
     import { html, render, Component, useState, useEffect, useLayoutEffect, useCallback, useRef, useMemo, useContext, useImperativeHandle } from 'https://unpkg.com/htm@3.1.1/preact/standalone.module.js';
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-    import { createAppComponents } from './app-components.js';
-    import { createBooksView } from './app-books.js';
-    import { BOOK_DEFAULT, SERIES_DEFAULT, MEDS_STOCK_KEY, MEDS_STOCK_DEFAULT, HEALTH_HISTORY_FILTERS, OCIO_NOTE_FILTER_OPTIONS, getHealthEntryMeta, STUDY_SUBJECT_SEEDS, SWEETS_STOCK_KEY, SWEETS_STOCK_DEFAULT, SWEETS_SOLD_DEFAULT, SWEETS_JAM_FIELDS, SWEETS_SAUCE_FIELDS, SWEETS_SALE_FIELDS, RECIPE_KIND_META, CATEGORY_OPTIONS, categoryMeta, NOTE_KIND_OPTIONS, noteKindMeta, noteDisplayTitle, classifyThoughtKind, RECURRENCE_OPTIONS, recurrenceLabel, TRAINING_PLAN_START, TRAINING_PLAN_EFFECTIVE_WEEK, TRAINING_PLAN_VERSION, START_WEEK, ROUTINES_STORAGE_KEY } from './app-constants.js';
-    import { createTodayDashboard } from './app-dashboard.js';
-    import { createProductivityView } from './app-productivity.js';
-    import { createHealthView } from './app-health.js';
-    import { createRecipesView } from './app-recipes.js';
-    import { createStudyView } from './app-study.js';
-    import { loadTaskAlerts, saveTaskAlerts, loadThoughtDrafts, saveThoughtDrafts, loadThoughtThreads, saveThoughtThreads } from './app-productivity-store.js';
-    import { normalizeSubtasks, subtasksToEditorText, editorTextToSubtasks, parseRecipeIngredientsText, formatRecipeIngredientsText, stripRoutineMeta, getWeekKey, addWeeks, isCurrentWeek, formatWeekLabel, isDateKey, isBeforeStart, getDayDate, formatTaskDate, priorityColor, computeNextRecurringDueAt } from './app-utils.js';
-    import { safeLocalSet, safeDispatch, readStoredJson, localDateKey, getDinnerLogicalDateKey, pickNewestPayload, getDinnerLogicalTargetState, getMedicationStatusForView, fetchJsonWithTimeout } from './app-core.js';
-    import { createAppSync } from './app-sync.js';
-    import { createRoutineStore } from './app-routines.js';
+    import { createAppComponents } from './app-components.js?v=20260407-1';
+    import { createBooksView } from './app-books.js?v=20260407-1';
+    import { BOOK_DEFAULT, SERIES_DEFAULT, MEDS_STOCK_KEY, MEDS_STOCK_DEFAULT, HEALTH_HISTORY_FILTERS, OCIO_NOTE_FILTER_OPTIONS, getHealthEntryMeta, STUDY_SUBJECT_SEEDS, SWEETS_STOCK_KEY, SWEETS_STOCK_DEFAULT, SWEETS_SOLD_DEFAULT, SWEETS_JAM_FIELDS, SWEETS_SAUCE_FIELDS, SWEETS_SALE_FIELDS, RECIPE_KIND_META, CATEGORY_OPTIONS, categoryMeta, NOTE_KIND_OPTIONS, noteKindMeta, noteDisplayTitle, classifyThoughtKind, RECURRENCE_OPTIONS, recurrenceLabel, TRAINING_PLAN_START, TRAINING_PLAN_EFFECTIVE_WEEK, TRAINING_PLAN_VERSION, START_WEEK, ROUTINES_STORAGE_KEY } from './app-constants.js?v=20260407-1';
+    import { createTodayDashboard } from './app-dashboard.js?v=20260407-1';
+    import { createProductivityView } from './app-productivity.js?v=20260407-1';
+    import { createHealthView } from './app-health.js?v=20260407-1';
+    import { createRecipesView } from './app-recipes.js?v=20260407-1';
+    import { createStudyView } from './app-study.js?v=20260407-1';
+    import { loadTaskAlerts, saveTaskAlerts, loadThoughtDrafts, saveThoughtDrafts, loadThoughtThreads, saveThoughtThreads } from './app-productivity-store.js?v=20260407-1';
+    import { normalizeSubtasks, subtasksToEditorText, editorTextToSubtasks, parseRecipeIngredientsText, formatRecipeIngredientsText, stripRoutineMeta, getWeekKey, addWeeks, isCurrentWeek, formatWeekLabel, isDateKey, isBeforeStart, getDayDate, formatTaskDate, priorityColor, computeNextRecurringDueAt } from './app-utils.js?v=20260407-1';
+    import { safeLocalSet, safeDispatch, readStoredJson, localDateKey, getDinnerLogicalDateKey, pickNewestPayload, getDinnerLogicalTargetState, getMedicationStatusForView, fetchJsonWithTimeout } from './app-core.js?v=20260407-1';
+    import { createAppSync } from './app-sync.js?v=20260407-1';
+    import { createRoutineStore } from './app-routines.js?v=20260407-1';
     // Inyectar el Component de Preact al shim de React para que Recharts pueda heredar
     window.React.Component = window.React.Component || Component;
     window.React.PureComponent = window.React.PureComponent || Component;
