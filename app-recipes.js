@@ -852,4 +852,5 @@ export const createRecipesView = ({
           `}
         </div>
       `;
+  };
 };
