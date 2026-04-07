@@ -838,4 +838,5 @@ export const createHealthView = ({
           <//>
         </div>
       `;
+  };
 };
