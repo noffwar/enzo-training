@@ -668,4 +668,5 @@ export const createBooksView = ({
           <//>
         </div>
       `;
+  };
 };
