@@ -779,7 +779,7 @@ export const createProductivityView = ({
                   <option value="low">Baja</option>
                 </select>
                 <select class="inp" value=${categoryFilter} onChange=${e=>setCategoryFilter(e.target.value)}>
-                  <option value="all">Todas las categorÃƒÆ’Ã‚Â­as</option>
+                  <option value="all">Todas las categorias</option>
                   ${CATEGORY_OPTIONS.map(cat => html`<option value=${cat.value}>${cat.label}</option>`)}
                 </select>
                 <select class="inp" value=${statusFilter} onChange=${e=>setStatusFilter(e.target.value)}>
@@ -817,7 +817,7 @@ export const createProductivityView = ({
               </select>
               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
                 <input type="checkbox" checked=${taskAutoEmail} onChange=${e=>setTaskAutoEmail(e.target.checked)} />
-                <span>Enviar recordatorio automÃƒÆ’Ã‚Â¡tico por email cuando venza</span>
+                <span>Enviar recordatorio automatico por email cuando venza</span>
               </label>
               <button onClick=${addTask}
                 style="width:100%;padding:10px;border-radius:10px;border:none;background:#10B981;color:#041018;font-size:13px;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;cursor:pointer;">
@@ -839,7 +839,7 @@ export const createProductivityView = ({
                 onInput=${e=>{ const value = e.target.value; setNoteText(value); if(!noteKindLocked) setNoteKind(classifyThoughtKind(value)); }}
                 placeholder="Ej: idea, pendiente, algo que no quiero olvidarme..."
                 style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
-              <p style="margin:0;font-size:11px;color:#64748b;">CategorÃƒÆ’Ã‚Â­a sugerida automÃƒÆ’Ã‚Â¡ticamente segÃƒÆ’Ã‚Âºn lo que escribÃƒÆ’Ã‚Â­s. Si cambiÃƒÆ’Ã‚Â¡s el selector, se respeta tu elecciÃƒÆ’Ã‚Â³n.</p>
+              <p style="margin:0;font-size:11px;color:#64748b;">Categoria sugerida automaticamente segun lo que escribis. Si cambias el selector, se respeta tu eleccion.</p>
               <button onClick=${addNote}
                 style="width:100%;padding:10px;border-radius:10px;border:none;background:#F59E0B;color:#080D1A;font-size:13px;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;cursor:pointer;">
                 ${saving === 'note' ? 'GUARDANDO...' : 'GUARDAR PENSAMIENTO'}
@@ -857,8 +857,8 @@ export const createProductivityView = ({
               <div style="display:flex;flex-direction:column;gap:12px;">
                 ${[
                   ['Hoy', groupedPending.today],
-                  ['MaÃƒÆ’Ã‚Â±ana', groupedPending.tomorrow],
-                  ['Esta semana', groupedPending.week],
+                  ['MaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â±ana', groupedPending.tomorrow],
+                  ['Manana', groupedPending.tomorrow],
                   ['Mas adelante', groupedPending.later],
                   ['Sin fecha', groupedPending.someday]
                 ].filter(([,items]) => items.length > 0).map(([label, items]) => html`
@@ -900,8 +900,8 @@ export const createProductivityView = ({
                               </select>
                               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
                                 <input type="checkbox" checked=${editingTaskAutoEmail} onChange=${e=>setEditingTaskAutoEmail(e.target.checked)} />
-                                <span>Recordatorio automÃƒÆ’Ã‚Â¡tico por email</span>
-                              </label>
+                                <span>Recordatorio automÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡tico por email</span>
+                                <span>Recordatorio automatico por email</span>
                               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <button onClick=${()=>saveTaskEdit(task)}
                                   style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
@@ -1074,7 +1074,7 @@ export const createProductivityView = ({
                       <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.updated_at)}</p>
                     </div>
                     <button class="btn-icon" style="background:#162035;border:1px solid rgba(245,158,11,0.35);color:#FBBF24;" onClick=${()=>updateTaskStatus(task,'pending')}>
-                      ÃƒÂ¢Ã¢â‚¬Â Ã‚Âº
+                      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Ãƒâ€šÃ‚Âº
                     </button>
                   </div>
                 `)}
@@ -1097,7 +1097,7 @@ export const createProductivityView = ({
                       <p style="margin:4px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${formatTaskDate(task.updated_at)}</p>
                     </div>
                     <button class="btn-icon" style="background:#162035;border:1px solid rgba(99,102,241,0.35);color:#A5B4FC;" onClick=${()=>updateTaskStatus(task,'pending')}>
-                      ÃƒÂ¢Ã¢â‚¬Â Ã‚Âº
+                      ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Ãƒâ€šÃ‚Âº
                     </button>
                   </div>
                 `)}
@@ -1121,8 +1121,8 @@ export const createProductivityView = ({
           options: { emailRedirectTo: window.location.origin + window.location.pathname }
         });
         if(error) { setStatus('error'); setMsg(error.message); }
-        else       { setStatus('sent'); setMsg('ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ RevisÃƒÆ’Ã‚Â¡ tu email ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â el link expira en 1 hora.'); }
-      };
+        else       { setStatus('sent'); setMsg('ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ RevisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ tu email ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â el link expira en 1 hora.'); }
+        else       { setStatus('sent'); setMsg('Revisa tu email - el link expira en 1 hora.'); }
 
       return html`
         <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#080D1A;">
@@ -1131,13 +1131,13 @@ export const createProductivityView = ({
               <p style="font-size:28px;font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.1em;color:white;margin:0;">
                 ENZO <span style="color:#10B981;">TRAINING</span>
               </p>
-              <p style="color:#64748b;font-size:13px;margin:8px 0 0;">IngresÃƒÆ’Ã‚Â¡ con tu email para sincronizar entre dispositivos</p>
-            </div>
+              <p style="color:#64748b;font-size:13px;margin:8px 0 0;">IngresÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ con tu email para sincronizar entre dispositivos</p>
+              <p style="color:#64748b;font-size:13px;margin:8px 0 0;">Ingresa con tu email para sincronizar entre dispositivos</p>
 
             ${status === 'sent' ? html`
               <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:20px;text-align:center;">
-                <p style="font-size:32px;margin:0 0 8px;">ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â§</p>
-                <p style="color:#10B981;font-size:14px;margin:0;">${msg}</p>
+                <p style="font-size:32px;margin:0 0 8px;">ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒâ€šÃ‚Â§</p>
+                <p style="font-size:32px;margin:0 0 8px;">OK</p>
               </div>
             ` : html`
               <div style="display:flex;flex-direction:column;gap:12px;">
@@ -1161,9 +1161,9 @@ export const createProductivityView = ({
       `;
     };
 
-    // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
-    //  DEBUG PANEL ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â oculto, activar con ?debug=1
-    // ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+    // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚Â
+    //  DEBUG PANEL ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â oculto, activar con ?debug=1
+    // ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢Ãƒâ€šÃ‚Â
     const DebugPanel = ({ session, syncLog, outboxCount }) => {
       const [open,    setOpen]    = useState(false);
       const [swDebug, setSwDebug] = useState(null);
@@ -1185,31 +1185,31 @@ export const createProductivityView = ({
       if(!open) return html`
         <button onClick=${()=>setOpen(true)}
           style="position:fixed;bottom:90px;left:8px;z-index:999;width:24px;height:24px;border-radius:50%;background:rgba(99,102,241,0.3);border:1px solid rgba(99,102,241,0.5);font-size:10px;cursor:pointer;color:#6366F1;padding:0;">
-          ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â§
+          ÃƒÆ’Ã‚Â°Ãƒâ€¦Ã‚Â¸ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â§
         </button>`;
 
-      const swCtrl = navigator.serviceWorker?.controller ? 'ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ Controlando' : 'ÃƒÂ¢Ã…Â¡Ã‚Â  No controla';
+      const swCtrl = navigator.serviceWorker?.controller ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Controlando' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã‚Â¡Ãƒâ€šÃ‚Â  No controla';
       const rows = [
-        ['ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Auth ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â',    ''],
-        ['User',        session?.user?.email || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
-        ['UID',         (session?.user?.id || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â').slice(0,8)+'...'],
-        ['ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Sync ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â',    ''],
+        ['ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Auth ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â',    ''],
+        ['User',        session?.user?.email || 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
+        ['UID',         (session?.user?.id || 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â').slice(0,8)+'...'],
+        ['ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Sync ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â',    ''],
         ['Device',      DEVICE_ID],
-        ['Online',      navigator.onLine ? 'ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“' : 'ÃƒÂ¢Ã…â€œÃ¢â‚¬â€'],
+        ['Online',      navigator.onLine ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
         ['Outbox',      outboxCount + ' items'],
         ['Last sync',   syncLog.lastSync  || 'nunca'],
-        ['Last error',  syncLog.lastError || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
-        ['ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â SW ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â',      ''],
-        ['SW API',      'serviceWorker' in navigator ? 'ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“' : 'ÃƒÂ¢Ã…â€œÃ¢â‚¬â€'],
-        ['SW estado',   'serviceWorker' in navigator ? swCtrl : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
-        ['SW version',  swDebug?.cacheVersion || 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
-        ['Auth en SW',  swDebug ? (swDebug.authValid ? 'ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ vÃƒÆ’Ã‚Â¡lida' : 'ÃƒÂ¢Ã…â€œÃ¢â‚¬â€ sin token') : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
-        ['Auth expiry', swDebug?.authExpiry ? new Date(swDebug.authExpiry*1000).toLocaleTimeString('es-AR') : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
-        ['Alertas SW',  swDebug?.scheduledCount != null ? swDebug.scheduledCount+' programadas' : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
+        ['Last error',  syncLog.lastError || 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
+        ['ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â SW ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â',      ''],
+        ['SW API',      'serviceWorker' in navigator ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
+        ['SW estado',   'serviceWorker' in navigator ? swCtrl : 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
+        ['SW version',  swDebug?.cacheVersion || 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
+        ['Auth en SW',  swDebug ? (swDebug.authValid ? 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lida' : 'ÃƒÆ’Ã‚Â¢Ãƒâ€¦Ã¢â‚¬Å“ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â sin token') : 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
+        ['Auth expiry', swDebug?.authExpiry ? new Date(swDebug.authExpiry*1000).toLocaleTimeString('es-AR') : 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
+        ['Alertas SW',  swDebug?.scheduledCount != null ? swDebug.scheduledCount+' programadas' : 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
         ['Notif perm',  typeof Notification!=='undefined' ? Notification.permission : 'N/A'],
-        ['ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Conflictos ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â', ''],
-        ['ÃƒÆ’Ã…Â¡ltimo conf.', conflictInfo ? `${conflictInfo.count||1} items ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${conflictInfo.at?.slice(0,10)||'?'}` : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
-        ['Conf. fechas', conflictInfo?.items ? conflictInfo.items.slice(0,3).join(', ') + (conflictInfo.items.length>3?'ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦':'') : 'ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â'],
+        ['ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Conflictos ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â', ''],
+        ['ÃƒÆ’Ã†â€™Ãƒâ€¦Ã‚Â¡ltimo conf.', conflictInfo ? `${conflictInfo.count||1} items ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ${conflictInfo.at?.slice(0,10)||'?'}` : 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
+        ['Conf. fechas', conflictInfo?.items ? conflictInfo.items.slice(0,3).join(', ') + (conflictInfo.items.length>3?'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦':'') : 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â'],
       ];
 
       return html`
