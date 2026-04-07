@@ -104,6 +104,77 @@
     <p style="font-family:monospace;color:#64748B;font-size:11px;margin-top:12px;">AbrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­ la consola (F12) para mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡s detalles.</p>
   </div>
 
+  <script>
+    (function(){
+      const oddPattern = /[ÃÂâ€™â€œâ€¢â€¦â€“â€”�]/;
+      const decodeOnce = (text) => {
+        try {
+          const bytes = Uint8Array.from(Array.from(String(text || '')), ch => ch.charCodeAt(0) & 255);
+          return new TextDecoder('utf-8').decode(bytes);
+        } catch(_) {
+          return String(text || '');
+        }
+      };
+      const oddCount = (text) => (String(text || '').match(/[ÃÂâ€™â€œâ€¢â€¦â€“â€”�]/g) || []).length;
+      const cleanupManual = (text) => String(text || '')
+        .replace(/Â·/g, '·')
+        .replace(/ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â/g, '-')
+        .replace(/ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“/g, 'OK')
+        .replace(/ÃƒÂ¢Ã…â€œÃ¢â‚¬â€/g, 'NO')
+        .replace(/ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â§/g, 'OK')
+        .replace(/ÃƒÂ¢Ã¢â‚¬Â Ã‚Âº/g, '↺');
+      const fixText = (text) => {
+        let current = String(text || '');
+        if(!oddPattern.test(current)) return current;
+        for(let i = 0; i < 3; i++) {
+          const decoded = decodeOnce(current);
+          if(decoded === current || oddCount(decoded) >= oddCount(current)) break;
+          current = decoded;
+        }
+        current = cleanupManual(current);
+        return current;
+      };
+      const cleanTextNode = (node) => {
+        if(!node || node.nodeType !== Node.TEXT_NODE) return;
+        const parent = node.parentElement;
+        if(parent && /^(SCRIPT|STYLE|TEXTAREA|PRE|CODE)$/i.test(parent.tagName)) return;
+        const next = fixText(node.nodeValue);
+        if(next !== node.nodeValue) node.nodeValue = next;
+      };
+      const cleanAttrs = (el) => {
+        if(!el || el.nodeType !== Node.ELEMENT_NODE) return;
+        ['placeholder','title','aria-label','value'].forEach(attr => {
+          if(!el.hasAttribute(attr)) return;
+          const raw = el.getAttribute(attr);
+          const next = fixText(raw);
+          if(next !== raw) el.setAttribute(attr, next);
+        });
+      };
+      const cleanTree = (root) => {
+        if(!root) return;
+        if(root.nodeType === Node.TEXT_NODE) {
+          cleanTextNode(root);
+          return;
+        }
+        cleanAttrs(root);
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        let node;
+        while((node = walker.nextNode())) cleanTextNode(node);
+        if(root.querySelectorAll) root.querySelectorAll('*').forEach(cleanAttrs);
+      };
+      const run = () => cleanTree(document.body || document.documentElement);
+      document.addEventListener('DOMContentLoaded', run, { once:true });
+      window.addEventListener('load', run, { once:true });
+      new MutationObserver((mutations) => {
+        mutations.forEach(m => {
+          if(m.type === 'characterData') cleanTextNode(m.target);
+          m.addedNodes && m.addedNodes.forEach(cleanTree);
+        });
+      }).observe(document.documentElement, { childList:true, subtree:true, characterData:true });
+      window.__fixMojibakeText = fixText;
+    })();
+  </script>
+
   <div id="app"></div>
 
   <!-- React shim minimo para librerias UMD que esperan window.React -->
