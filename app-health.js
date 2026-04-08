@@ -1,4 +1,4 @@
-export const createHealthView = ({
+﻿export const createHealthView = ({
   html,
   useState,
   useEffect,
@@ -542,8 +542,7 @@ export const createHealthView = ({
         }
       };
       const showWeeklyMedsRecap = () => {
-        const missingDays = weekDiagnostics.map(item => `${item.label}: ${item.text}`).join(' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ');
-        const summary = [
+        const missingDays = weekDiagnostics.map(item => `${item.label}: ${item.text}`).join(' · ');
           `Semana ${weekStartKey} a ${weekEndKey}.`,
           `Roaccutan: ${weekRoaccutanTakes}/7 tomas reales (${roaccutanAdherencePct}%).`,
           `Cena: ${weekDinnerTakes}/7 tomas reales (${dinnerAdherencePct}%).`,
@@ -634,11 +633,9 @@ export const createHealthView = ({
                   <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Roaccutan va al mediodia. Minoxidil y Finasteride van con la cena. Si las tomas entre 00:00 y 06:00, cuentan para el dia anterior. Los botones de stock son solo ajustes de inventario; para marcar tomas reales usa los botones de registrar.</p>
                   ${todayHealthIssues.length > 0 && html`
                     <div style="margin:0 0 10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);">
-                      <p style="margin:0 0 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#FCD34D;">Hoy desalineado</p>
-                      <p style="margin:0;font-size:12px;color:#FDE68A;">${todayHealthIssues.join(' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ')}</p>
+                      <p style="margin:0;font-size:12px;color:#FDE68A;">${todayHealthIssues.join(' · ')}</p>
                     </div>
                   `}
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
                     <${HealthStatusCard} title="Estado mediodia" status=${statusMeta.roaccutan}/>
                     <${HealthStatusCard} title="Estado cena" status=${statusMeta.dinner}/>
                   </div>
@@ -727,13 +724,15 @@ export const createHealthView = ({
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
                       ${hasStockMismatch && html`
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                      ${hasStockMismatch && html`
                         <button
                           onClick=${reconcileExpectedStock}
                           style="padding:5px 9px;border-radius:999px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                           RECONCILIAR STOCK
                         </button>
                       `}
-                      <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${weekStartKey} ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ ${weekEndKey}</span>
+                      <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${weekStartKey} · ${weekEndKey}</span>
                     </div>
                   </div>
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -742,22 +741,22 @@ export const createHealthView = ({
                         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
                           <div>
                             <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
-                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Real: ${actual} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Esperado: ${expected}</p>
+                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Real: ${actual} · Esperado: ${expected}</p>
                           </div>
                           <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${drift===0?'#86EFAC':'#FCD34D'};`}>
                             ${drift===0 ? 'OK' : drift > 0 ? `+${drift}` : String(drift)}
                           </span>
                         </div>
-                        <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">Inicio: ${opening} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Tomas/checks: ${takesDelta > 0 ? '+' : ''}${takesDelta}</p>
-                        <p style="margin:4px 0 0;font-size:10px;color:${drift===0?'#64748B':'#FCD34D'};">
+                        <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">Inicio: ${opening} · Tomas/checks: ${takesDelta > 0 ? '+' : ''}${takesDelta}</p>
+                        <p style="margin:6px 0 0;font-size:10px;color:${drift===0?'#64748B':'#FCD34D'};">
                           ${drift===0 ? 'Sin diferencia manual en esta semana.' : `La diferencia viene de ajustes o reposiciones netas: ${drift > 0 ? '+' : ''}${drift}.`}
                         </p>
-                        <p style="margin:4px 0 0;font-size:10px;color:#94A3B8;">
+                        <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">
                           ${[
                             breakdown?.restock ? `Reposiciones ${breakdown.restock > 0 ? '+' : ''}${breakdown.restock}` : '',
                             breakdown?.manual ? `Ajustes ${breakdown.manual > 0 ? '+' : ''}${breakdown.manual}` : '',
                             breakdown?.checks ? `Checks ${breakdown.checks > 0 ? '+' : ''}${breakdown.checks}` : ''
-                          ].filter(Boolean).join(' ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ') || 'Sin movimientos manuales ni checks registrados en la semana.'}
+                          ].filter(Boolean).join(' · ') || 'Sin movimientos manuales ni checks registrados en la semana.'}
                         </p>
                       </div>
                     `)}
@@ -769,19 +768,26 @@ export const createHealthView = ({
                     ${hasWeekMismatch && html`
                       <button
                         onClick=${reconcileWeekChecks}
-                        style="padding:5px 9px;border-radius:999px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#C7D2FE;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                        RECONCILIAR
-                      </button>
-                    `}
-                  </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    ${weekConsistency.map(({label,checks,takes,diff}) => html`
-                      <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${diff===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
-                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                  ${weekConsistency.map(({label,checks,takes,diff}) => html`
+                    <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${diff===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
+                      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                        <div>
+                          <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
+                          <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} · Tomas: ${takes}</p>
+                        </div>
+                        <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
+                          ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
+                        </span>
+                      </div>
+                      <p style="margin:6px 0 0;font-size:10px;color:${diff===0?'#64748B':'#FCD34D'};">
+                        ${diff===0 ? 'Checks y tomas reales coinciden.' : diff > 0 ? 'Hay mas checks que tomas reales registradas.' : 'Hay mas tomas reales que checks marcados.'}
+                      </p>
+                    </div>
+                  `)}
                           <div>
                             <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
-                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Tomas: ${takes}</p>
-                          </div>
+                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Tomas: ${takes}</p>
+                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} · Tomas: ${takes}</p>
                           <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
                             ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
                           </span>
