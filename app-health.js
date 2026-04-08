@@ -543,6 +543,7 @@
       };
       const showWeeklyMedsRecap = () => {
         const missingDays = weekDiagnostics.map(item => `${item.label}: ${item.text}`).join(' · ');
+        const summary = [
           `Semana ${weekStartKey} a ${weekEndKey}.`,
           `Roaccutan: ${weekRoaccutanTakes}/7 tomas reales (${roaccutanAdherencePct}%).`,
           `Cena: ${weekDinnerTakes}/7 tomas reales (${dinnerAdherencePct}%).`,
