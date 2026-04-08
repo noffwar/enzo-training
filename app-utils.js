@@ -1,4 +1,4 @@
-import { START_WEEK } from './app-constants.js?v=20260408-2';
+import { START_WEEK } from './app-constants.js?v=20260408-3';
 
 export const normalizeSubtasks = (value) => {
   if (Array.isArray(value)) {

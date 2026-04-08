@@ -1,4 +1,4 @@
-import { safeLocalSet, readStoredJson } from './app-core.js?v=20260408-2';
+import { safeLocalSet, readStoredJson } from './app-core.js?v=20260408-3';
 
 const V3 = {
   WEEK: 'enzo_v3_week:',
