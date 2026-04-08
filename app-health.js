@@ -725,8 +725,6 @@
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
                       ${hasStockMismatch && html`
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-                      ${hasStockMismatch && html`
                         <button
                           onClick=${reconcileExpectedStock}
                           style="padding:5px 9px;border-radius:999px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
@@ -782,16 +780,6 @@
                             <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
                             <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} · Tomas: ${takes}</p>
                           </div>
-                          <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
-                            ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
-                          </span>
-                        </div>
-                        <p style="margin:6px 0 0;font-size:10px;color:${diff===0?'#64748B':'#FCD34D'};">
-                          ${diff===0 ? 'Checks y tomas reales coinciden.' : diff > 0 ? 'Hay mas checks que tomas reales registradas.' : 'Hay mas tomas reales que checks marcados.'}
-                        </p>
-                      </div>
-                    `)}
-                  </div>
                           <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
                             ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
                           </span>
