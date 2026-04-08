@@ -3,6 +3,7 @@ export const TRAINING_PLAN_EFFECTIVE_WEEK = '2026-03-30';
 export const TRAINING_PLAN_VERSION = '2026-03-31-r1';
 export const START_WEEK = TRAINING_PLAN_START;
 export const ROUTINES_STORAGE_KEY = 'enzo_routines_v1';
+export const DAY_KEYS = ['1', '2', '3', '4', '5', '6', '0'];
 
 export const SWEETS_STOCK_KEY = 'enzo_sweets_sauces_stock_v1';
 
