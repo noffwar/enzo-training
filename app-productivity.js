@@ -898,8 +898,9 @@
                                 ${RECURRENCE_OPTIONS.map(opt => html`<option value=${opt.value}>${opt.label}</option>`)}
                               </select>
                               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
-                                <span>Recordatorio automÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡tico por email</span>
+                                <input type="checkbox" checked=${editingTaskAutoEmail} onChange=${e=>setEditingTaskAutoEmail(e.target.checked)} />
                                 <span>Recordatorio automatico por email</span>
+                              </label>
                               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <button onClick=${()=>saveTaskEdit(task)}
                                   style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#34D399;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
@@ -1207,7 +1208,7 @@
         ['Notif perm',  typeof Notification!=='undefined' ? Notification.permission : 'N/A'],
         ['SECCION Conflictos',''],
         ['Ultimo conf.', conflictInfo ? `${conflictInfo.count||1} items · ${conflictInfo.at?.slice(0,10)||'?'}` : '-'],
-        ['Conf. fechas', conflictInfo?.items ? conflictInfo.items.slice(0,3).join(', ') + (conflictInfo.items.length>3?'...':' ) : '-'],
+        ['Conf. fechas', conflictInfo?.items ? conflictInfo.items.slice(0,3).join(', ') + (conflictInfo.items.length>3 ? '...' : '') : '-'],
       ];
 
       return html`
