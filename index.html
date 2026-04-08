@@ -559,13 +559,14 @@
     const isSundayDate = (dateStr='') => {
       if(!dateStr) return false;
       const dt = new Date(`${dateStr}T12:00:00`);
-      return dt.getDay() === 0;
+      return isValidDateValue(dt) && dt.getDay() === 0;
     };
     const isGymClosedDate = (dateStr='') => isSundayDate(dateStr) || isHoliday2026(dateStr);
 
     const weekDiffFromStart = (weekKey='') => {
       const base = new Date(`${TRAINING_PLAN_START}T12:00:00`);
       const week = new Date(`${weekKey}T12:00:00`);
+      if(!isValidDateValue(base) || !isValidDateValue(week)) return 0;
       return Math.floor((week - base) / (7 * 24 * 3600 * 1000));
     };
     const isDeloadWeek = (weekKey='') => {
@@ -716,24 +717,47 @@
     const fn = v => { if(!v && v!==0) return "0"; const n=Number(v); return n.toLocaleString('es-AR',{maximumFractionDigits:1}); };
     const ft = s => { const m=Math.floor(s/60),sec=s%60; return `${m}:${sec<10?'0':''}${sec}`; };
 
-    const getWeekStart = d => { const dt=new Date(d); const day=dt.getDay(); dt.setDate(dt.getDate()+(day===0?-6:1-day)); dt.setHours(0,0,0,0); return dt; };
+    const isValidDateValue = d => d instanceof Date && !Number.isNaN(d.getTime());
+    const getWeekStart = d => {
+      const dt = new Date(d);
+      if(!isValidDateValue(dt)) return null;
+      const day = dt.getDay();
+      dt.setDate(dt.getDate() + (day === 0 ? -6 : 1 - day));
+      dt.setHours(0,0,0,0);
+      return dt;
+    };
     const _wkCache = new Map();
     const getWeekKey = d => {
       const key = d instanceof Date ? d.toDateString() : String(d);
+      if(!key || key === 'undefined' || key === 'null') return null;
       if(_wkCache.has(key)) return _wkCache.get(key);
-      const result = getWeekStart(d).toISOString().split('T')[0];
+      const weekStart = getWeekStart(d);
+      if(!weekStart) return null;
+      const result = weekStart.toISOString().split('T')[0];
       _wkCache.set(key, result);
       return result;
     };
-    const addWeeks = (wk,n) => { const d=new Date(wk+'T00:00:00'); d.setDate(d.getDate()+n*7); return d.toISOString().split('T')[0]; };
+    const addWeeks = (wk,n) => {
+      const d = new Date(wk+'T00:00:00');
+      if(!isValidDateValue(d)) return null;
+      d.setDate(d.getDate()+n*7);
+      return d.toISOString().split('T')[0];
+    };
     const isCurrentWeek = wk => getWeekKey(new Date())===wk;
 
     // Fecha de inicio oficial de la app — no mostrar datos anteriores
     const START_DATE = '2026-03-16';
-    const START_WEEK = getWeekKey(new Date(START_DATE + 'T12:00:00')); // lunes de esa semana
+    const startWeekDate = getWeekStart(new Date(START_DATE + 'T12:00:00')) || getWeekStart(new Date()) || new Date();
+    const START_WEEK = getWeekKey(startWeekDate) || [
+      startWeekDate.getFullYear(),
+      String(startWeekDate.getMonth() + 1).padStart(2, '0'),
+      String(startWeekDate.getDate()).padStart(2, '0')
+    ].join('-'); // lunes de esa semana
     const isBeforeStart = wk => wk < START_WEEK;
     const formatWeekLabel = wk => {
-      const d=new Date(wk+'T00:00:00'); const e=new Date(d); e.setDate(d.getDate()+6);
+      const d=new Date(wk+'T00:00:00');
+      if(!isValidDateValue(d)) return String(wk || '');
+      const e=new Date(d); e.setDate(d.getDate()+6);
       const M=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
       return d.getMonth()===e.getMonth()?`${d.getDate()}–${e.getDate()} ${M[d.getMonth()]} ${d.getFullYear()}`:`${d.getDate()} ${M[d.getMonth()]}–${e.getDate()} ${M[e.getMonth()]}`;
     };
@@ -833,7 +857,10 @@
     const isDateKey = k => /^\d{4}-\d{2}-\d{2}$/.test(k);
     const getTable  = k => isDateKey(k) ? 'daily_logs'    : 'weekly_configs';
     const getPkCol  = k => isDateKey(k) ? 'date'          : 'week_key';
-    const isWeekKey = k => { const d=new Date(k+'T12:00:00'); return d.getDay()===1; };
+    const isWeekKey = k => {
+      const d = new Date(k+'T12:00:00');
+      return isValidDateValue(d) && d.getDay()===1;
+    };
     const localDateKey = (d = new Date()) => {
       const yy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -1146,10 +1173,10 @@
     // ─── CARGA LOCAL ─────────────────────────────────────────────
     const loadLocalCaches = () => {
       const weeklyCache = {}, dailyCache = {}, routinesCache = {};
-      lsAllWeekKeys().filter(k=>!isBeforeStart(k)&&isDateKey(k)).forEach(wk => {
+      lsAllWeekKeys().filter(k=>isDateKey(k) && isWeekKey(k) && !isBeforeStart(k)).forEach(wk => {
         const d=lsWeekLoad(wk); if(d) weeklyCache[wk]=d;
       });
-      lsAllDayKeys().filter(k=>!isBeforeStart(k)).forEach(dt => {
+      lsAllDayKeys().filter(k=>isDateKey(k) && !isBeforeStart(k)).forEach(dt => {
         const d=lsDayLoad(dt); if(d) dailyCache[dt]=d;
       });
       lsAllRoutineKeys().forEach(id => {
@@ -1162,14 +1189,17 @@
     const buildAllWeeks = (weeklyCache, dailyCache) => {
       const result = {};
       Object.entries(weeklyCache).forEach(([wkKey, wkData]) => {
-        if(isBeforeStart(wkKey)||!isDateKey(wkKey)) return;
+        if(!isDateKey(wkKey) || !isWeekKey(wkKey) || isBeforeStart(wkKey)) return;
         result[wkKey] = hydrate({ dayMapping: wkData.dayMapping||{}, bodyWeight: wkData.bodyWeight||'' });
       });
       Object.entries(dailyCache).forEach(([date, dayData]) => {
-        if(isBeforeStart(date)) return;
+        if(!isDateKey(date) || isBeforeStart(date)) return;
         const dateObj = new Date(date+'T12:00:00');
+        if(!isValidDateValue(dateObj)) return;
         const wkKey   = getWeekKey(dateObj);
+        if(!wkKey) return;
         const dayIdx  = dateObj.getDay();
+        if(Number.isNaN(dayIdx)) return;
         if(!result[wkKey]) result[wkKey] = hydrate(newWeek(wkKey));
         const { _session, _updatedAt, _revision, _dirty, ...dayClean } = dayData || {};
         if(_session) result[wkKey].sessions = { ...result[wkKey].sessions, [dayIdx]: _session };
@@ -1202,7 +1232,7 @@
       });
 
       (bootstrapData.weekly_configs||[]).forEach(row => {
-        if(isBeforeStart(row.week_key)) return;
+        if(!isDateKey(row.week_key) || !isWeekKey(row.week_key) || isBeforeStart(row.week_key)) return;
         const localWk = weeklyCache[row.week_key];
         const localTs = localWk?._updatedAt;
         if(localTs && row.updated_at && localTs > row.updated_at) return;
@@ -1214,7 +1244,9 @@
       });
 
       (bootstrapData.daily_logs||[]).forEach(row => {
-        if(isBeforeStart(row.date)) return;
+        if(!isDateKey(row.date) || isBeforeStart(row.date)) return;
+        const rowDate = new Date(row.date+'T12:00:00');
+        if(!isValidDateValue(rowDate)) return;
         const localDay = dailyCache[row.date];
         const localTs  = localDay?._updatedAt;
         if(localTs && row.updated_at && localTs > row.updated_at) {
@@ -1224,7 +1256,7 @@
         let tracker = row.tracker || {};
         let sess    = row.session  || null;
         if(tracker.tracker) { // rescate formato viejo
-          const dayIdx = new Date(row.date+'T12:00:00').getDay();
+          const dayIdx = rowDate.getDay();
           tracker = tracker.tracker?.[dayIdx] || {};
           sess    = tracker.sessions?.[dayIdx] || null;
         }
