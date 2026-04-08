@@ -1,4 +1,4 @@
-import { safeLocalSet, readStoredJson } from './app-core.js?v=20260408-3';
+import { safeLocalSet, readStoredJson } from './app-core.js?v=20260408-4';
 
 const TASK_ALERTS_KEY = 'enzo_task_alerts_v1';
 const AI_THREADS_KEY = 'enzo_ai_thought_threads_v1';
