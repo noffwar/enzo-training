@@ -769,26 +769,29 @@
                     ${hasWeekMismatch && html`
                       <button
                         onClick=${reconcileWeekChecks}
-                  ${weekConsistency.map(({label,checks,takes,diff}) => html`
-                    <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${diff===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
-                      <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
-                        <div>
-                          <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
-                          <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} · Tomas: ${takes}</p>
-                        </div>
-                        <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
-                          ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
-                        </span>
-                      </div>
-                      <p style="margin:6px 0 0;font-size:10px;color:${diff===0?'#64748B':'#FCD34D'};">
-                        ${diff===0 ? 'Checks y tomas reales coinciden.' : diff > 0 ? 'Hay mas checks que tomas reales registradas.' : 'Hay mas tomas reales que checks marcados.'}
-                      </p>
-                    </div>
-                  `)}
+                        style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.35);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                        RECONCILIAR
+                      </button>
+                    `}
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+                    ${weekConsistency.map(({label,checks,takes,diff}) => html`
+                      <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${diff===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
+                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
                           <div>
                             <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
-                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Tomas: ${takes}</p>
                             <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} · Tomas: ${takes}</p>
+                          </div>
+                          <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
+                            ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
+                          </span>
+                        </div>
+                        <p style="margin:6px 0 0;font-size:10px;color:${diff===0?'#64748B':'#FCD34D'};">
+                          ${diff===0 ? 'Checks y tomas reales coinciden.' : diff > 0 ? 'Hay mas checks que tomas reales registradas.' : 'Hay mas tomas reales que checks marcados.'}
+                        </p>
+                      </div>
+                    `)}
+                  </div>
                           <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
                             ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
                           </span>
