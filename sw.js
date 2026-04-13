@@ -251,6 +251,49 @@ self.addEventListener('message', event => {
   }
 });
 
+// ═══ MARK MED CON TOKEN REAL DEL USUARIO ═══
+// Usa el access_token JWT real recibido via SW_SET_AUTH_CONTEXT
+// NUNCA usa la publishable key como Bearer token
+const markMedWithUserToken = async (notifId, dateStr) => {
+  if(!_authCtx?.access_token) return false;
+  const medKeys = notifId === 'meds2'
+    ? ['finasteride', 'minoxidil']
+    : (notifId === 'meds' || notifId === 'meds_urgent')
+      ? ['roacuttan']
+      : [];
+  if(medKeys.length === 0) return false;
+
+  try {
+    for(const medKey of medKeys) {
+      const res = await fetchWithTimeout(`${SUPA_URL}/rest/v1/rpc/patch_med_status`, {
+        method:  'POST',
+        headers: {
+          'apikey':        SUPA_ANON,
+          'Authorization': `Bearer ${_authCtx.access_token}`, // JWT real del usuario
+          'Content-Type':  'application/json'
+        },
+        body: JSON.stringify({
+          p_date:      dateStr,
+          p_med:       medKey,
+          p_val:       true,
+          p_device_id: _authCtx.device_id || 'sw'
+        })
+      });
+
+      if(!res.ok) {
+        const errText = await res.text().catch(() => '');
+        console.warn('[SW] patch_med_status error', res.status, errText.slice(0, 100));
+        return false;
+      }
+    }
+    console.log('[SW] Med marcado ok:', medKeys.join(','), dateStr);
+    return true;
+  } catch(e) {
+    console.warn('[SW] markMedWithUserToken network error:', e.message);
+    return false;
+  }
+};
+
 // ═══ CLICK EN NOTIFICACIÓN ═══
 self.addEventListener('notificationclick', event => {
   const { action, notification } = event;
@@ -305,49 +348,6 @@ self.addEventListener('notificationclick', event => {
     })
   );
 });
-
-// ═══ MARK MED CON TOKEN REAL DEL USUARIO ═══
-// Usa el access_token JWT real recibido via SW_SET_AUTH_CONTEXT
-// NUNCA usa la publishable key como Bearer token
-const markMedWithUserToken = async (notifId, dateStr) => {
-  if(!_authCtx?.access_token) return false;
-  const medKeys = notifId === 'meds2'
-    ? ['finasteride', 'minoxidil']
-    : (notifId === 'meds' || notifId === 'meds_urgent')
-      ? ['roacuttan']
-      : [];
-  if(medKeys.length === 0) return false;
-
-  try {
-    for(const medKey of medKeys) {
-      const res = await fetchWithTimeout(`${SUPA_URL}/rest/v1/rpc/patch_med_status`, {
-        method:  'POST',
-        headers: {
-          'apikey':        SUPA_ANON,
-          'Authorization': `Bearer ${_authCtx.access_token}`, // JWT real del usuario
-          'Content-Type':  'application/json'
-        },
-        body: JSON.stringify({
-          p_date:      dateStr,
-          p_med:       medKey,
-          p_val:       true,
-          p_device_id: _authCtx.device_id || 'sw'
-        })
-      });
-
-      if(!res.ok) {
-        const errText = await res.text().catch(() => '');
-        console.warn('[SW] patch_med_status error', res.status, errText.slice(0, 100));
-        return false;
-      }
-    }
-    console.log('[SW] Med marcado ok:', medKeys.join(','), dateStr);
-    return true;
-  } catch(e) {
-    console.warn('[SW] markMedWithUserToken network error:', e.message);
-    return false;
-  }
-};
 
 // ═══ BACKGROUND SYNC ═══
 // El SW ya NO es el escritor principal del outbox.

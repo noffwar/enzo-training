@@ -20,7 +20,7 @@
   SectionAccordion,
   SegmentedPillGroup,
   HealthStatusCard,
-  HealthHistoryRow
+  HealthHistoryRow, ISync, ICheck, IChevD
 }) => {  return function HealthView({session, onSyncDailyMeds, bodyWeight, onBodyWeight, todayMeds, previousDayMeds, weekTracker, healthWeekKey, onOpenDay}) {
       const [stock, setStock] = useState(MEDS_STOCK_DEFAULT);
       const [loading, setLoading] = useState(true);
@@ -827,7 +827,7 @@
                   <div style="display:flex;flex-direction:column;gap:8px;">
                     ${historyEntries.length === 0 ? html`
                       <p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay movimientos guardados.</p>
-                    ` : historyEntries.map(({ entry, meta }) => html`<${HealthHistoryRow} entry=${entry} meta=${meta} editingHistoryAt=${editingHistoryAt} onEdit=${editHistoryEntry} onDelete=${deleteHistoryEntry} />`)}
+                    ` : historyEntries.map(({ entry, meta }) => html`<${HealthHistoryRow, ISync, ICheck, IChevD} entry=${entry} meta=${meta} editingHistoryAt=${editingHistoryAt} onEdit=${editHistoryEntry} onDelete=${deleteHistoryEntry} />`)}
                   </div>
                 </div>
                 <//>
