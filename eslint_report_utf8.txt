@@ -1,0 +1,19 @@
+﻿
+C:\Users\castr\Desktop\App_ Nutricion Supabase\app-health.js
+   93:15  error  'persistHealth' was used before it was defined  no-use-before-define
+  467:23  error  'DAYS' is not defined                           no-undef
+  570:22  error  'ISync' is not defined                          no-undef
+
+C:\Users\castr\Desktop\App_ Nutricion Supabase\app-productivity.js
+   870:48  error  'priorityColor' is not defined     no-undef
+  1176:28  error  'metaGet' is not defined           no-undef
+  1203:25  error  'DEVICE_ID' is not defined         no-undef
+  1226:37  error  'flushOutbox' is not defined       no-undef
+  1246:7   error  'ProductivityView' is not defined  no-undef
+
+C:\Users\castr\Desktop\App_ Nutricion Supabase\sw.js
+   71:19  error  'loadPersistedNotifs' was used before it was defined   no-use-before-define
+  284:28  error  'markMedWithUserToken' was used before it was defined  no-use-before-define
+
+Ô£û 10 problems (10 errors, 0 warnings)
+

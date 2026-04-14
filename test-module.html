@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <div id="test">Testing...</div>
+  <script type="module">
+    import { createApp } from './app-main.js';
+    import * as core from './app-core.js';
+    import * as utils from './app-utils.js';
+    
+    try {
+      document.getElementById('test').innerText = 'createApp type: ' + typeof createApp;
+      console.log('Core:', core);
+      console.log('Utils:', utils);
+    } catch (e) {
+      document.getElementById('test').innerText = 'Error: ' + e.message;
+    }
+  </script>
+</body>
+</html>
