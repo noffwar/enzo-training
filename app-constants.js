@@ -1,9 +1,116 @@
+export const SUPA_URL = 'https://qflajqvveuyoclmtrjtg.supabase.co';
+export const SUPA_KEY = 'sb_publishable_lwzGrcNCL3QuDHiDafwuAQ_jJd82jAa';
 export const TRAINING_PLAN_START = '2026-03-16';
 export const TRAINING_PLAN_EFFECTIVE_WEEK = '2026-03-30';
 export const TRAINING_PLAN_VERSION = '2026-03-31-r1';
 export const START_WEEK = TRAINING_PLAN_START;
 export const ROUTINES_STORAGE_KEY = 'enzo_routines_v1';
 export const DAY_KEYS = ['1', '2', '3', '4', '5', '6', '0'];
+
+export const HOLIDAYS_2026 = {
+  "2026-01-01": "Ano Nuevo",
+  "2026-02-16": "Carnaval",
+  "2026-02-17": "Carnaval",
+  "2026-03-23": "Feriado turistico",
+  "2026-03-24": "Dia de la Memoria",
+  "2026-04-02": "Dia del Veterano y de los Caidos en Malvinas",
+  "2026-04-03": "Viernes Santo",
+  "2026-05-01": "Dia del Trabajador",
+  "2026-05-25": "Revolucion de Mayo",
+  "2026-06-15": "Paso a la Inmortalidad del General Guemes",
+  "2026-06-22": "Paso a la Inmortalidad del General Belgrano",
+  "2026-07-09": "Dia de la Independencia",
+  "2026-07-10": "Feriado turistico",
+  "2026-08-17": "Paso a la Inmortalidad del General San Martin",
+  "2026-10-12": "Respeto a la Diversidad Cultural",
+  "2026-11-23": "Dia de la Soberania Nacional",
+  "2026-12-07": "Feriado turistico",
+  "2026-12-08": "Inmaculada Concepcion de Maria",
+  "2026-12-25": "Navidad"
+};
+
+export const MUSCLES = ["Pecho","Espalda","Hombros","Tríceps","Bíceps","Trapecio","Cuádriceps","Femorales","Glúteos","Pantorrillas","Lumbares","Aductores","Core"];
+export const DAYS = [{key:"1",label:"Lun",abbr:"L"},{key:"2",label:"Mar",abbr:"M"},{key:"3",label:"Mié",abbr:"X"},{key:"4",label:"Jue",abbr:"J"},{key:"5",label:"Vie",abbr:"V"},{key:"6",label:"Sáb",abbr:"S"},{key:"0",label:"Dom",abbr:"D"}];
+
+export const PLAN_SPLITS = {
+  "4": { "1":"1", "2":"2", "3":"", "4":"4", "5":"5", "6":"", "0":"" },
+  "5": { "1":"1", "2":"2", "3":"3", "4":"4", "5":"5", "6":"", "0":"" }
+};
+
+export const TARGETS = { prot: 165, carb: 180, fat: 70, kcal: 2000 };
+
+export const HOME_FOODS = [
+  { name:"Pechuga de Pollo (cruda)", p:23, c:0,  f:2,   unit:"100g"   },
+  { name:"Huevo Entero",             p:6,  c:0.5, f:5,   unit:"unidad" },
+  { name:"Carne Vacuna (magra)",     p:21, c:0,   f:6,   unit:"100g"   },
+  { name:"Arroz (seco)",             p:7,  c:77,  f:1,   unit:"100g"   },
+  { name:"Leche Entera",             p:3,  c:5,   f:1.5, unit:"100ml"  }
+];
+
+const mkSet = (reps, weight, rir, restSecs, restStr) => ({
+  reps: String(reps), weight: String(weight), rir: String(rir), restSecs, restStr
+});
+
+export const trainingPlanRoutines = {
+  "1": { id:"1", name:"Torso A", fullName:"DIA 1: Torso A", description:"Vector primario: empuje y tension mecanica", exercises:[
+    { name:"Press banca plano", sets:[mkSet("11","65,0","2",180,"3 min"),mkSet("9","65,0","1",180,"3 min"),mkSet("8","65,0","1",180,"3 min")] },
+    { name:"Remo 45° con barra", sets:[mkSet("13","40,0","2",150,"2,5 min"),mkSet("11","45,0","1",150,"2,5 min"),mkSet("9","50,0","1",150,"2,5 min")] },
+    { name:"Press militar en Smith", sets:[mkSet("12","40,0","2",120,"2 min"),mkSet("10","45,0","1",120,"2 min"),mkSet("8","50,0","1",120,"2 min")] },
+    { name:"Maquina de Jalon Dorsal Isolateral", sets:[mkSet("12","40,0","2",120,"2 min"),mkSet("10","45,0","1",120,"2 min"),mkSet("8","50,0","1",120,"2 min")] },
+    { name:"Hombro vuelo lateral", sets:[mkSet("15","9,0","2",90,"1,5 min"),mkSet("12","9,0","1",90,"1,5 min"),mkSet("10","9,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Encogimientos de Trapecio", sets:[mkSet("15","21,0","2",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min"),mkSet("12","25,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Cruces en polea alta", sets:[mkSet("15","15,0","1",90,"1,5 min"),mkSet("12","20,0","1",90,"1,5 min"),mkSet("12","20,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Cruces invertidos en polea", sets:[mkSet("15","5,0","1",90,"1,5 min"),mkSet("12","7,5","1",90,"1,5 min"),mkSet("12","7,5","0 (Fallo)",90,"1,5 min")] },
+    { name:"Push-up Plus", sets:[mkSet("15","Peso corporal","2",90,"1,5 min"),mkSet("15","Peso corporal","1",90,"1,5 min"),mkSet("Fallo tecnico","Peso corporal","0",90,"1,5 min")] }
+  ]},
+  "2": { id:"2", name:"Pierna A + Brazos A", fullName:"DIA 2: Pierna A y Brazos A", description:"Vector primario: cuadriceps, gemelos, brazos y core", exercises:[
+    { name:"Sentadilla Smith", sets:[mkSet("10","30,0","2",180,"3 min"),mkSet("8","40,0","1",180,"3 min"),mkSet("8","50,0","1",180,"3 min")] },
+    { name:"Peso muerto mancuernas (Rumano)", sets:[mkSet("10","20,0","2",150,"2,5 min"),mkSet("8","25,0","2",150,"2,5 min"),mkSet("8","25,0","1",150,"2,5 min")] },
+    { name:"Maquina cuadriceps (Extensiones Bilaterales)", sets:[mkSet("15","35,0","2",90,"1,5 min"),mkSet("12","40,0","1",90,"1,5 min"),mkSet("10","45,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Curl femoral tumbado", sets:[mkSet("15","25,0","2",90,"1,5 min"),mkSet("12","30,0","1",90,"1,5 min"),mkSet("10","35,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Aductores maquina", sets:[mkSet("15","65,0","1",90,"1,5 min"),mkSet("12","70,0","0 (Fallo)",90,"1,5 min"),mkSet("12","70,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Elevacion de Gemelos de pie", sets:[mkSet("Metodo 7-7-7","40,0","2",90,"1,5 min"),mkSet("Metodo 7-7-7","60,0","1",90,"1,5 min"),mkSet("Metodo 7-7-7","70,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Soleos banco", sets:[mkSet("20","20,0","2",90,"1,5 min"),mkSet("18","22,5","1",90,"1,5 min"),mkSet("15","25,0","1",90,"1,5 min"),mkSet("15","25,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Curl Biceps Martillo mancuernas", sets:[mkSet("12","10,0","1",90,"1,5 min"),mkSet("10","12,5","1",90,"1,5 min"),mkSet("10","12,5","0 (Fallo)",90,"1,5 min")] },
+    { name:"Triceps polea con barra", sets:[mkSet("15","35,0","2",90,"1,5 min"),mkSet("12","40,0","1",90,"1,5 min"),mkSet("10","45,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Crunch en polea alta", sets:[mkSet("15","20,0","1",90,"1,5 min"),mkSet("15","20,0","1",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min")] },
+    { name:"Pallof Press", sets:[mkSet("12","10,0","1",90,"1,5 min"),mkSet("12","10,0","1",90,"1,5 min"),mkSet("12","15,0","1",90,"1,5 min")] },
+    { name:"Elevaciones de Tibial", sets:[mkSet("20","Peso corporal","2",90,"1,5 min"),mkSet("15","Peso corporal","1",90,"1,5 min"),mkSet("Fallo tecnico","Peso corporal","0",90,"1,5 min")] }
+  ]},
+  "3": { id:"3", name:"Accesorios + Core", fullName:"DIA 3: Accesorios y Core", description:"Vector primario: hombro lateral, brazos y estabilidad", exercises:[
+    { name:"Hombro vuelo lateral", sets:[mkSet("15","9,0","2",90,"1,5 min"),mkSet("12","9,0","1",90,"1,5 min"),mkSet("10","9,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Encogimientos de Trapecio", sets:[mkSet("15","21,0","2",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min"),mkSet("12","25,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Curl Biceps Martillo mancuernas", sets:[mkSet("12","10,0","1",90,"1,5 min"),mkSet("10","12,5","1",90,"1,5 min"),mkSet("10","12,5","0 (Fallo)",90,"1,5 min")] },
+    { name:"Mancuernas biceps supino", sets:[mkSet("15","10,0","2",90,"1,5 min"),mkSet("12","12,5","1",90,"1,5 min"),mkSet("10","12,5","0 (Fallo)",90,"1,5 min")] },
+    { name:"Triceps polea con barra", sets:[mkSet("15","35,0","2",90,"1,5 min"),mkSet("12","40,0","1",90,"1,5 min"),mkSet("10","45,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Triceps polea soga", sets:[mkSet("15","25,0","2",90,"1,5 min"),mkSet("12","30,0","1",90,"1,5 min"),mkSet("10","35,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Crunch en polea alta", sets:[mkSet("15","20,0","1",90,"1,5 min"),mkSet("15","20,0","1",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min")] },
+    { name:"Pallof Press", sets:[mkSet("12","10,0","1",90,"1,5 min"),mkSet("12","10,0","1",90,"1,5 min"),mkSet("12","15,0","1",90,"1,5 min")] }
+  ]},
+  "4": { id:"4", name:"Torso B", fullName:"DIA 4: Torso B", description:"Vector primario: traccion y postura", exercises:[
+    { name:"Dominadas prono y neutras", sets:[mkSet("Max.","Peso propio","1",150,"2,5 min"),mkSet("Max.","Peso propio","1",150,"2,5 min"),mkSet("Max.","Peso propio","1",150,"2,5 min")] },
+    { name:"Press inclinado mancuernas", sets:[mkSet("12","17,5","2",150,"2,5 min"),mkSet("10","20,0","1",150,"2,5 min"),mkSet("8","20,0","1",150,"2,5 min")] },
+    { name:"Remo sentado en maquina unilateral", sets:[mkSet("12","20,0","2",90,"1,5 min"),mkSet("10","25,0","1",90,"1,5 min"),mkSet("8","30,0","1",90,"1,5 min")] },
+    { name:"Mariposa (Pectoral)", sets:[mkSet("15","40,0","2",90,"1,5 min"),mkSet("12","50,0","1",90,"1,5 min"),mkSet("10","55,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Facepull en Polea Alta", sets:[mkSet("15","15,0","2",90,"1,5 min"),mkSet("12","20,0","1",90,"1,5 min"),mkSet("12","20,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Hombro vuelo lateral en polea baja", sets:[mkSet("15","5,0","2",90,"1,5 min"),mkSet("12","5,0","1",90,"1,5 min"),mkSet("12","5,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Push-up Plus", sets:[mkSet("15","Peso corporal","2",90,"1,5 min"),mkSet("15","Peso corporal","1",90,"1,5 min"),mkSet("Fallo tecnico","Peso corporal","0",90,"1,5 min")] }
+  ]},
+  "5": { id:"5", name:"Pierna B + Brazos B", fullName:"DIA 5: Pierna B y Brazos B", description:"Vector primario: asimetria, gluteos, lumbares, brazos y core", exercises:[
+    { name:"Hip Thrust con Maquina", sets:[mkSet("12","60,0","2",150,"2,5 min"),mkSet("10","70,0","2",150,"2,5 min"),mkSet("8","80,0","1",150,"2,5 min")] },
+    { name:"Sentadilla Bulgara en Smith", sets:[mkSet("12","20,0","2",120,"2 min"),mkSet("10","25,0","1",120,"2 min"),mkSet("10","25,0","1",120,"2 min")] },
+    { name:"Curl femoral sentado", sets:[mkSet("10","30,0","2",90,"1,5 min"),mkSet("9","35,0","1",90,"1,5 min"),mkSet("8","40,0","0 (Fallo)",90,"1,5 min"),mkSet("15","60,0","1",90,"1,5 min"),mkSet("12","65,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Maquina cuadriceps unilateral", sets:[mkSet("15","20,0","2",90,"1,5 min"),mkSet("12","25,0","1",90,"1,5 min"),mkSet("10","30,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Abductores maquina", sets:[mkSet("15","50,0","2",90,"1,5 min"),mkSet("12","55,0","1",90,"1,5 min"),mkSet("12","60,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Elevacion de Gemelos (Prensa)", sets:[mkSet("15","70,0","2",90,"1,5 min"),mkSet("12","80,0","1",90,"1,5 min"),mkSet("10","90,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Extensiones Lumbares en Banco Romano", sets:[mkSet("15","Peso corporal","2",90,"1,5 min"),mkSet("12","5,0","1",90,"1,5 min"),mkSet("12","5,0","1",90,"1,5 min")] },
+    { name:"Mancuernas biceps", sets:[mkSet("15","10,0","2",90,"1,5 min"),mkSet("12","12,5","1",90,"1,5 min"),mkSet("10","12,5","0 (Fallo)",90,"1,5 min")] },
+    { name:"Triceps polea soga", sets:[mkSet("15","25,0","2",90,"1,5 min"),mkSet("12","30,0","1",90,"1,5 min"),mkSet("10","35,0","0 (Fallo)",90,"1,5 min")] },
+    { name:"Elevacion de rodillas colgado", sets:[mkSet("Fallo tecnico (~15)","Peso corporal","0",90,"1,5 min"),mkSet("Fallo tecnico (~12)","Peso corporal","0",90,"1,5 min"),mkSet("Fallo tecnico (~10)","Peso corporal","0",90,"1,5 min"),mkSet("Fallo tecnico (~10)","Peso corporal","0",90,"1,5 min")] },
+    { name:"Elevaciones de Tibial", sets:[mkSet("20","Peso corporal","2",90,"1,5 min"),mkSet("15","Peso corporal","1",90,"1,5 min"),mkSet("Fallo tecnico","Peso corporal","0",90,"1,5 min")] }
+  ]}
+};
+
 
 export const SWEETS_STOCK_KEY = 'enzo_sweets_sauces_stock_v1';
 

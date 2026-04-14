@@ -84,6 +84,8 @@ export const formatWeekLabel = (weekKey) => {
 };
 
 export const isDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+export const isWeekKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+export const isValidDateValue = (d) => d instanceof Date && !isNaN(d);
 
 export const isBeforeStart = (value = '', startWeek = START_WEEK) => {
   const key = String(value || '').slice(0, 10);
