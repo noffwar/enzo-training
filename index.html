@@ -1,4 +1,4 @@
-<!-- Deployment: 2026-04-14 11:30 -->
+<!-- Deployment: 2026-04-15 02:00 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -39,6 +39,19 @@
     .check-btn { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:none; cursor:pointer; transition:all 0.15s; }
     .rpe-slider { width:100%; height:6px; border-radius:3px; appearance:none; -webkit-appearance:none; cursor:pointer; background: linear-gradient(to right, #6366F1, #10B981, #F59E0B, #EF4444); }
     .rpe-slider::-webkit-slider-thumb { appearance:none; width:18px; height:18px; background:white; border-radius:50%; border:2px solid #6366F1; }
+    .section-toggle { width:100%; display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:transparent; border:none; color:#E2E8F0; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    .section-toggle:hover { background:rgba(255,255,255,0.02); }
+    .btn-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; border:1px solid #1E2D45; background:#162035; cursor:pointer; color:#94A3B8; transition:all 0.15s; flex-shrink:0; }
+    .btn-icon:hover { background:#1E2D45; }
+    .chev { transition: transform 0.2s ease; color:#64748b; }
+    .chev.open { transform: rotate(180deg); }
+    .fade-up { animation: fadeUp 0.3s ease-out; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    .timer-urgent { animation: timerPulse 0.6s ease-in-out infinite alternate; }
+    @keyframes timerPulse { from { opacity:1; } to { opacity:0.5; } }
+    .text-green { color:#10B981; }
+    .text-red { color:#EF4444; }
+    select.inp { appearance:auto; -webkit-appearance:auto; }
   </style>
 </head>
 <body>
@@ -89,24 +102,24 @@
     import { createClient } from 'https://esm.sh/@supabase/supabase-js';
 
     // Core & Views imports
-    import * as core from './app-core.js?v=20260414';
-    import * as gym from './app-gym.js?v=20260414';
-    import * as comp from './app-components.js?v=20260414';
-    import * as utils from './app-utils.js?v=20260414';
-    import * as cons from './app-constants.js?v=20260414';
-    import { createProductivityView } from './app-productivity.js?v=20260414';
-    import { createHealthView } from './app-health.js?v=20260414';
-    import { createRecipesView } from './app-recipes.js?v=20260414';
-    import { createStudyView } from './app-study.js?v=20260414';
-    import { createBooksView } from './app-books.js?v=20260414';
-    import { createProgressViews } from './app-progress.js?v=20260414';
-    import { createTimerView } from './app-timer.js?v=20260414';
-    import { createNotifView } from './app-notifs.js?v=20260414';
-    import { createGymPanel } from './app-gym.js?v=20260414';
-    import { createLoginView } from './app-login.js?v=20260414';
-    import { createTodayDashboard } from './app-dashboard.js?v=20260414';
-    import { createHabitsPanel } from './app-habits.js?v=20260414';
-    import { createApp } from './app-main.js?v=20260414';
+    import * as core from './app-core.js?v=20260415';
+    import * as gym from './app-gym.js?v=20260415';
+    import * as comp from './app-components.js?v=20260415';
+    import * as utils from './app-utils.js?v=20260415';
+    import * as cons from './app-constants.js?v=20260415';
+    import { createProductivityView } from './app-productivity.js?v=20260415';
+    import { createHealthView } from './app-health.js?v=20260415';
+    import { createRecipesView } from './app-recipes.js?v=20260415';
+    import { createStudyView } from './app-study.js?v=20260415';
+    import { createBooksView } from './app-books.js?v=20260415';
+    import { createProgressViews } from './app-progress.js?v=20260415';
+    import { createTimerView } from './app-timer.js?v=20260415';
+    import { createNotifView } from './app-notifs.js?v=20260415';
+    import { createGymPanel } from './app-gym.js?v=20260415';
+    import { createLoginView } from './app-login.js?v=20260415';
+    import { createTodayDashboard } from './app-dashboard.js?v=20260415';
+    import { createHabitsPanel } from './app-habits.js?v=20260415';
+    import { createApp } from './app-main.js?v=20260415';
 
     (async () => {
       try {

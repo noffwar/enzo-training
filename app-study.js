@@ -1,4 +1,4 @@
-﻿export const createStudyView = ({
+export const createStudyView = ({
   html,
   useState,
   useEffect,
@@ -185,7 +185,7 @@
                           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;">
                             <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${row.subject}</p>
                             <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${pct===100?'#10B981':pct>0?'#F59E0B':'#64748b'};">${done}/${topics.length} · ${pct}%</span>
-                            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:${pct===100?'#10B981':pct>0?'#F59E0B':'#64748b'};">${done}/${topics.length} Â· ${pct}%</span>
+                          </div>
                           <div style="height:7px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;">
                             <div style=${`height:100%;width:${pct}%;background:${pct===100?'#10B981':'linear-gradient(90deg,#10B981,#6366F1)'};transition:width 0.2s;`}></div>
                           </div>

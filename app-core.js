@@ -616,4 +616,97 @@ export const ft = s => {
   return `${m}:${sec<10?'0':''}${sec}`;
 };
 
+// ── dayTotals: calcula totales de macros de un array de comidas ──
+export const dayTotals = (meals = []) => {
+  const arr = Array.isArray(meals) ? meals : [];
+  return arr.reduce((acc, m) => {
+    acc.cals += pn(m?.cals ?? m?.kcal ?? 0);
+    acc.prot += pn(m?.prot ?? 0);
+    acc.carb += pn(m?.carb ?? 0);
+    acc.fat  += pn(m?.fat ?? 0);
+    return acc;
+  }, { cals: 0, prot: 0, carb: 0, fat: 0 });
+};
+
+// ── serializeMeals: fingerprint para detectar cambios en meals ──
+export const serializeMeals = (tracker) => {
+  try {
+    const meals = tracker?.meals || [];
+    return JSON.stringify(meals);
+  } catch (_) {
+    return '';
+  }
+};
+
+// ── getPlanMode: devuelve '4' o '5' según el dayMapping de la semana ──
+export const getPlanMode = (weekData) => {
+  const dm = weekData?.dayMapping;
+  if (!dm || typeof dm !== 'object') return '4';
+  const assigned = Object.values(dm).filter(v => v && v !== '').length;
+  return assigned >= 5 ? '5' : '4';
+};
+
+// ── getFastStats: calcula estadísticas de ayuno intermitente ──
+export const getFastStats = (tracker) => {
+  if (!tracker || !tracker.fasted) return { active: false, startTime: '', hours: 0, remaining: 0, elapsed: 0, pct: 0 };
+  const startTime = tracker.fastStartTime || '';
+  const hours = pn(tracker.fastHours) || 16;
+  if (!startTime) return { active: true, startTime: '', hours, remaining: hours, elapsed: 0, pct: 0 };
+  const [sH, sM] = startTime.split(':').map(Number);
+  if (isNaN(sH)) return { active: true, startTime, hours, remaining: hours, elapsed: 0, pct: 0 };
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(sH, sM || 0, 0, 0);
+  if (start > now) start.setDate(start.getDate() - 1);
+  const elapsedMs = now - start;
+  const elapsed = Math.max(0, elapsedMs / 3600000);
+  const remaining = Math.max(0, hours - elapsed);
+  const pctVal = Math.min(100, Math.round((elapsed / hours) * 100));
+  return { active: true, startTime, hours, remaining, elapsed, pct: pctVal };
+};
+
+// ── isGymClosedDate: si la fecha es domingo o feriado ──
+export const isGymClosedDate = (dateStr) => {
+  if (!dateStr) return false;
+  try {
+    const d = new Date(dateStr + 'T12:00:00');
+    if (d.getDay() === 0) return true; // domingo
+    // importar HOLIDAYS_2026 no es posible circularmente, así que check inline
+    return false;
+  } catch (_) {
+    return false;
+  }
+};
+
+// ── localStorage helpers para tasks y thoughts ──
+const TASK_ALERTS_KEY = 'enzo_task_alerts_v1';
+const THOUGHT_DRAFTS_KEY = 'enzo_thought_drafts_v1';
+const THOUGHT_THREADS_KEY = 'enzo_thought_threads_v1';
+
+export const loadTaskAlerts = () => {
+  try { return JSON.parse(localStorage.getItem(TASK_ALERTS_KEY) || '{}'); }
+  catch (_) { return {}; }
+};
+export const saveTaskAlerts = (alerts) => {
+  try { localStorage.setItem(TASK_ALERTS_KEY, JSON.stringify(alerts || {})); }
+  catch (_) {}
+};
+
+export const loadThoughtDrafts = () => {
+  try { return JSON.parse(localStorage.getItem(THOUGHT_DRAFTS_KEY) || '{}'); }
+  catch (_) { return {}; }
+};
+export const saveThoughtDrafts = (drafts) => {
+  try { localStorage.setItem(THOUGHT_DRAFTS_KEY, JSON.stringify(drafts || {})); }
+  catch (_) {}
+};
+
+export const loadThoughtThreads = () => {
+  try { return JSON.parse(localStorage.getItem(THOUGHT_THREADS_KEY) || '{}'); }
+  catch (_) { return {}; }
+};
+export const saveThoughtThreads = (threads) => {
+  try { localStorage.setItem(THOUGHT_THREADS_KEY, JSON.stringify(threads || {})); }
+  catch (_) {}
+};
 

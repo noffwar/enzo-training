@@ -272,7 +272,7 @@ export const createApp = (deps) => {
             <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${(ei,si,rs) => upd(w => {const s=[...(w.sessions[activeDay]||[])];const sets=[...s[ei].sets];sets[si]={...sets[si],completed:!sets[si].completed};s[ei]={...s[ei],sets};if(sets[si].completed){setTimerLeft(rs);setTimerActive(true)};return{...w,sessions:{...w.sessions,[activeDay]:s}};})} />
           `}
           ${view === 'tasks' && html`<${ProductivityView} session=${session} />`}
-          ${view === 'week' && html`<${WeekSummary} allWeeks=${allWeeks} currentWk=${currentWk} />`}
+          ${view === 'week' && html`<${WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />`}
           ${view === 'progress' && html`<${ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />`}
           ${view === 'recipes' && html`<${RecipesView} session=${session} />`}
         </main>
@@ -295,7 +295,7 @@ export const createApp = (deps) => {
            </div>
         </nav>
 
-        ${timerActive && html`<${FloatingTimer} timeLeft=${timerLeft} onStop=${() => setTimerActive(false)} />`}
+        ${(timerActive || timerLeft > 0) && html`<${FloatingTimer} left=${timerLeft} active=${timerActive} onToggle=${() => setTimerActive(a => !a)} onReset=${() => { setTimerLeft(0); setTimerActive(false); }} />`}
       </div>
     `;
   };

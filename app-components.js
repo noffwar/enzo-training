@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════
 //  SVG ICONS (inline, sin dependencias)
+//  NOTA: Las versiones exportadas requieren html como prop.
+//  Las versiones sin-prop se crean dentro de createAppComponents.
 // ═══════════════════════════════════════════════════
 export const Icon = ({html, d, s=18, c=''}) => html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${c}>${d}</svg>`;
 export const IPlay    = ({html, s,c}) => html`<${Icon} html=${html} s=${s} c=${c} d=${html`<polygon points="5 3 19 12 5 21 5 3"/>`}/>`;
@@ -23,7 +25,7 @@ export const IDumb    = ({html, s,c}) => html`<${Icon} html=${html} s=${s} c=${c
 export const IActivity= ({html, s,c}) => html`<${Icon} html=${html} s=${s} c=${c} d=${html`<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`}/>`;
 
 // ═══════════════════════════════════════════════════
-//  COMPONENTES BASE
+//  COMPONENTES BASE (requieren html como prop — versiones legacy)
 // ═══════════════════════════════════════════════════
 export const Card = ({html, children, style=''}) => html`<div class="glass-card" style=${`padding:16px;${style}`}>${children}</div>`;
 
@@ -61,16 +63,81 @@ export const CheckRow = ({html, label, checked, onChange, children}) => html`
   </div>
 `;
 
+// ═══════════════════════════════════════════════════
+//  createAppComponents: factory que captura `html` por closure
+//  y devuelve versiones de iconos/componentes que NO necesitan
+//  recibir `html` como prop — para uso en view modules.
+// ═══════════════════════════════════════════════════
 export const createAppComponents = ({
-
   html,
-  ICheck,
+  ICheck: _ICheck,
   RECIPE_KIND_META,
   priorityColor,
   categoryMeta,
   recurrenceLabel,
   formatTaskDate
 }) => {
+
+  // ─── Iconos con html en closure ───
+  const _Icon = ({d, s=18, c=''}) => html`<svg width=${s} height=${s} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class=${c}>${d}</svg>`;
+  const BoundIPlay    = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<polygon points="5 3 19 12 5 21 5 3"/>`}/>`;
+  const BoundIPause   = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>`}/>`;
+  const BoundIReset   = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/>`}/>`;
+  const BoundICheck   = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<polyline points="20 6 9 17 4 12"/>`}/>`;
+  const BoundIClock   = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>`}/>`;
+  const BoundIChevD   = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<polyline points="6 9 12 15 18 9"/>`}/>`;
+  const BoundIChevL   = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<polyline points="15 18 9 12 15 6"/>`}/>`;
+  const BoundIChevR   = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<polyline points="9 18 15 12 9 6"/>`}/>`;
+  const BoundISync    = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>`}/>`;
+  const BoundIHome    = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>`}/>`;
+  const BoundICal     = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>`}/>`;
+  const BoundIBar     = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`}/>`;
+  const BoundITarget  = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>`}/>`;
+  const BoundIBook    = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>`}/>`;
+  const BoundIBell    = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>`}/>`;
+  const BoundIEdit    = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>`}/>`;
+  const BoundIList    = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>`}/>`;
+  const BoundIDumb    = ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<path d="M6 5v14M18 5v14"/><path d="M6 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h3M18 8h3a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-3"/><rect x="6" y="11" width="12" height="2" rx="1"/>`}/>`;
+  const BoundIActivity= ({s,c}) => html`<${_Icon} s=${s} c=${c} d=${html`<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>`}/>`;
+
+  // ─── Componentes base con html en closure ───
+  const BoundCard = ({children, style=''}) => html`<div class="glass-card" style=${`padding:16px;${style}`}>${children}</div>`;
+
+  const BoundSectionAccordion = ({icon, title, isOpen, onToggle, children}) => html`
+    <div class="glass-card" style="overflow:hidden;">
+      <button class="section-toggle" onClick=${onToggle}>
+        <span style="display:flex;align-items:center;gap:8px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.05em;">
+          ${icon}${title}
+        </span>
+        <${BoundIChevD} s=${18} c=${`chev ${isOpen?'open':''}`}/>
+      </button>
+      ${isOpen && html`
+        <div style="padding:16px;border-top:1px solid #1E2D45;">
+          ${children}
+        </div>
+      `}
+    </div>
+  `;
+
+  const BoundInp = ({label, value, onChange, placeholder, type='text'}) => html`
+    <div>
+      ${label && html`<label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">${label}</label>`}
+      <input type=${type} value=${value} onInput=${e=>onChange(e.target.value)} placeholder=${placeholder||''}
+        class="inp" />
+    </div>
+  `;
+
+  const BoundCheckRow = ({label, checked, onChange, children}) => html`
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px;">
+        <input type="checkbox" checked=${checked} onChange=${e=>onChange(e.target.checked)} />
+        <span style="font-size:14px;color:#cbd5e1;">${label}</span>
+      </label>
+      ${checked && html`<div style="padding-left:28px;display:flex;flex-direction:column;gap:8px;">${children}</div>`}
+    </div>
+  `;
+
+  // ─── Dynamic components (already use html from closure) ───
   const SegmentedPillGroup = ({
     options,
     value,
@@ -254,7 +321,7 @@ export const createAppComponents = ({
         <div style="display:flex;gap:6px;">
           <${TaskActionButton} className="btn-icon" onClick=${onEdit} label="E" />
           <button class="btn-icon" style="background:#162035;border:1px solid rgba(16,185,129,0.35);" onClick=${onDone}>
-            <${ICheck} s=${16} c="text-green"/>
+            <${BoundICheck} s=${16} c="text-green"/>
           </button>
           <${TaskActionButton} className="btn-icon" onClick=${onArchive} label="A" />
           <${TaskActionButton} className="btn-icon" onClick=${onDelete} label="X" />
@@ -276,7 +343,94 @@ export const createAppComponents = ({
     </div>
   `;
 
+  // ─── ProteinProgress with closure html ───
+  const BoundProteinProgress = ({current, TARGETS: targets, fn}) => {
+    const goal = targets.prot;
+    const pct  = Math.min((current / goal) * 100, 100);
+    const minCovered = Math.round(goal * 0.75);
+    const color = current >= goal ? '#10B981' : current >= minCovered ? '#F59E0B' : '#EF4444';
+    return html`
+      <div style="margin-top:12px;padding:12px;background:rgba(16,185,129,0.05);border-radius:8px;border:1px solid rgba(16,185,129,0.1);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Progreso Proteico</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${color};">${fn(current)} / ${goal}g</span>
+        </div>
+        <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${color};transition:width 0.5s ease;box-shadow:0 0 8px ${color}66;"></div>
+        </div>
+        <p style="margin:6px 0 0;font-size:10px;color:#475569;">
+          ${current >= goal ? '✅ Objetivo alcanzado' : current >= minCovered ? '⚠️ Mínimo cubierto' : '🚀 Falta para el ideal'}
+        </p>
+      </div>
+    `;
+  };
+
+  // ─── WaterTracker with closure html ───
+  const BoundWaterTracker = ({val, onChange, roacuttan}) => {
+    const goal  = 3500;
+    const pct   = Math.min((val/goal)*100, 100);
+    const color = !roacuttan && val >= 1000
+      ? '#EF4444'
+      : val >= goal ? '#10B981' : val >= 2000 ? '#6366F1' : '#F59E0B';
+    const warn  = !roacuttan;
+
+    return html`
+      <div class="glass-card" style="padding:12px;border:1px solid ${warn?'rgba(239,68,68,0.3)':'var(--border)'};display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+              <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">💧 Hidratación</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${color};">${(val/1000).toFixed(1)}L / 3.5L</span>
+            </div>
+            <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
+              <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s;"></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            <button class="btn-icon" style="background:#1E2D45;color:white;border:1px solid #1E2D45;font-size:16px;"
+              onClick=${()=>onChange(Math.max(0, val-250))}>−</button>
+            <button class="btn-icon" style="background:#6366F1;color:white;border:none;font-size:16px;"
+              onClick=${()=>onChange(val+250)}>+</button>
+          </div>
+        </div>
+        ${warn && html`
+          <p style="margin:0;font-size:10px;color:#EF4444;display:flex;align-items:center;gap:4px;">
+            ⚠ Roacuttan no marcado — hidratate bien para reducir toxicidad acumulada
+          </p>
+        `}
+      </div>
+    `;
+  };
+
   return {
+    // Bound icons (no html prop needed)
+    IPlay: BoundIPlay,
+    IPause: BoundIPause,
+    IReset: BoundIReset,
+    ICheck: BoundICheck,
+    IClock: BoundIClock,
+    IChevD: BoundIChevD,
+    IChevL: BoundIChevL,
+    IChevR: BoundIChevR,
+    ISync: BoundISync,
+    IHome: BoundIHome,
+    ICal: BoundICal,
+    IBar: BoundIBar,
+    ITarget: BoundITarget,
+    IBook: BoundIBook,
+    IBell: BoundIBell,
+    IEdit: BoundIEdit,
+    IList: BoundIList,
+    IDumb: BoundIDumb,
+    IActivity: BoundIActivity,
+    // Bound base components (no html prop needed)
+    Card: BoundCard,
+    SectionAccordion: BoundSectionAccordion,
+    Inp: BoundInp,
+    CheckRow: BoundCheckRow,
+    ProteinProgress: BoundProteinProgress,
+    WaterTracker: BoundWaterTracker,
+    // Dynamic components
     SegmentedPillGroup,
     RecipeLibraryRow,
     HealthStatusCard,
@@ -291,63 +445,8 @@ export const createAppComponents = ({
   };
 };
 
-export const ProteinProgress = ({html, current, TARGETS, fn}) => {
-  const goal = TARGETS.prot;
-  const pct  = Math.min((current / goal) * 100, 100);
-  const minCovered = Math.round(goal * 0.75);
-  const color = current >= goal ? '#10B981' : current >= minCovered ? '#F59E0B' : '#EF4444';
-  return html`
-    <div style="margin-top:12px;padding:12px;background:rgba(16,185,129,0.05);border-radius:8px;border:1px solid rgba(16,185,129,0.1);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Progreso Proteico</span>
-        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${color};">${fn(current)} / ${goal}g</span>
-      </div>
-      <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
-        <div style="width:${pct}%;height:100%;background:${color};transition:width 0.5s ease;box-shadow:0 0 8px ${color}66;"></div>
-      </div>
-      <p style="margin:6px 0 0;font-size:10px;color:#475569;">
-        ${current >= goal ? '✅ Objetivo alcanzado' : current >= minCovered ? '⚠️ Mínimo cubierto' : '🚀 Falta para el ideal'}
-      </p>
-    </div>
-  `;
-};
-
-export const WaterTracker = ({html, val, onChange, roacuttan}) => {
-  const goal  = 3500;
-  const pct   = Math.min((val/goal)*100, 100);
-  const color = !roacuttan && val >= 1000
-    ? '#EF4444'
-    : val >= goal ? '#10B981' : val >= 2000 ? '#6366F1' : '#F59E0B';
-  const warn  = !roacuttan;
-
-  return html`
-    <div class="glass-card" style="padding:12px;border:1px solid ${warn?'rgba(239,68,68,0.3)':'var(--border)'};display:flex;flex-direction:column;gap:8px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <div style="flex:1;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-            <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">💧 Hidratación</span>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${color};">${(val/1000).toFixed(1)}L / 3.5L</span>
-          </div>
-          <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
-            <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s;"></div>
-          </div>
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button class="btn-icon" style="background:#1E2D45;color:white;border:1px solid #1E2D45;font-size:16px;"
-            onClick=${()=>onChange(Math.max(0, val-250))}>−</button>
-          <button class="btn-icon" style="background:#6366F1;color:white;border:none;font-size:16px;"
-            onClick=${()=>onChange(val+250)}>+</button>
-        </div>
-      </div>
-      ${warn && html`
-        <p style="margin:0;font-size:10px;color:#EF4444;display:flex;align-items:center;gap:4px;">
-          ⚠ Roacuttan no marcado — hidratate bien para reducir toxicidad acumulada
-        </p>
-      `}
-    </div>
-  `;
-};
-
+// SmartCena and NutritionReviewCard are still exported as standalone
+// because they receive deps like useState/useMemo as props from the caller.
 export const SmartCena = ({html, useState, useMemo, currentProt, tracker, TARGETS, HOME_FOODS, dayTotals, pn}) => {
   const [rec, setRec] = useState(null);
   const [open, setOpen] = useState(false);
@@ -523,5 +622,3 @@ export const NutritionReviewCard = ({html, useState, useCallback, useEffect, ser
     </div>
   `;
 };
-
-

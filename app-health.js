@@ -1,4 +1,4 @@
-﻿export const createHealthView = ({
+export const createHealthView = ({
   html,
   useState,
   useEffect,
@@ -16,6 +16,7 @@
   getDayDate,
   HEALTH_HISTORY_FILTERS,
   getHealthEntryMeta,
+  DAYS,
   Card,
   SectionAccordion,
   SegmentedPillGroup,

@@ -1,9 +1,26 @@
 export const createNotifView = (deps) => {
   const {
-    html, useState, useEffect, supabase, DEVICE_ID, pickNewestPayload,
+    html, useState, useEffect, useRef, useCallback, supabase, DEVICE_ID, pickNewestPayload,
     safeLocalSet, getDayDate, V3, IActivity, IDumb, ITarget, ISync, 
-    Card, HealthHistoryRow, safeDispatch
+    Card, HealthHistoryRow, safeDispatch,
+    metaGet, metaSet, lsNotifSave, lsNotifLoad, lsAllRoutineKeys, lsRoutineLoad, lsRoutineSave, stripRoutineMeta
   } = deps;
+
+  const loadNotifsLocal = () => {
+    try {
+      const stored = lsNotifLoad(DEVICE_ID);
+      return Array.isArray(stored?.notifs) ? stored.notifs : [
+        { id:'agua', label:'💧 Tomar agua', time:'09:00', enabled:true },
+        { id:'comida', label:'🍽️ Registrar comida', time:'13:00', enabled:true },
+        { id:'gym', label:'💪 Hora de entrenar', time:'17:00', enabled:true },
+        { id:'meds', label:'💊 Medicación', time:'08:00', enabled:true },
+        { id:'sleep', label:'😴 Hora de dormir', time:'23:00', enabled:true }
+      ];
+    } catch(_) {
+      return [];
+    }
+  };
+
   
 const NotifView = ({session}) => {
       const [notifs,    setNotifs]    = useState(() => loadNotifsLocal());
