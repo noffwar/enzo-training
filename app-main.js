@@ -56,7 +56,7 @@ export const createApp = (deps) => {
     const [syncLog, setSyncLog] = useState({ lastSync: null, lastError: null });
     const [view, setView] = useState(() => {
       const p = new URLSearchParams(window.location.search).get('view');
-      return (p && ['today','week','progress','tasks','recipes','notif','routines'].includes(p)) ? p : 'today';
+      return (p && ['today','week','progress','tasks','recipes','notif','routines','study','health','books'].includes(p)) ? p : 'today';
     });
     const [error] = useErrorBoundary();
     if (error) {
@@ -272,7 +272,7 @@ export const createApp = (deps) => {
         <!-- Content -->
         <main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;padding-bottom:100px;">
           ${view === 'today' && html`
-            <${TodayDashboard} session=${session} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('tasks')} onOpenBooks=${() => navigateTo('progress')} />
+            <${TodayDashboard} session=${session} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('study')} onOpenBooks=${() => navigateTo('books')} onOpenHealth=${() => navigateTo('health')} onOpenRecipes=${() => navigateTo('recipes')} onOpenNotif=${() => navigateTo('notif')} />
             <${HabitsPanel} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} yesterdayFastMsg=${yesterdayFastMsg} onChange=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onMed=${(m,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...(w.tracker[activeDay].meds||{}),[m]:v}}}}))} onMeal=${(i,f,v) => upd(w => {const meals=[...w.tracker[activeDay].meals];meals[i]={...meals[i],[f]:v};return{...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meals}}};})}/>
             <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${(ei,si,rs) => upd(w => {const s=[...(w.sessions[activeDay]||[])];const sets=[...s[ei].sets];sets[si]={...sets[si],completed:!sets[si].completed};s[ei]={...s[ei],sets};if(sets[si].completed){setTimerLeft(rs);setTimerActive(true)};return{...w,sessions:{...w.sessions,[activeDay]:s}};})} />
           `}
@@ -280,23 +280,38 @@ export const createApp = (deps) => {
           ${view === 'week' && html`<${WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />`}
           ${view === 'progress' && html`<${ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />`}
           ${view === 'recipes' && html`<${RecipesView} session=${session} />`}
+          ${view === 'study' && html`<${StudyView} session=${session} />`}
+          ${view === 'health' && html`<${HealthView} session=${session} todayMeds=${tracker.meds||{}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} onSyncDailyMeds=${(partial, dateKey) => {/* Placeholder hook */}} />`}
+          ${view === 'books' && html`<${BooksView} session=${session} />`}
+          ${view === 'notif' && html`<${NotifView} session=${session} />`}
+          ${view === 'routines' && html`<${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${() => {}} />`}
         </main>
 
         <!-- Footer Nav -->
-        <nav style="position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:rgba(10,15,30,0.95);backdrop-filter:blur(16px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom);">
-           <div style="display:flex;">
-             ${[
-               { id: 'today', label: 'HOY', icon: html`<${IHome} s=${18} />` },
-               { id: 'tasks', label: 'TAREAS', icon: html`<${IList} s=${18} />` },
-               { id: 'week', label: 'SEMANA', icon: html`<${ICal} s=${18} />` },
-               { id: 'progress', label: 'PROGRESO', icon: html`<${IBar} s=${18} />` },
-               { id: 'recipes', label: 'LIB', icon: html`<${IBook} s=${18} />` }
-             ].map(tab => html`
-               <button onClick=${() => navigateTo(tab.id)} style=${`flex:1;padding:12px 0;border:none;background:transparent;color:${view === tab.id ? '#10B981' : '#64748B'};cursor:pointer;display:flex;flex-direction:column;align-items:center;`}>
-                  ${tab.icon}
-                  <span style="font-size:9px;margin-top:2px;">${tab.label}</span>
-               </button>
-             `)}
+        <nav style="position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:rgba(10,15,30,0.95);backdrop-filter:blur(16px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;">
+           <div style="display:flex;min-width:max-content;padding:0 4px;">
+              ${[
+                {id:'today',    icon:html`<${IHome} s=${20}/>`, label:'HOY'},
+                {id:'week',     icon:html`<${ICal}  s=${20}/>`, label:'SEMANA'},
+                {id:'progress', icon:html`<${IBar}  s=${20}/>`, label:'PROGR'},
+                {id:'tasks',    icon:html`<${IList} s=${20}/>`, label:'TAREAS'},
+                {id:'study',    icon:html`<${ITarget} s=${20}/>`, label:'ESTUD'},
+                {id:'health',   icon:html`<${IBell} s=${20}/>`, label:'SALUD'},
+                {id:'books',    icon:html`<${IBook} s=${20}/>`, label:'OCIO'},
+                {id:'recipes',  icon:html`<${IActivity} s=${20}/>`, label:'RECET'},
+                {id:'notif',    icon:html`<${IClock} s=${20}/>`, label:'ALERTA'},
+                {id:'routines', icon:html`<${IEdit} s=${20}/>`, label:'RUTINA'},
+              ].map(tab => html`
+                <button onClick=${() => navigateTo(tab.id)} style=${`flex:none;width:56px;padding:12px 0;border:none;background:transparent;color:${view === tab.id ? '#10B981' : '#64748B'};cursor:pointer;display:flex;flex-direction:column;align-items:center;position:relative;`}>
+                   ${navBadges[tab.id] && html`
+                     <span style=${`position:absolute;top:6px;right:6px;min-width:${navBadges[tab.id].length > 1 ? '16px' : '12px'};height:12px;padding:0 3px;border-radius:999px;background:${tab.id==='health' ? '#EF4444' : '#F59E0B'};color:#fff;font-size:8px;font-weight:800;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;line-height:1;`}>
+                       ${navBadges[tab.id]}
+                     </span>
+                   `}
+                   ${tab.icon}
+                   <span style="font-size:9px;margin-top:2px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.05em;">${tab.label}</span>
+                </button>
+              `)}
            </div>
         </nav>
 
