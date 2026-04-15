@@ -75,7 +75,17 @@ export const createAppComponents = ({
   priorityColor,
   categoryMeta,
   recurrenceLabel,
-  formatTaskDate
+  formatTaskDate,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  serializeMeals,
+  fetchJsonWithTimeout,
+  dayTotals,
+  pn,
+  TARGETS,
+  HOME_FOODS
 }) => {
 
   // ─── Iconos con html en closure ───
@@ -402,54 +412,11 @@ export const createAppComponents = ({
     `;
   };
 
-  return {
-    // Bound icons (no html prop needed)
-    IPlay: BoundIPlay,
-    IPause: BoundIPause,
-    IReset: BoundIReset,
-    ICheck: BoundICheck,
-    IClock: BoundIClock,
-    IChevD: BoundIChevD,
-    IChevL: BoundIChevL,
-    IChevR: BoundIChevR,
-    ISync: BoundISync,
-    IHome: BoundIHome,
-    ICal: BoundICal,
-    IBar: BoundIBar,
-    ITarget: BoundITarget,
-    IBook: BoundIBook,
-    IBell: BoundIBell,
-    IEdit: BoundIEdit,
-    IList: BoundIList,
-    IDumb: BoundIDumb,
-    IActivity: BoundIActivity,
-    // Bound base components (no html prop needed)
-    Card: BoundCard,
-    SectionAccordion: BoundSectionAccordion,
-    Inp: BoundInp,
-    CheckRow: BoundCheckRow,
-    ProteinProgress: BoundProteinProgress,
-    WaterTracker: BoundWaterTracker,
-    // Dynamic components
-    SegmentedPillGroup,
-    RecipeLibraryRow,
-    HealthStatusCard,
-    HealthHistoryRow,
-    OcioNoteEntry,
-    DashboardStatCard,
-    DashboardActionCard,
-    DashboardTagChip,
-    TaskBadgeChip,
-    TaskActionButton,
-    TaskViewCard
-  };
-};
 
-// SmartCena and NutritionReviewCard are still exported as standalone
-// because they receive deps like useState/useMemo as props from the caller.
-export const SmartCena = ({html, useState, useMemo, currentProt, tracker, TARGETS, HOME_FOODS, dayTotals, pn}) => {
-  const [rec, setRec] = useState(null);
-  const [open, setOpen] = useState(false);
+  // ─── SmartCena with bound hooks ───
+  const SmartCena = ({currentProt, tracker}) => {
+    const [rec, setRec] = useState(null);
+    const [open, setOpen] = useState(false);
   const meals = tracker?.meals || [];
   const totals = dayTotals(meals);
   const normalizeFoodHint = (s='') => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -540,8 +507,9 @@ export const SmartCena = ({html, useState, useMemo, currentProt, tracker, TARGET
   `;
 };
 
-export const NutritionReviewCard = ({html, useState, useCallback, useEffect, serializeMeals, fetchJsonWithTimeout, dayTotals, pn, currentDateKey, currentTracker, previousDateKey, previousTracker}) => {
-  const [review, setReview] = useState({ today:null, previous:null, loadingToday:false, loadingPrevious:false, error:'' });
+  // ─── NutritionReviewCard with bound hooks ───
+  const NutritionReviewCard = ({currentDateKey, currentTracker, previousDateKey, previousTracker}) => {
+    const [review, setReview] = useState({ today:null, previous:null, loadingToday:false, loadingPrevious:false, error:'' });
   
   const fetchReview = useCallback(async (dateKey, tracker, targetKey) => {
     if(!dateKey || !(tracker?.meals || []).some(m => (m.items || []).length > 0)) return;
@@ -621,4 +589,50 @@ export const NutritionReviewCard = ({html, useState, useCallback, useEffect, ser
       ${review.error && html`<p style="margin:0;font-size:11px;color:#FCA5A5;">${review.error}</p>`}
     </div>
   `;
-};
+  };
+
+  return {
+    // Bound icons (no html prop needed)
+    IPlay: BoundIPlay,
+    IPause: BoundIPause,
+    IReset: BoundIReset,
+    ICheck: BoundICheck,
+    IClock: BoundIClock,
+    IChevD: BoundIChevD,
+    IChevL: BoundIChevL,
+    IChevR: BoundIChevR,
+    ISync: BoundISync,
+    IHome: BoundIHome,
+    ICal: BoundICal,
+    IBar: BoundIBar,
+    ITarget: BoundITarget,
+    IBook: BoundIBook,
+    IBell: BoundIBell,
+    IEdit: BoundIEdit,
+    IList: BoundIList,
+    IDumb: BoundIDumb,
+    IActivity: BoundIActivity,
+    // Bound base components (no html prop needed)
+    Card: BoundCard,
+    SectionAccordion: BoundSectionAccordion,
+    Inp: BoundInp,
+    CheckRow: BoundCheckRow,
+    ProteinProgress: BoundProteinProgress,
+    WaterTracker: BoundWaterTracker,
+    // Dynamic components
+    SegmentedPillGroup,
+    RecipeLibraryRow,
+    HealthStatusCard,
+    HealthHistoryRow,
+    OcioNoteEntry,
+    DashboardStatCard,
+    DashboardActionCard,
+    DashboardTagChip,
+    TaskBadgeChip,
+    TaskActionButton,
+    TaskViewCard,
+    SmartCena,
+    NutritionReviewCard
+  };
+
+}; // End createAppComponents

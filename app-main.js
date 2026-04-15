@@ -1,5 +1,5 @@
 import { h, render } from 'https://esm.sh/preact';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'https://esm.sh/preact/hooks';
+import { useState, useEffect, useCallback, useRef, useMemo, useErrorBoundary } from 'https://esm.sh/preact/hooks';
 import htm from 'https://esm.sh/htm';
 
 const html = htm.bind(h);
@@ -58,6 +58,11 @@ export const createApp = (deps) => {
       const p = new URLSearchParams(window.location.search).get('view');
       return (p && ['today','week','progress','tasks','recipes','notif','routines'].includes(p)) ? p : 'today';
     });
+    const [error] = useErrorBoundary();
+    if (error) {
+      return html`<div style="color:red;padding:20px;font-family:monospace;background:black;height:100vh;">RENDER CRASH: ${String(error)} ${error.stack}</div>`;
+    }
+
     const [chartsReady, setChartsReady] = useState(() => !!window.Recharts);
     const [routineData, setRoutineData] = useState(() => {
       const v3Keys = lsAllRoutineKeys();
@@ -132,7 +137,7 @@ export const createApp = (deps) => {
     useEffect(() => {
       const params = new URLSearchParams(window.location.search);
       if(params.get('dev') === '1' || params.get('bypass') === '1') {
-        setSession({ user: { id: 'dev-guest-user', email: 'guest@enzo.training' } });
+        setSession({ user: { id: '00000000-0000-0000-0000-000000000000', email: 'guest@enzo.training' } });
         setAuthLoading(false);
         return;
       }
