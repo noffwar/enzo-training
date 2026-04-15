@@ -23,7 +23,7 @@ export const createApp = (deps) => {
     TARGETS, HOME_FOODS, TRAINING_PLAN_VERSION, TRAINING_PLAN_EFFECTIVE_WEEK, START_WEEK,
     MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, BOOK_DEFAULT, DAY_KEYS, trainingPlanRoutines,
     // Components
-    IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity,
+    IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock,
     Card, SectionAccordion, Inp, CheckRow,
     ProteinProgress, WaterTracker, SmartCena, NutritionReviewCard,
     DashboardStatCard, DashboardActionCard, DashboardTagChip,
