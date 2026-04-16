@@ -580,7 +580,7 @@
         setError('');
         try {
           const thread = aiReplies[note.id] || [];
-          if(thread.length === 0) throw new Error('Todavia no hay debate para resumir.');
+          if(thread.length === 0) throw new Error('todavía no hay debate para resumir.');
           const historyText = thread.map((item, idx) => `${idx + 1}. Pregunta: ${item.question}\nRespuesta: ${item.reply}`).join('\n\n');
           const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/thought-chat', {
             method: 'POST',
@@ -740,7 +740,7 @@
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;">
               <div>
                 <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Tareas y pensamientos</p>
-                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Anota rapido, ordena despues y manda recordatorios al calendario o mail.</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Anota rápido, ordena después y manda recordatorios al calendario o mail.</p>
               </div>
               <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadData}>
                 <${ISync} s=${16}/>
@@ -817,7 +817,7 @@
               </select>
               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
                 <input type="checkbox" checked=${taskAutoEmail} onChange=${e=>setTaskAutoEmail(e.target.checked)} />
-                <span>Enviar recordatorio automatico por email cuando venza</span>
+                <span>Enviar recordatorio automático por email cuando venza</span>
               </label>
               <button onClick=${addTask}
                 style="width:100%;padding:10px;border-radius:10px;border:none;background:#10B981;color:#041018;font-size:13px;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em;cursor:pointer;">
@@ -827,7 +827,7 @@
           <//>
 
           <${Card}>
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Pensamiento rapido</p>
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Pensamiento rápido</p>
             <div style="display:flex;flex-direction:column;gap:8px;">
               <input class="inp" placeholder="Titulo opcional"
                 value=${noteTitle} onInput=${e=>setNoteTitle(e.target.value)} />
@@ -853,7 +853,7 @@
             isOpen=${taskSectionOpen.pending}
             onToggle=${()=>setTaskSectionOpen(prev => ({ ...prev, pending: !prev.pending }))}
           >
-            ${loading ? html`<p style="margin:0;color:#64748b;font-size:12px;">Cargando...</p>` : pendingTasks.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">Todavia no tenes tareas pendientes.</p>` : html`
+            ${loading ? html`<p style="margin:0;color:#64748b;font-size:12px;">Cargando...</p>` : pendingTasks.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">todavía no tenes tareas pendientes.</p>` : html`
               <div style="display:flex;flex-direction:column;gap:12px;">
                 ${[
                   ['Hoy', groupedPending.today],
@@ -899,7 +899,7 @@
                               </select>
                               <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd5e1;cursor:pointer;">
                                 <input type="checkbox" checked=${editingTaskAutoEmail} onChange=${e=>setEditingTaskAutoEmail(e.target.checked)} />
-                                <span>Recordatorio automatico por email</span>
+                                <span>Recordatorio automático por email</span>
                               </label>
                               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                 <button onClick=${()=>saveTaskEdit(task)}
@@ -943,7 +943,7 @@
             isOpen=${taskSectionOpen.thoughts}
             onToggle=${()=>setTaskSectionOpen(prev => ({ ...prev, thoughts: !prev.thoughts }))}
           >
-            ${loading ? html`<p style="margin:0;color:#64748b;font-size:12px;">Cargando...</p>` : activeNotes.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">Todavia no guardaste pensamientos.</p>` : html`
+            ${loading ? html`<p style="margin:0;color:#64748b;font-size:12px;">Cargando...</p>` : activeNotes.length === 0 ? html`<p style="margin:0;color:#64748b;font-size:12px;">todavía no guardaste pensamientos.</p>` : html`
               <div style="display:flex;flex-direction:column;gap:8px;">
                 ${activeNotes.map(note => html`
                   <div style="padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid ${note.pinned?'rgba(245,158,11,0.35)':'#1E2D45'};">
@@ -1169,7 +1169,7 @@
     };
 
     // DEBUG PANEL oculto, activar con ?debug=1
-    // Estado rapido de auth, sync, service worker y conflictos
+    // Estado rápido de auth, sync, service worker y conflictos
     const DebugPanel = ({ session, syncLog, outboxCount }) => {
       const [open,    setOpen]    = useState(false);
       const [swDebug, setSwDebug] = useState(null);

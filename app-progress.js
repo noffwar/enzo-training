@@ -215,7 +215,7 @@ const WeekSummary = ({weekData, weekKey}) => {
             ${!hasVolumeData && html`
               ${!hasVolumeData && html`
                 <div style="margin-bottom:10px;padding:10px;border-radius:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);">
-                  <p style="margin:0;font-size:12px;color:#C7D2FE;">Todavia no hay series efectivas registradas esta semana. Marca series como completadas en GIMNASIO para ver el volumen por musculo.</p>
+                  <p style="margin:0;font-size:12px;color:#C7D2FE;">todavía no hay series efectivas registradas esta semana. Marca series como completadas en GIMNASIO para ver el volumen por musculo.</p>
                 </div>
               `}
             `}

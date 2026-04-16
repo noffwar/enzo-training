@@ -66,7 +66,7 @@ export const createTodayDashboard = ({
       return {
         label:'Tiempo favorable para salir',
         color:'#86EFAC',
-        detail:'No se ve un riesgo fuerte en las proximas horas.'
+        detail:'No se ve un riesgo fuerte en las próximas horas.'
       };
     }, [weather.data]);
 
@@ -266,7 +266,7 @@ export const createTodayDashboard = ({
       }
       if(medsView.dinnerRelevant) {
         return medsView.dinnerDone
-          ? { label:'Tomas del dia completas', detail:`Ultimos registros: R ${roaccTime} / C ${dinnerTime}` }
+          ? { label:'Tomas del dia completas', detail:`Últimos registros: R ${roaccTime} / C ${dinnerTime}` }
           : { label:'Meds de cena pendientes', detail: medsView.calendarTodayKey === medsView.dinnerLogicalKey ? 'Cena' : 'Cena para ayer' };
       }
       return {
@@ -304,11 +304,11 @@ export const createTodayDashboard = ({
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
           <div style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.25);background:rgba(56,189,248,0.08);">
             <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#7DD3FC;font-weight:700;">Tiempo San Rafael</p>
-            <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${weather.loading ? 'Cargando...' : weather.data ? `${weather.data.temp_current}deg ahora / prox 24h ${weather.data.temp_next24_max}/${weather.data.temp_next24_min}deg` : 'Sin datos'}</p>
+            <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${weather.loading ? 'Cargando...' : weather.data ? `${weather.data.temp_current}° ahora / prox 24h ${weather.data.temp_next24_max}/${weather.data.temp_next24_min}°` : 'Sin datos'}</p>
             <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">
               ${weather.data
-                ? `Noche ${weather.data.temp_tonight_min}deg / H ${weather.data.humidity_min}-${weather.data.humidity_max}% / lluvia ${weather.data.rain_probability}% / rafagas ${weather.data.wind_gusts} km/h / UV ${weather.data.uv_max}`
-                : (weather.error || 'Sin datos meteorologicos')}
+                ? `Noche ${weather.data.temp_tonight_min}° / H ${weather.data.humidity_min}-${weather.data.humidity_max}% / lluvia ${weather.data.rain_probability}% / ráfagas ${weather.data.wind_gusts} km/h / UV ${weather.data.uv_max}`
+                : (weather.error || 'Sin datos meteorológicos')}
             </p>
             ${weather.data && html`
               <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
@@ -327,7 +327,7 @@ export const createTodayDashboard = ({
               <p style="margin:6px 0 0;font-size:11px;color:${weather.data.zonda || weather.data.hail_risk || weather.data.lightning_risk ? '#FCA5A5' : '#86EFAC'};">
                 ${[
                   weather.data.storm_probable_today ? 'tormentas probables hoy' : null,
-                  weather.data.storm_probable_next24 ? 'inestabilidad proximas 24h' : null,
+                  weather.data.storm_probable_next24 ? 'inestabilidad próximas 24h' : null,
                   weather.data.zonda ? 'Zonda' : null,
                   weather.data.hail_risk ? 'granizo' : null,
                   weather.data.lightning_risk ? 'rayos' : null
@@ -336,12 +336,12 @@ export const createTodayDashboard = ({
             `}
           </div>
           <button onClick=${onOpenHealth} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.08);cursor:pointer;">
-            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#86EFAC;font-weight:700;">Proxima medicacion</p>
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#86EFAC;font-weight:700;">Próxima medicación</p>
             <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : medDashboardStatus.label}</p>
             <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (medDashboardStatus.detail || 'Sin detalles')}</p>
           </button>
           <button onClick=${onOpenTasks} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.08);cursor:pointer;">
-            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;font-weight:700;">Proximo vencimiento</p>
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;font-weight:700;">Próximo vencimiento</p>
             <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : (summary.nextTask?.title || 'Nada urgente')}</p>
             <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (summary.nextTask?.due_at ? formatTaskDate(summary.nextTask.due_at) : 'Sin tareas cerca')}</p>
           </button>
@@ -350,7 +350,7 @@ export const createTodayDashboard = ({
           <button onClick=${onOpenNotif} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);cursor:pointer;">
             <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#FCD34D;font-weight:700;">Backup recomendado</p>
             <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">Hace backup desde ALERTAS</p>
-            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.backupLabel || 'Pasaron mas de 72 horas sin backup manual.'}</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.backupLabel || 'Pasaron más de 72 horas sin backup manual.'}</p>
           </button>
         `}
         <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">

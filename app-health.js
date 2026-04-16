@@ -600,7 +600,7 @@ export const createHealthView = ({
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
               <div>
                 <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Salud / Blindex</p>
-                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Stock real de medicacion, toma diaria y alerta de reposicion.</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Stock real de medicación, toma diaria y alerta de reposicion.</p>
               </div>
               <div style="display:flex;gap:8px;align-items:center;">
                 <button onClick=${exportHealthData} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.12);color:#FCD34D;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
@@ -866,7 +866,7 @@ export const createHealthView = ({
                   </div>
                   <div style="display:flex;flex-direction:column;gap:8px;">
                     ${historyEntries.length === 0 ? html`
-                      <p style="margin:0;color:#64748b;font-size:12px;">Todavia no hay movimientos guardados.</p>
+                      <p style="margin:0;color:#64748b;font-size:12px;">todavía no hay movimientos guardados.</p>
                     ` : historyEntries.map(({ entry, meta }) => html`<${HealthHistoryRow} entry=${entry} meta=${meta} editingHistoryAt=${editingHistoryAt} onEdit=${editHistoryEntry} onDelete=${deleteHistoryEntry} />`)}
                   </div>
                 </div>

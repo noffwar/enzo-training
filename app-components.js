@@ -530,11 +530,11 @@ export const createAppComponents = ({
         headers:{ 'Content-Type':'application/json' },
         body: JSON.stringify({ date: dateKey, meals: tracker.meals || [], totals: dayTotals(tracker.meals || []) })
       });
-      if(!res.ok) throw new Error(data?.error || 'No se pudo revisar la nutricion.');
+      if(!res.ok) throw new Error(data?.error || 'No se pudo revisar la nutrición.');
       setReview(prev => ({ ...prev, [targetKey]: data }));
       try { localStorage.setItem(cacheKey, JSON.stringify({ fingerprint: mealsFingerprint, payload: data })); } catch(_) {}
     } catch(e) {
-      setReview(prev => ({ ...prev, error: e.message || 'No se pudo revisar la nutricion.' }));
+      setReview(prev => ({ ...prev, error: e.message || 'No se pudo revisar la nutrición.' }));
     } finally {
       setReview(prev => ({ ...prev, [`loading${targetKey === 'today' ? 'Today' : 'Previous'}`]: false }));
     }
