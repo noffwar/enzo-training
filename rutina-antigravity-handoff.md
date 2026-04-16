@@ -232,3 +232,142 @@ ${view === 'today' && html`
 - La sobrecarga aplica +2,5 kg a la rutina base y persiste con `saveRoutineRemote`.
 - Semana de descarga usa `getRoutineForWeek(..., isDeloadWeek)` y muestra solo 2 series con RIR 4-5.
 
+## 6. Hallazgos extra al revisar de nuevo
+
+Parte de lo anterior ya parece aplicado en `app-main.js`, pero quedan tres faltantes importantes.
+
+### 6.1. Corregir duplicado fatal en `app-core.js`
+
+`app-core.js` quedo con dos exports llamados `isGymClosedDate`. Eso rompe el modulo:
+
+```txt
+SyntaxError: Identifier 'isGymClosedDate' has already been declared
+```
+
+Dejar solo la version nueva con feriados:
+
+```js
+export const isHoliday2026 = (dateStr = '', holidays = {}) =>
+  dateStr.startsWith('2026-') && !!holidays[dateStr];
+
+export const getHolidayLabel = (dateStr = '', holidays = {}) =>
+  holidays[dateStr] || '';
+
+export const isSundayDate = (dateStr = '') => {
+  if (!dateStr) return false;
+  return new Date(`${dateStr}T12:00:00`).getDay() === 0;
+};
+
+export const isGymClosedDate = (dateStr = '', holidays = {}) =>
+  isSundayDate(dateStr) || isHoliday2026(dateStr, holidays);
+```
+
+Eliminar la version vieja que solo chequea domingo.
+
+### 6.2. Falta navegacion de semana y tabs de dias
+
+El viejo no solo tenia selector de split/rutina: tambien tenia navegacion semanal y tabs L/M/X/J/V/S/D arriba. Sin eso, `activeDay` existe en estado pero casi no se puede cambiar desde HOY.
+
+Traer estos derivados/handlers a `app-main.js`:
+
+```js
+const navWeek = (dir) => {
+  const nextWeek = addWeeks(currentWk, dir);
+  if(isBeforeStart(nextWeek)) return;
+  setCurrentWk(nextWeek);
+  setAllWeeks(prev => prev[nextWeek] ? prev : { ...prev, [nextWeek]: newWeek(nextWeek) });
+};
+
+const isAtStart = currentWk <= START_WEEK;
+const isCurrentWeek = (weekKey) => getWeekKey(new Date()) === weekKey;
+```
+
+Agregar `DAYS`, `IChevL`, `IChevR`, `formatWeekLabel` a deps/destructuring si no estan disponibles en `app-main.js`.
+
+Bloque de UI viejo para adaptar arriba del selector de split:
+
+```js
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+  <button class="btn-icon" style=${`background:#162035;border:1px solid #1E2D45;opacity:${isAtStart ? '0.3' : '1'};`} onClick=${()=>navWeek(-1)} disabled=${isAtStart}>
+    <${IChevL} s=${16}/>
+  </button>
+  <div style="flex:1;text-align:center;">
+    <p style="margin:0;font-size:13px;font-weight:600;color:white;">${formatWeekLabel(currentWk)}</p>
+    ${isCurrentWeek(currentWk) && html`<span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:#10B981;">SEMANA ACTUAL</span>`}
+  </div>
+  <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${()=>navWeek(1)} disabled=${isCurrentWeek(currentWk)}>
+    <${IChevR} s=${16}/>
+  </button>
+</div>
+
+<div class="hide-scroll" style="display:flex;gap:4px;overflow-x:auto;">
+  ${DAYS.map(day => {
+    const active = activeDay === day.key;
+    const hasRoutine = routineAssignments[day.key] !== '';
+    const sess = hasRoutine ? (wd.sessions[day.key] || []) : [];
+    const done = sess.reduce((acc, ex) => acc + ex.sets.filter(set => set.completed).length, 0);
+    const total = sess.reduce((acc, ex) => acc + ex.sets.length, 0);
+    const dateKey = getDayDate(currentWk, parseInt(day.key, 10));
+    const closed = isGymClosedDate(dateKey, HOLIDAYS_2026);
+    return html`
+      <button onClick=${()=>{ setActiveDay(day.key); setView('today'); }}
+        style=${`flex:1;min-width:38px;padding:8px 4px;border-radius:10px;border:1px solid ${active ? (closed ? '#EF4444' : '#10B981') : (closed ? 'rgba(239,68,68,0.35)' : '#1E2D45')};background:${active ? (closed ? 'rgba(239,68,68,0.18)' : '#10B981') : (closed ? 'rgba(127,29,29,0.18)' : '#162035')};cursor:pointer;position:relative;`}>
+        <p style=${`margin:0;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${active ? 'white' : closed ? '#FCA5A5' : '#64748b'};`}>${day.abbr}</p>
+        <p style=${`margin:0;font-size:9px;color:${active ? 'rgba(255,255,255,0.75)' : closed ? '#FCA5A5' : '#374151'};`}>${day.label}</p>
+        ${hasRoutine && !active && html`<div style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:#6366F1;"></div>`}
+        ${closed && html`<div style="position:absolute;top:3px;left:3px;width:5px;height:5px;border-radius:50%;background:#EF4444;"></div>`}
+        ${done > 0 && html`<div style="position:absolute;bottom:3px;right:3px;font-size:8px;font-family:'JetBrains Mono',monospace;color:#10B981;">${done}/${total}</div>`}
+      </button>
+    `;
+  })}
+</div>
+```
+
+### 6.3. La pestana Rutina actual no equivale al viejo editor
+
+En el viejo, `view === 'routines'` montaba `RoutineEditor`, no un simple manager de asignacion semanal:
+
+```js
+${view === 'routines' && html`<${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines}/>`}
+```
+
+El editor viejo permitia:
+
+- elegir rutina base
+- editar nombre de ejercicio
+- editar reps, kg, RIR y pausa
+- agregar/quitar series
+- agregar/quitar ejercicios
+- sincronizar `restSecs` cuando cambia `restStr`
+- guardar todo con `saveRoutines(updated)`
+
+Como HOY ya puede manejar split y asignacion diaria, la pestana `RUTINA` deberia ser el editor de detalles. Si se quiere conservar tambien el mapeo semanal, combinar ambos: primero editor, abajo planner semanal.
+
+Handler necesario en `app-main.js`:
+
+```js
+const handleSaveRoutines = async (updated) => {
+  setRoutineData(updated);
+  Object.entries(updated).forEach(([id, data]) => {
+    lsRoutineSave(id, { ...data, _updatedAt: new Date().toISOString() });
+    saveRoutineRemote(supabase, stripRoutineMeta, id, data, data?._revision || null, session).catch(()=>{});
+  });
+};
+```
+
+Tambien conviene mantener compatibilidad legacy si todavia se usa `ROUTINES_STORAGE_KEY`:
+
+```js
+try { localStorage.setItem(ROUTINES_STORAGE_KEY, JSON.stringify(updated)); } catch(_) {}
+```
+
+### 6.4. `RoutineManager` necesita `routineData`
+
+El manager actual tiene labels hardcodeados:
+
+```js
+['1', 'Dia 1: Torso A']
+```
+
+Si queda vivo, deberia recibir `routineData` y renderizar `Object.values(routineData)` para no desincronizar nombres editados desde el editor.
+

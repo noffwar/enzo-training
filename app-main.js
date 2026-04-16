@@ -13,7 +13,7 @@ export const createApp = (deps) => {
     lsNotifSave, lsNotifLoad, fetchJsonWithTimeout, saveDayRemote, saveWeeklyRemote,
     saveRoutineRemote, bootstrapRemoteState, applyBootstrapToState, buildAllWeeks,
     loadLocalCaches, hydrate, newWeek, newDay, pn, fn, ft, pickNewestPayload, getRC,
-    getDinnerLogicalDateKey, localDateKey, getDayDate, getWeekKey, addWeeks,
+    getDinnerLogicalDateKey, localDateKey, getDayDate, getWeekKey, addWeeks, formatWeekLabel,
     // Gym
     getPlanMode, getRoutineAssignments, getRoutineForWeek, isGymClosedDate, didTrainDay, buildPlanDayMapping,
     // Utils
@@ -23,13 +23,13 @@ export const createApp = (deps) => {
     TARGETS, HOME_FOODS, TRAINING_PLAN_VERSION, TRAINING_PLAN_EFFECTIVE_WEEK, TRAINING_PLAN_START, START_WEEK,
     MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, BOOK_DEFAULT, DAY_KEYS, trainingPlanRoutines, HOLIDAYS_2026,
     // Components
-    IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock,
+    IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock, IChevL, IChevR,
     Card, SectionAccordion, Inp, CheckRow,
     ProteinProgress, WaterTracker, SmartCena, NutritionReviewCard,
     DashboardStatCard, DashboardActionCard, DashboardTagChip,
     // Views
     createProductivityView, createHealthView, createRecipesView, createStudyView, createBooksView,
-    createProgressViews, createTimerView, createNotifView, createGymPanel, createLoginView,
+    createProgressViews, createTimerView, createNotifView, createGymPanel, createLoginView, createRoutineEditor,
     createTodayDashboard,
     // Habits
     createHabitsPanel
@@ -48,6 +48,8 @@ export const createApp = (deps) => {
   const LoginView = createLoginView(deps);
   const TodayDashboard = createTodayDashboard(deps);
   const { HabitsPanel, getYesterdayFast, getRelativeDaySnapshot } = createHabitsPanel(deps);
+  const RoutineEditor = createRoutineEditor(deps);
+  const RoutineEditor = createRoutineEditor(deps);
 
   return function App() {
     const [session, setSession] = useState(null);
@@ -369,6 +371,25 @@ export const createApp = (deps) => {
 
     useEffect(() => ensureSession(currentWk, activeDay), [currentWk, activeDay, routineData, allWeeks[currentWk]?.dayMapping]);
 
+    const handleSaveRoutines = async (updated) => {
+      setRoutineData(updated);
+      Object.entries(updated).forEach(([id, data]) => {
+        lsRoutineSave(id, { ...data, _updatedAt: new Date().toISOString() });
+        saveRoutineRemote(supabase, stripRoutineMeta, id, data, data?._revision || null, session).catch(() => {});
+      });
+      try { localStorage.setItem('enzo_routines_v1', JSON.stringify(updated)); } catch (_) {}
+    };
+
+    const navWeek = (dir) => {
+      const nextWeek = addWeeks(currentWk, dir);
+      if (isBeforeStart(nextWeek)) return;
+      setCurrentWk(nextWeek);
+      setAllWeeks(prev => prev[nextWeek] ? prev : { ...prev, [nextWeek]: newWeek(nextWeek) });
+    };
+
+    const isAtStart = currentWk <= START_WEEK;
+    const isCurrentWeekLocal = (weekKey) => getWeekKey(new Date()) === weekKey;
+
     if(authLoading) return html`<div style="height:100vh;display:flex;align-items:center;justify-content:center;color:#64748b;">Iniciando seguridad...</div>`;
     if(!session) return html`<${LoginView} onDevBypass=${() => window.location.search += (window.location.search ? '&' : '?') + 'dev=1'} />`;
 
@@ -423,6 +444,43 @@ export const createApp = (deps) => {
         <main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;padding-bottom:100px;">
           ${view === 'today' && html`
             <div style="display:flex;flex-direction:column;gap:12px;">
+              <!-- Navegación de Semana -->
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <button class="btn-icon" style=${`background:#162035;border:1px solid #1E2D45;opacity:${isAtStart ? '0.3' : '1'};width:32px;height:32px;border-radius:8px;color:white;cursor:pointer;`} onClick=${()=>navWeek(-1)} disabled=${isAtStart}>
+                  <${IChevL} s=${16}/>
+                </button>
+                <div style="flex:1;text-align:center;">
+                  <p style="margin:0;font-size:13px;font-weight:700;color:white;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.03em;">${formatWeekLabel(currentWk)}</p>
+                  ${isCurrentWeekLocal(currentWk) && html`<span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:#10B981;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">SEMANA ACTUAL</span>`}
+                </div>
+                <button class="btn-icon" style=${`background:#162035;border:1px solid #1E2D45;opacity:${isCurrentWeekLocal(currentWk) ? '0.3' : '1'};width:32px;height:32px;border-radius:8px;color:white;cursor:pointer;`} onClick=${()=>navWeek(1)} disabled=${isCurrentWeekLocal(currentWk)}>
+                  <${IChevR} s=${16}/>
+                </button>
+              </div>
+
+              <!-- Tabs de Días -->
+              <div class="hide-scroll" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;">
+                ${DAYS.map(day => {
+                  const active = activeDay === day.key;
+                  const hasRoutine = routineAssignments[day.key] !== '';
+                  const sess = hasRoutine ? (wd.sessions[day.key] || []) : [];
+                  const done = sess.reduce((acc, ex) => acc + ex.sets.filter(set => set.completed).length, 0);
+                  const total = sess.reduce((acc, ex) => acc + ex.sets.length, 0);
+                  const dateKey = getDayDate(currentWk, parseInt(day.key, 10));
+                  const closed = isGymClosedDate(dateKey, HOLIDAYS_2026);
+                  return html`
+                    <button onClick=${()=>{ setActiveDay(day.key); setView('today'); }}
+                      style=${`flex:1;min-width:38px;padding:8px 4px;border-radius:10px;border:1px solid ${active ? (closed ? '#EF4444' : '#10B981') : (closed ? 'rgba(239,68,68,0.35)' : '#1E2D45')};background:${active ? (closed ? 'rgba(239,68,68,0.18)' : '#10B981') : (closed ? 'rgba(127,29,29,0.18)' : '#162035')};cursor:pointer;position:relative;transition:all 0.2s ease;`}>
+                      <p style=${`margin:0;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${active ? 'white' : closed ? '#FCA5A5' : '#64748b'};`}>${day.abbr}</p>
+                      <p style=${`margin:0;font-size:9px;font-weight:500;color:${active ? 'rgba(255,255,255,0.75)' : closed ? '#FCA5A5' : '#475569'};`}>${day.label}</p>
+                      ${hasRoutine && !active && html`<div style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:#6366F1;"></div>`}
+                      ${closed && html`<div style="position:absolute;top:3px;left:3px;width:5px;height:5px;border-radius:50%;background:#EF4444;"></div>`}
+                      ${done > 0 && html`<div style="position:absolute;bottom:3px;right:3px;font-size:8px;font-family:'JetBrains Mono',monospace;color:#10B981;font-weight:800;">${done}</div>`}
+                    </button>
+                  `;
+                })}
+              </div>
+
               <div class="glass-card" style="padding:12px;display:flex;flex-direction:column;gap:10px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                   <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -497,7 +555,12 @@ export const createApp = (deps) => {
           ${view === 'health' && html`<${HealthView} session=${session} todayMeds=${tracker.meds||{}} previousDayMeds=${prevDayTracker.meds||{}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} onSyncDailyMeds=${(partial, dk) => upd(w => {const dayIdx = new Date(dk+'T12:00:00').getDay(); const dayKey = String(dayIdx); const td = w.tracker[dayKey] || newDay(); return {...w, tracker: {...w.tracker, [dayKey]: {...td, meds: {...(td.meds||{}), ...partial}}}}})} onOpenDay=${d => {const dayIdx = new Date(d+'T12:00:00').getDay(); setActiveDay(String(dayIdx)); setView('today');}} />`}
           ${view === 'books' && html`<${BooksView} session=${session} />`}
           ${view === 'notif' && html`<${NotifView} session=${session} />`}
-          ${view === 'routines' && html`<${RoutineManager} weekKey=${currentWk} weekData=${wd} onMappingChange=${(dm) => upd(w => ({...w, dayMapping: dm}))} />`}
+          ${view === 'routines' && html`
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines} />
+              <${RoutineManager} weekKey=${currentWk} weekData=${wd} routineData=${routineData} onMappingChange=${(dm) => upd(w => ({...w, dayMapping: dm}))} />
+            </div>
+          `}
         </main>
 
         <nav style="position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:rgba(10,15,30,0.95);backdrop-filter:blur(16px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;">

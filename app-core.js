@@ -675,18 +675,6 @@ export const getFastStats = (tracker) => {
   return { active: true, startTime, hours, remaining, elapsed, pct: pctVal };
 };
 
-// ── isGymClosedDate: si la fecha es domingo o feriado ──
-export const isGymClosedDate = (dateStr) => {
-  if (!dateStr) return false;
-  try {
-    const d = new Date(dateStr + 'T12:00:00');
-    if (d.getDay() === 0) return true; // domingo
-    // importar HOLIDAYS_2026 no es posible circularmente, así que check inline
-    return false;
-  } catch (_) {
-    return false;
-  }
-};
 
 // ── localStorage helpers para tasks y thoughts ──
 const TASK_ALERTS_KEY = 'enzo_task_alerts_v1';

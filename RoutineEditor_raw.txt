@@ -1,0 +1,166 @@
+const RoutineEditor = ({routines, onSave}) => {
+      const [rts, setRts] = useState(routines);
+      const [selId, setSelId] = useState(Object.keys(routines)[0]||'1');
+      const [dirty, setDirty] = useState(false);
+
+      const upd = (fn) => { setRts(r=>{ const n=fn(r); setDirty(true); return n; }); };
+
+      const updateExName = (ei, val) => upd(r=>({...r,[selId]:{...r[selId],exercises:r[selId].exercises.map((ex,i)=>i===ei?{...ex,name:val}:ex)}}));
+      // Parsear "3 min", "1,5 min", "90 seg" ??? segundos
+      const parseRestStr = (str) => {
+        const s = String(str).trim().toLowerCase();
+        const numMatch = s.match(/[\d,\.]+/);
+        if(!numMatch) return null;
+        const num = pn(numMatch[0]);
+        if(s.includes('seg') || s.includes('s)')) return Math.round(num);
+        return Math.round(num * 60); // minutos por defecto
+      };
+
+      const updateSet = (ei,si,field,val) => upd(r=>{
+        const exercises = r[selId].exercises.map((ex,i)=>i===ei ? {
+          ...ex,
+          sets: ex.sets.map((s,j)=>j===si ? (() => {
+            const updated = {...s, [field]: val};
+            // Bug 9 fix: sincronizar restSecs cuando cambia restStr
+            if(field === 'restStr') {
+              const secs = parseRestStr(val);
+              if(secs !== null) updated.restSecs = secs;
+            }
+            // Y si cambia restSecs directamente, actualizar restStr
+            if(field === 'restSecs') {
+              const secs = parseInt(val);
+              if(!isNaN(secs)) updated.restStr = secs >= 60
+                ? `${(secs/60).toFixed(secs%60===0?0:1).replace('.',',')} min`
+                : `${secs} seg`;
+            }
+            return updated;
+          })() : s)
+        } : ex);
+        return {...r, [selId]: {...r[selId], exercises}};
+      });
+      const addSet       = (ei) => upd(r=>({...r,[selId]:{...r[selId],exercises:r[selId].exercises.map((ex,i)=>i===ei?{...ex,sets:[...ex.sets,{reps:'10',weight:'0,0',rir:'2',restSecs:90,restStr:'1,5 min'}]}:ex)}}));
+      const removeSet    = (ei,si) => upd(r=>({...r,[selId]:{...r[selId],exercises:r[selId].exercises.map((ex,i)=>i===ei?{...ex,sets:ex.sets.filter((_,j)=>j!==si)}:ex)}}));
+      const addExercise  = () => upd(r=>({...r,[selId]:{...r[selId],exercises:[...r[selId].exercises,{name:'Nuevo ejercicio',sets:[{reps:'10',weight:'0,0',rir:'2',restSecs:90,restStr:'1,5 min'}]}]}}));
+      const removeExercise=(ei)=> upd(r=>({...r,[selId]:{...r[selId],exercises:r[selId].exercises.filter((_,i)=>i!==ei)}}));
+
+      const handleSave = () => { onSave(rts); setDirty(false); };
+
+      const routine = rts[selId];
+
+      return html`
+        <div class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
+          <${Card}>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">?????? Editor de Rutinas</p>
+              ${dirty && html`
+                <button onClick=${handleSave}
+                  style="padding:7px 16px;border-radius:8px;border:none;background:#10B981;color:#080D1A;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:13px;cursor:pointer;letter-spacing:0.05em;">
+                  GUARDAR CAMBIOS
+                </button>
+              `}
+            </div>
+
+            <!-- Selector de rutina -->
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+              ${Object.values(rts).map(r => html`
+                <button onClick=${()=>setSelId(r.id)}
+                  style=${`padding:6px 14px;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;cursor:pointer;border:1px solid ${selId===r.id?'#10B981':'#1E2D45'};background:${selId===r.id?'rgba(16,185,129,0.15)':'transparent'};color:${selId===r.id?'#10B981':'#64748b'};`}>
+                  ${r.name}
+                </button>
+              `)}
+            </div>
+
+            <!-- Lista de ejercicios -->
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              ${routine?.exercises.map((ex, ei) => html`
+                <div style="padding:10px;border-radius:8px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:#6366F1;flex-shrink:0;">${ei+1}.</span>
+                    <input value=${ex.name} onInput=${e=>updateExName(ei,e.target.value)}
+                      style="flex:1;background:#0F1729;border:1px solid #2A3F5F;border-radius:6px;padding:6px 10px;font-size:13px;color:white;font-family:'Barlow',sans-serif;"/>
+                    <button onClick=${()=>removeExercise(ei)}
+                      style="width:28px;height:28px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#EF4444;font-size:16px;cursor:pointer;flex-shrink:0;">??</button>
+                  </div>
+                  <!-- Sets -->
+                  <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">
+                    <div style="display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 28px;gap:4px;padding:0 2px;">
+                      ${['#','Reps','Kg','RIR','Pausa',''].map(h=>html`<span style="font-size:9px;text-transform:uppercase;color:#475569;text-align:center;">${h}</span>`)}
+                    </div>
+                    ${ex.sets.map((s,si) => html`
+                      <div style="display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 28px;gap:4px;align-items:center;">
+                        <span style="font-size:10px;color:#475569;text-align:center;font-family:'JetBrains Mono',monospace;">${si+1}</span>
+                        ${['reps','weight','rir','restStr'].map(f => html`
+                          <input value=${s[f]} onInput=${e=>updateSet(ei,si,f,e.target.value)}
+                            style="background:#0a0f1e;border:1px solid #1E2D45;border-radius:5px;padding:4px 6px;font-size:11px;color:white;text-align:center;font-family:'JetBrains Mono',monospace;width:100%;"/>
+                        `)}
+                        <button onClick=${()=>removeSet(ei,si)}
+                          style="width:28px;height:24px;border-radius:5px;border:none;background:rgba(239,68,68,0.1);color:#EF4444;font-size:14px;cursor:pointer;">??</button>
+                      </div>
+                    `)}
+                  </div>
+                  <button onClick=${()=>addSet(ei)}
+                    style="width:100%;padding:5px;border-radius:6px;border:1px dashed #1E2D45;background:transparent;color:#475569;font-size:11px;cursor:pointer;">
+                    + Agregar serie
+                  </button>
+                </div>
+              `)}
+            </div>
+            <button onClick=${addExercise}
+              style="width:100%;margin-top:10px;padding:10px;border-radius:8px;border:1px dashed rgba(99,102,241,0.4);background:transparent;color:#6366F1;font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+              + AGREGAR EJERCICIO
+            </button>
+          <//>
+        </div>
+      `;
+    };
+
+    // ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+    //  PANEL H??BITOS
+    // ?????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+    const getYesterdayFast = (allWeeks, currentWk, activeDay) => {
+      try {
+        const todayStr = getDayDate(currentWk, parseInt(activeDay));
+        const todayDt = new Date(todayStr + 'T12:00:00');
+        const prevDt = new Date(todayDt); prevDt.setDate(todayDt.getDate() - 1);
+
+        const prevWk = getWeekKey(prevDt);
+        const prevDayIdx = prevDt.getDay();
+        const prevTracker = allWeeks[prevWk]?.tracker?.[prevDayIdx];
+
+        if(prevTracker && prevTracker.fasted && prevTracker.fastStartTime && prevTracker.fastHours) {
+          const [sH, sM] = prevTracker.fastStartTime.split(':').map(Number);
+          const dur = pn(prevTracker.fastHours);
+          if(!isNaN(sH) && dur > 0) {
+            const startDateTime = new Date(prevDt);
+            startDateTime.setHours(sH, sM, 0, 0);
+            const endDateTime = new Date(startDateTime.getTime() + (dur * 3600000));
+
+            const todayStart = new Date(todayDt); todayStart.setHours(0,0,0,0);
+            if(endDateTime > todayStart) {
+               const finH = String(endDateTime.getHours()).padStart(2,'0');
+               const finM = String(endDateTime.getMinutes()).padStart(2,'0');
+               return `??? Ayuno de ayer en curso: finaliza a las ${finH}:${finM}`;
+            }
+          }
+        }
+      } catch(e) {}
+      return null;
+    };
+
+    const getRelativeDaySnapshot = (allWeeks, currentWk, activeDay, offsetDays) => {
+      try {
+        const baseDate = new Date(getDayDate(currentWk, parseInt(activeDay, 10)) + 'T12:00:00');
+        baseDate.setDate(baseDate.getDate() + offsetDays);
+        const wkKey = getWeekKey(baseDate);
+        const dayIdx = String(baseDate.getDay());
+        const tracker = allWeeks[wkKey]?.tracker?.[dayIdx] || null;
+        return {
+          dateKey: getDayDate(wkKey, parseInt(dayIdx, 10)),
+          tracker
+        };
+      } catch(_) {
+        return { dateKey:'', tracker:null };
+      }
+    };
+
+    
