@@ -171,6 +171,78 @@ export const createHabitsPanel = (deps) => {
   const HabitsPanel = ({tracker:t, selectedDateKey, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem, onReplaceItem}) => {
     const [open, setOpen] = useState(true);
     const [aiLoading, setAiLoading] = useState([false,false,false]);
+    const [aiError, setAiError] = useState(['','','']);
+    const recipesRef = useRef(null);
+
+    const getRecipes = async () => {
+      if(recipesRef.current) return recipesRef.current;
+      const { data, error } = await supabase.from('user_recipes')
+        .select('id, recipe_name, aliases, base_qty, base_unit, stock_qty, stock_unit, low_stock_threshold, macros, ingredients, notes')
+        .order('updated_at', { ascending: false });
+      if(!error && data) {
+        recipesRef.current = data;
+        return data;
+      }
+      return [];
+    };
+
+    const updateMealDraft = (mealIndex, text) => {
+      onMeal(mealIndex, 'aiDraft', text);
+    };
+
+    const analyzeMeal = async (mealIndex) => {
+      const text = String(t.meals?.[mealIndex]?.aiDraft || '').trim();
+      if(!text) return;
+      
+      setAiLoading(prev => { const n=[...prev]; n[mealIndex]=true; return n; });
+      setAiError(prev   => { const n=[...prev]; n[mealIndex]='';   return n; });
+
+      try {
+        const recipes = await getRecipes();
+        const recipeSearch = findRecipeMatch(recipes, text);
+        const recipeHit = recipeSearch?.item || (recipeSearch?.options ? recipeSearch.options[0] : null);
+        
+        if(recipeHit) {
+          const shouldUseLibrary = recipeSearch?.kind === 'exact' ? true : window.confirm(`Encontré "${recipeHit.recipe_name}" en tu biblioteca. ¿Usar ese valor guardado?`);
+          if(shouldUseLibrary) {
+            onAddItem(mealIndex, {
+              name: recipeHit.recipe_name,
+              qty: recipeHit.base_qty ? `${recipeHit.base_qty}${recipeHit.base_unit || ''}` : '1',
+              cals: Math.round(parseFloat(recipeHit.macros?.cals)||0),
+              prot: Math.round(parseFloat(recipeHit.macros?.prot)||0),
+              carb: Math.round(parseFloat(recipeHit.macros?.carb)||0),
+              fat:  Math.round(parseFloat(recipeHit.macros?.fat)||0),
+              nota: recipeHit.notes || ''
+            });
+            updateMealDraft(mealIndex, '');
+            return;
+          }
+        }
+
+        const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/get-macros', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ meal: text })
+        });
+        if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+        onAddItem(mealIndex, {
+          name: data.name || text,
+          qty:  data.qty  || '1 porción',
+          cals: Math.round(parseFloat(data.cals)||0),
+          prot: Math.round(parseFloat(data.prot)||0),
+          carb: Math.round(parseFloat(data.carb)||0),
+          fat:  Math.round(parseFloat(data.fat) ||0),
+          nota: data.nota || ''
+        });
+        updateMealDraft(mealIndex, '');
+      } catch(e) {
+        console.error('[IA]', e);
+        setAiError(prev => { const n=[...prev]; n[mealIndex]=e.message||'Error'; return n; });
+      } finally {
+        setAiLoading(prev => { const n=[...prev]; n[mealIndex]=false; return n; });
+      }
+    };
+
     const fs = getFastStats(t);
     const macros = dayTotals(t.meals);
     const medStatus = getMedicationStatusForView({ selectedDateKey, medsState: t.meds || {}, now: new Date() });
@@ -179,9 +251,6 @@ export const createHabitsPanel = (deps) => {
       <${SectionAccordion} icon="🎯" title="Hábitos y Nutrición" isOpen=${open} onToggle=${()=>setOpen(!open)}>
         <div style="display:flex;flex-direction:column;gap:16px;">
           ${yesterdayFastMsg && html`<p style="margin:0;font-size:12px;color:#F59E0B;font-weight:700;">${yesterdayFastMsg}</p>`}
-          
-          <!-- Agua -->
-          <${WaterTracker} val=${t.water||0} onChange=${v=>onChange('water', v)} roacuttan=${!!t.meds?.roacuttan} />
 
           <!-- Meds -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
@@ -227,7 +296,25 @@ export const createHabitsPanel = (deps) => {
                     </div>
                   `)}
                 </div>
-                <${Inp} placeholder="Añadir alimento o receta..." onChange=${v=>onAddItem(mIdx,v)} />
+                <div style="display:flex;gap:8px;margin-top:8px;">
+                  <input
+                    type="text"
+                    value=${meal.aiDraft || ''}
+                    onInput=${e => updateMealDraft(mIdx, e.target.value)}
+                    onKeyDown=${e => { if(e.key === 'Enter' && !aiLoading[mIdx]) analyzeMeal(mIdx); }}
+                    placeholder="Sumar alimento a la leyenda..."
+                    disabled=${aiLoading[mIdx]}
+                    style="flex:1;background:rgba(0,0,0,0.2);border:1px solid #1E2D45;border-radius:6px;padding:8px 10px;color:#cbd5e1;font-size:13px;"
+                  />
+                  <button
+                    onClick=${() => analyzeMeal(mIdx)}
+                    disabled=${aiLoading[mIdx] || !String(meal.aiDraft || '').trim()}
+                    style="background:#10B981;color:#0F1729;border:none;border-radius:6px;padding:0 16px;font-weight:700;font-size:12px;cursor:pointer;opacity:${aiLoading[mIdx]?0.5:1};"
+                  >
+                    ${aiLoading[mIdx] ? '...' : 'IA 🧠'}
+                  </button>
+                </div>
+                ${aiError[mIdx] && html`<p style="color:#EF4444;font-size:11px;margin:8px 0 0;">Error: ${aiError[mIdx]}</p>`}
               </div>
             `)}
           </div>
@@ -243,8 +330,6 @@ export const createHabitsPanel = (deps) => {
               <p style="margin:4px 0 0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#10B981;">${Math.round(macros.prot)}g</p>
             </div>
           </div>
-          <${ProteinProgress} current=${macros.prot} TARGETS=${TARGETS} fn=${fn} />
-          <${SmartCena} currentProt=${macros.prot} tracker=${t} TARGETS=${TARGETS} HOME_FOODS=${HOME_FOODS} dayTotals=${dayTotals} pn=${pn} />
         </div>
       <//>
     `;

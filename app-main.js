@@ -216,6 +216,41 @@ export const createApp = (deps) => {
       });
     }, []);
 
+    const updateHabit = (field, value) => upd(w => ({
+      ...w,
+      tracker: {
+        ...w.tracker,
+        [activeDay]: { ...(w.tracker[activeDay] || newDay()), [field]: value }
+      }
+    }));
+
+    const updateMed = (field, value) => upd(w => {
+      const day = w.tracker[activeDay] || newDay();
+      return {
+        ...w,
+        tracker: {
+          ...w.tracker,
+          [activeDay]: {
+            ...day,
+            meds: { ...(day.meds || {}), [field]: value }
+          }
+        }
+      };
+    });
+
+    const updateMeal = (mealIdx, field, value) => upd(w => {
+      const day = w.tracker[activeDay] || newDay();
+      const meals = [...(day.meals || newDay().meals)];
+      meals[mealIdx] = { ...(meals[mealIdx] || newDay().meals[0]), [field]: value };
+      return {
+        ...w,
+        tracker: {
+          ...w.tracker,
+          [activeDay]: { ...day, meals }
+        }
+      };
+    });
+
     const addMealItem = (mealIdx, item) => upd(w => {
       const meals = [...(w.tracker[activeDay].meals || [])];
       meals[mealIdx] = { ...meals[mealIdx], items: [...(meals[mealIdx].items || []), item] };
@@ -553,7 +588,49 @@ export const createApp = (deps) => {
                 onOpenRecipes=${() => navigateTo('recipes')} 
                 onOpenNotif=${() => navigateTo('notif')} 
               />
-              <${HabitsPanel} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} yesterdayFastMsg=${yesterdayFastMsg} onChange=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onMed=${(m,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...(w.tracker[activeDay].meds||{}),[m]:v}}}}))} onMeal=${addMealItem} onAddItem=${addMealItem} onRemoveItem=${removeMealItem} onReplaceItem=${replaceMealItem}/>
+              <${HabitsPanel} 
+                tracker=${tracker} 
+                selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} 
+                yesterdayFastMsg=${yesterdayFastMsg} 
+                onChange=${updateHabit} 
+                onMed=${updateMed} 
+                onMeal=${updateMeal} 
+                onAddItem=${addMealItem} 
+                onRemoveItem=${removeMealItem} 
+                onReplaceItem=${replaceMealItem}
+              />
+              
+              <div class="glass-card" style="padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
+                ${[
+                  {label:'Prot restante', val:Math.max(0,Math.round(TARGETS.prot - dayTotals(tracker.meals||[]).prot))+'g', color:'#10B981'},
+                  {label:'Carbos disp.',  val:Math.max(0,Math.round((TARGETS.kcal - TARGETS.prot*4 - dayTotals(tracker.meals||[]).fat*9)/4 - dayTotals(tracker.meals||[]).carb))+'g', color:'#6366F1'},
+                  {label:'Kcal objetivo', val:fn(TARGETS.kcal), color:'#F59E0B'},
+                ].map(({label,val,color})=>html`
+                  <div>
+                    <p style="margin:0;font-size:9px;text-transform:uppercase;color:#64748b;">${label}</p>
+                    <p style="margin:0;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${color};">${val}</p>
+                  </div>
+                `)}
+              </div>
+              
+              <${WaterTracker}
+                val=${tracker.water || 0}
+                onChange=${v => updateHabit('water', v)}
+                roacuttan=${tracker.meds?.roacuttan || false}
+              />
+              
+              <${NutritionReviewCard}
+                currentDateKey=${activeDateKey}
+                currentTracker=${tracker}
+                previousDateKey=${getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1).dateKey}
+                previousTracker=${getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1).tracker}
+              />
+              
+              <${SmartCena}
+                currentProt=${dayTotals(tracker.meals || []).prot}
+                tracker=${tracker}
+              />
+
               <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
               
               ${effectiveGymSession.length === 0 && !routineId && html`

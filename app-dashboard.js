@@ -94,7 +94,6 @@ export const createTodayDashboard = ({
             .order('subject', { ascending: true }),
           supabase.from('user_recipes')
             .select('recipe_name,stock_qty,low_stock_threshold')
-            .eq('user_id', session.user.id)
         ]);
         if(taskErr) throw taskErr;
         if(noteErr) throw noteErr;

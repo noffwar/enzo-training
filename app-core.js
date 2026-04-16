@@ -616,14 +616,26 @@ export const ft = s => {
   return `${m}:${sec<10?'0':''}${sec}`;
 };
 
+// ── mealTotals: calcula totales de macros de los items de una comida ──
+export const mealTotals = (meal) => (meal?.items || []).reduce(
+  (acc, it) => ({
+    cals: acc.cals + pn(it.cals),
+    prot: acc.prot + pn(it.prot),
+    carb: acc.carb + pn(it.carb),
+    fat:  acc.fat  + pn(it.fat)
+  }),
+  { cals:0, prot:0, carb:0, fat:0 }
+);
+
 // ── dayTotals: calcula totales de macros de un array de comidas ──
 export const dayTotals = (meals = []) => {
   const arr = Array.isArray(meals) ? meals : [];
-  return arr.reduce((acc, m) => {
-    acc.cals += pn(m?.cals ?? m?.kcal ?? 0);
-    acc.prot += pn(m?.prot ?? 0);
-    acc.carb += pn(m?.carb ?? 0);
-    acc.fat  += pn(m?.fat ?? 0);
+  return arr.reduce((acc, meal) => {
+    const t = mealTotals(meal);
+    acc.cals += t.cals;
+    acc.prot += t.prot;
+    acc.carb += t.carb;
+    acc.fat  += t.fat;
     return acc;
   }, { cals: 0, prot: 0, carb: 0, fat: 0 });
 };
