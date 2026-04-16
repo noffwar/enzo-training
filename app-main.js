@@ -15,13 +15,13 @@ export const createApp = (deps) => {
     loadLocalCaches, hydrate, newWeek, newDay, pn, fn, ft, pickNewestPayload, getRC,
     getDinnerLogicalDateKey, localDateKey, getDayDate, getWeekKey, addWeeks,
     // Gym
-    getPlanMode, getRoutineAssignments, getRoutineForWeek, isGymClosedDate, didTrainDay,
+    getPlanMode, getRoutineAssignments, getRoutineForWeek, isGymClosedDate, didTrainDay, buildPlanDayMapping,
     // Utils
     formatTaskDate, priorityColor, normalizeSubtasks, computeNextRecurringDueAt,
     isValidDateValue, isDateKey, isWeekKey, isBeforeStart, stripRoutineMeta,
     // Constants
-    TARGETS, HOME_FOODS, TRAINING_PLAN_VERSION, TRAINING_PLAN_EFFECTIVE_WEEK, START_WEEK,
-    MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, BOOK_DEFAULT, DAY_KEYS, trainingPlanRoutines,
+    TARGETS, HOME_FOODS, TRAINING_PLAN_VERSION, TRAINING_PLAN_EFFECTIVE_WEEK, TRAINING_PLAN_START, START_WEEK,
+    MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, BOOK_DEFAULT, DAY_KEYS, trainingPlanRoutines, HOLIDAYS_2026,
     // Components
     IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock,
     Card, SectionAccordion, Inp, CheckRow,
@@ -107,18 +107,20 @@ export const createApp = (deps) => {
       });
     };
 
+    const isDeloadWeek = useCallback((wkKey = '') => {
+      const base = new Date(`${TRAINING_PLAN_START}T12:00:00`);
+      const week = new Date(`${wkKey}T12:00:00`);
+      if (!isValidDateValue(base) || !isValidDateValue(week)) return false;
+      const diff = Math.floor((week - base) / (7 * 24 * 3600 * 1000));
+      return diff >= 6 && diff % 6 === 0;
+    }, []);
+
     const ensureSession = useCallback((wkKey, dayKey) => {
       setAllWeeks(prev => {
         const wd = prev[wkKey] || newWeek(wkKey);
         const assignments = getRoutineAssignments(wd);
         const rid = assignments[dayKey];
-        const rForWeek = getRoutineForWeek(rid, routineData, wkKey, () => {
-          const base = new Date(`${deps.TRAINING_PLAN_START}T12:00:00`);
-          const week = new Date(`${wkKey}T12:00:00`);
-          if(!isValidDateValue(base) || !isValidDateValue(week)) return false;
-          const diff = Math.floor((week - base) / (7 * 24 * 3600 * 1000));
-          return diff >= 6 && diff % 6 === 0;
-        });
+        const rForWeek = getRoutineForWeek(rid, routineData, wkKey, isDeloadWeek);
         if(!rid || !rForWeek) {
           if(wd.sessions[dayKey]) return { ...prev, [wkKey]: { ...wd, sessions: { ...wd.sessions, [dayKey]: null } } };
           return prev;
@@ -261,6 +263,36 @@ export const createApp = (deps) => {
       return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
     });
 
+    const handleRoutineChange = (value) => {
+      upd(w => {
+        const dm = { ...w.dayMapping };
+        const ns = { ...w.sessions };
+        const assignments = getRoutineAssignments(w);
+        const nextAssignments = { ...assignments };
+        if (value) {
+          DAY_KEYS.forEach(k => {
+            if (assignments[k] === value && k !== activeDay) {
+              nextAssignments[k] = '';
+              delete ns[k];
+            }
+          });
+        }
+        nextAssignments[activeDay] = value;
+        delete ns[activeDay];
+        return { ...w, dayMapping: { ...dm, ...nextAssignments, _planMode: getPlanMode(w) }, sessions: ns };
+      });
+      if (value) setTimeout(() => ensureSession(currentWk, activeDay), 50);
+    };
+
+    const handlePlanModeChange = (nextMode) => {
+      upd(w => ({
+        ...w,
+        dayMapping: { ...w.dayMapping, ...buildPlanDayMapping(nextMode, currentWk, (dk) => isGymClosedDate(dk, HOLIDAYS_2026), getDayDate), _planMode: nextMode },
+        sessions: {}
+      }));
+      DAY_KEYS.forEach(dayKey => setTimeout(() => ensureSession(currentWk, dayKey), 20));
+    };
+
     const handleApplyOverload = (candidates) => {
       const updatedRoutines = JSON.parse(JSON.stringify(routineData));
       const rid = (allWeeks[currentWk]?.dayMapping || {})[activeDay];
@@ -343,6 +375,27 @@ export const createApp = (deps) => {
     const wd = allWeeks[currentWk] || newWeek(currentWk);
     const tracker = wd.tracker[activeDay] || newDay();
     const gymSession = wd.sessions[activeDay] || [];
+    
+    const routineAssignments = getRoutineAssignments(wd);
+    const planMode = getPlanMode(wd);
+    const selectableRoutineIds = String(planMode) === '5' ? ['1','2','3','4','5'] : ['1','2','4','5'];
+    const selectableRoutines = selectableRoutineIds.map(id => routineData[id]).filter(Boolean);
+    const routineId = routineAssignments[activeDay];
+    const routineInfo = routineId ? getRoutineForWeek(routineId, routineData, currentWk, isDeloadWeek) : null;
+    const effectiveGymSession = routineId ? gymSession : [];
+    const activeDateKey = getDayDate(currentWk, parseInt(activeDay, 10));
+    const activeDayClosed = isGymClosedDate(activeDateKey, HOLIDAYS_2026);
+    const previousDayKey = DAY_KEYS[(DAY_KEYS.indexOf(activeDay) + DAY_KEYS.length - 1) % DAY_KEYS.length];
+    const previousTwoDayKey = DAY_KEYS[(DAY_KEYS.indexOf(activeDay) + DAY_KEYS.length - 2) % DAY_KEYS.length];
+    
+    const hitTwoConsecutiveRule = planMode === '4'
+      && !!routineId
+      && !activeDayClosed
+      && !didTrainDay(wd, activeDay)
+      && didTrainDay(wd, previousDayKey)
+      && didTrainDay(wd, previousTwoDayKey)
+      && !isDeloadWeek(currentWk);
+
     const yesterdayDate = new Date(); yesterdayDate.setDate(yesterdayDate.getDate() - 1);
     const yesterdayWk = getWeekKey(yesterdayDate);
     const yesterdayIdx = String(yesterdayDate.getDay());
@@ -369,9 +422,72 @@ export const createApp = (deps) => {
 
         <main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;padding-bottom:100px;">
           ${view === 'today' && html`
-            <${TodayDashboard} session=${session} tracker=${tracker} gymSession=${gymSession} onOpenRoutines=${() => navigateTo('routines')} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('study')} onOpenBooks=${() => navigateTo('books')} onOpenHealth=${() => navigateTo('health')} onOpenRecipes=${() => navigateTo('recipes')} onOpenNotif=${() => navigateTo('notif')} />
-            <${HabitsPanel} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} yesterdayFastMsg=${yesterdayFastMsg} onChange=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onMed=${(m,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...(w.tracker[activeDay].meds||{}),[m]:v}}}}))} onMeal=${addMealItem} onAddItem=${addMealItem} onRemoveItem=${removeMealItem} onReplaceItem=${replaceMealItem}/>
-            <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div class="glass-card" style="padding:12px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:10px;text-transform:uppercase;color:#64748b;">Split semanal</span>
+                    <select class="inp" style="min-width:118px;font-size:12px;padding:8px 10px;background:#0F1729;border:1px solid #1E2D45;color:white;border-radius:8px;" value=${planMode} onChange=${e=>handlePlanModeChange(e.target.value)}>
+                      <option value="4">4 dias</option>
+                      <option value="5">5 dias</option>
+                    </select>
+                    ${isDeloadWeek(currentWk) && html`<span style="padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(245,158,11,0.12);color:#FCD34D;">DESCARGA - RIR 4-5</span>`}
+                  </div>
+                  <span style="font-size:11px;color:#94A3B8;">
+                    ${planMode === '4' ? 'Máximo 2 días seguidos. El tercero va descanso.' : 'Distribución de 5 días con los mismos ejercicios.'}
+                  </span>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+                  <div>
+                    <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;letter-spacing:0.04em;color:white;">
+                      ${routineInfo?.fullName || `DÍA ${activeDay}: Descanso`}
+                    </h2>
+                    ${routineInfo?.description && html`<p style="margin:2px 0 0;font-size:13px;color:#6366F1;">${routineInfo.description}</p>`}
+                  </div>
+                  <select class="inp" style="min-width:120px;font-size:12px;padding:8px 10px;background:#1E2D45;border:1px solid #334155;color:white;border-radius:8px;" value=${routineId || ''} onChange=${e=>handleRoutineChange(e.target.value)}>
+                    <option value="">Descanso</option>
+                    ${selectableRoutines.map(r => html`<option value=${r.id}>${r.name}</option>`)}
+                  </select>
+                </div>
+              </div>
+
+              ${(activeDayClosed || hitTwoConsecutiveRule || isDeloadWeek(currentWk)) && html`
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                  ${activeDayClosed && html`
+                    <div style="padding:10px 12px;border-radius:10px;background:rgba(127,29,29,0.18);border:1px solid rgba(239,68,68,0.35);">
+                      <p style="margin:0;font-size:12px;color:#FCA5A5;font-weight:700;">Gimnasio cerrado para este día.</p>
+                      <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Si igual entrenaste, podés asignar la rutina manualmente desde el selector.</p>
+                    </div>
+                  `}
+                  ${hitTwoConsecutiveRule && html`
+                    <div style="padding:10px 12px;border-radius:10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);">
+                      <p style="margin:0;font-size:12px;color:#FCD34D;font-weight:700;">Ya entrenaste 2 días seguidos: hoy toca descanso.</p>
+                      <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">La app te deja forzarlo manualmente, pero el split de 4 días recomienda frenar.</p>
+                    </div>
+                  `}
+                  ${isDeloadWeek(currentWk) && html`
+                    <div style="padding:10px 12px;border-radius:10px;background:rgba(99,102,241,0.10);border:1px solid rgba(99,102,241,0.26);">
+                      <p style="margin:0;font-size:12px;color:#C7D2FE;font-weight:700;">Semana de descarga activa.</p>
+                      <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">La app reduce a 2 series por ejercicio y sube el objetivo a RIR 4-5.</p>
+                    </div>
+                  `}
+                </div>
+              `}
+
+              <${TodayDashboard} session=${session} tracker=${tracker} gymSession=${effectiveGymSession} onOpenRoutines=${() => navigateTo('routines')} selectedDateKey=${activeDateKey} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('study')} onOpenBooks=${() => navigateTo('books')} onOpenHealth=${() => navigateTo('health')} onOpenRecipes=${() => navigateTo('recipes')} onOpenNotif=${() => navigateTo('notif')} />
+              <${HabitsPanel} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} yesterdayFastMsg=${yesterdayFastMsg} onChange=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onMed=${(m,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...(w.tracker[activeDay].meds||{}),[m]:v}}}}))} onMeal=${addMealItem} onAddItem=${addMealItem} onRemoveItem=${removeMealItem} onReplaceItem=${replaceMealItem}/>
+              <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
+              
+              ${effectiveGymSession.length === 0 && !routineId && html`
+                <${Card}>
+                  <div style="text-align:center;padding:24px 0;">
+                    <p style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#cbd5e1;margin:0;">Día de descanso</p>
+                    <p style="font-size:13px;color:#64748b;margin:4px 0 0;">Recuperá y registrá tus habitos arriba.</p>
+                  </div>
+                <//>
+              `}
+            </div>
           `}
           ${view === 'tasks' && html`<${ProductivityView} session=${session} />`}
           ${view === 'week' && html`<${WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />`}

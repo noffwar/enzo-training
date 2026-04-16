@@ -639,12 +639,22 @@ export const serializeMeals = (tracker) => {
 };
 
 // ── getPlanMode: devuelve '4' o '5' según el dayMapping de la semana ──
-export const getPlanMode = (weekData) => {
-  const dm = weekData?.dayMapping;
-  if (!dm || typeof dm !== 'object') return '4';
-  const assigned = Object.values(dm).filter(v => v && v !== '').length;
-  return assigned >= 5 ? '5' : '4';
+export const getPlanMode = (weekData) =>
+  String(weekData?.dayMapping?._planMode || '4');
+
+export const isHoliday2026 = (dateStr = '', holidays = {}) =>
+  dateStr.startsWith('2026-') && !!holidays[dateStr];
+
+export const getHolidayLabel = (dateStr = '', holidays = {}) =>
+  holidays[dateStr] || '';
+
+export const isSundayDate = (dateStr = '') => {
+  if (!dateStr) return false;
+  return new Date(`${dateStr}T12:00:00`).getDay() === 0;
 };
+
+export const isGymClosedDate = (dateStr = '', holidays = {}) =>
+  isSundayDate(dateStr) || isHoliday2026(dateStr, holidays);
 
 // ── getFastStats: calcula estadísticas de ayuno intermitente ──
 export const getFastStats = (tracker) => {
