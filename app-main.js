@@ -34,8 +34,6 @@ export const createApp = (deps) => {
     // Habits
     createHabitsPanel
   } = deps;
-  console.log('[AppMain] Incoming deps:', deps);
-  console.log('[AppMain] Destructured DAYS:', DAYS);
 
   // Initialize modularized views
   const ProductivityView = createProductivityView(deps);
