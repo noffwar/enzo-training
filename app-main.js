@@ -13,7 +13,7 @@ export const createApp = (deps) => {
     lsNotifSave, lsNotifLoad, fetchJsonWithTimeout, saveDayRemote, saveWeeklyRemote,
     saveRoutineRemote, bootstrapRemoteState, applyBootstrapToState, buildAllWeeks,
     loadLocalCaches, hydrate, newWeek, newDay, pn, fn, ft, pickNewestPayload, getRC,
-    getDinnerLogicalDateKey, localDateKey, getDayDate, getWeekKey, addWeeks, formatWeekLabel,
+    getDinnerLogicalDateKey, localDateKey, getDayDate, getWeekKey, addWeeks, formatWeekLabel, dayTotals,
     // Gym
     getPlanMode, getRoutineAssignments, getRoutineForWeek, isGymClosedDate, didTrainDay, buildPlanDayMapping,
     // Utils
