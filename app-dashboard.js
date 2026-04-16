@@ -304,10 +304,10 @@ export const createTodayDashboard = ({
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
           <div style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.25);background:rgba(56,189,248,0.08);">
             <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#7DD3FC;font-weight:700;">Tiempo San Rafael</p>
-            <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${weather.loading ? 'Cargando...' : weather.data ? `${weather.data.temp_current}° ahora / prox 24h ${weather.data.temp_next24_max}/${weather.data.temp_next24_min}°` : 'Sin datos'}</p>
+            <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${weather.loading ? 'Cargando...' : weather.data ? `${weather.data.temp_current}deg ahora / prox 24h ${weather.data.temp_next24_max}/${weather.data.temp_next24_min}deg` : 'Sin datos'}</p>
             <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">
               ${weather.data
-                ? `Noche ${weather.data.temp_tonight_min}° / H ${weather.data.humidity_min}-${weather.data.humidity_max}% / lluvia ${weather.data.rain_probability}% / rafagas ${weather.data.wind_gusts} km/h / UV ${weather.data.uv_max}`
+                ? `Noche ${weather.data.temp_tonight_min}deg / H ${weather.data.humidity_min}-${weather.data.humidity_max}% / lluvia ${weather.data.rain_probability}% / rafagas ${weather.data.wind_gusts} km/h / UV ${weather.data.uv_max}`
                 : (weather.error || 'Sin datos meteorologicos')}
             </p>
             ${weather.data && html`

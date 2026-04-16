@@ -253,7 +253,6 @@ export const createApp = (deps) => {
 
     return html`
       <div style="max-width:480px;margin:0 auto;position:relative;min-height:100dvh;background:#05070A;display:flex;flex-direction:column;">
-        <!-- Header -->
         <header style="position:sticky;top:0;z-index:100;background:rgba(5,7,10,0.8);backdrop-filter:blur(12px);padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;">
           <div style="display:flex;align-items:center;gap:12px;">
             <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#10B981,#3B82F6);display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px rgba(16,185,129,0.3);">
@@ -269,7 +268,6 @@ export const createApp = (deps) => {
           </button>
         </header>
 
-        <!-- Content -->
         <main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;padding-bottom:100px;">
           ${view === 'today' && html`
             <${TodayDashboard} session=${session} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('study')} onOpenBooks=${() => navigateTo('books')} onOpenHealth=${() => navigateTo('health')} onOpenRecipes=${() => navigateTo('recipes')} onOpenNotif=${() => navigateTo('notif')} />
@@ -287,7 +285,6 @@ export const createApp = (deps) => {
           ${view === 'routines' && html`<${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${() => {}} />`}
         </main>
 
-        <!-- Footer Nav -->
         <nav style="position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:rgba(10,15,30,0.95);backdrop-filter:blur(16px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;">
            <div style="display:flex;min-width:max-content;padding:0 4px;">
               ${[
