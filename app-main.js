@@ -119,7 +119,10 @@ export const createApp = (deps) => {
           const diff = Math.floor((week - base) / (7 * 24 * 3600 * 1000));
           return diff >= 6 && diff % 6 === 0;
         });
-        if(!rid || !rForWeek) return prev;
+        if(!rid || !rForWeek) {
+          if(wd.sessions[dayKey]) return { ...prev, [wkKey]: { ...wd, sessions: { ...wd.sessions, [dayKey]: null } } };
+          return prev;
+        }
         if(wd.sessions[dayKey] && wd.sessions[dayKey]._routineId === rid) return prev;
         const session = rForWeek.exercises.map((ex, ei) => ({
           ...ex,
@@ -132,6 +135,7 @@ export const createApp = (deps) => {
           }))
         }));
         session._routineId = rid;
+        session._routineName = rForWeek.name;
         return { ...prev, [wkKey]: { ...wd, sessions: { ...wd.sessions, [dayKey]: session } } };
       });
     }, [routineData]);
@@ -272,7 +276,7 @@ export const createApp = (deps) => {
 
         <main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;padding-bottom:100px;">
           ${view === 'today' && html`
-            <${TodayDashboard} session=${session} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('study')} onOpenBooks=${() => navigateTo('books')} onOpenHealth=${() => navigateTo('health')} onOpenRecipes=${() => navigateTo('recipes')} onOpenNotif=${() => navigateTo('notif')} />
+            <${TodayDashboard} session=${session} tracker=${tracker} gymSession=${gymSession} onOpenRoutines=${() => navigateTo('routines')} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('study')} onOpenBooks=${() => navigateTo('books')} onOpenHealth=${() => navigateTo('health')} onOpenRecipes=${() => navigateTo('recipes')} onOpenNotif=${() => navigateTo('notif')} />
             <${HabitsPanel} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} yesterdayFastMsg=${yesterdayFastMsg} onChange=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onMed=${(m,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...(w.tracker[activeDay].meds||{}),[m]:v}}}}))} onMeal=${(i,f,v) => upd(w => {const meals=[...w.tracker[activeDay].meals];meals[i]={...meals[i],[f]:v};return{...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meals}}};})}/>
             <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${(ei,si,rs) => upd(w => {const s=[...(w.sessions[activeDay]||[])];const sets=[...s[ei].sets];sets[si]={...sets[si],completed:!sets[si].completed};s[ei]={...s[ei],sets};if(sets[si].completed){setTimerLeft(rs);setTimerActive(true)};return{...w,sessions:{...w.sessions,[activeDay]:s}};})} />
           `}

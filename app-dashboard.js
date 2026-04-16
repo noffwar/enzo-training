@@ -28,7 +28,9 @@ export const createTodayDashboard = ({
     onOpenBooks,
     onOpenHealth,
     onOpenRecipes,
-    onOpenNotif
+    onOpenNotif,
+    onOpenRoutines,
+    gymSession = []
   }) {
     const [summary, setSummary] = useState({
       pending:0, dueToday:0, notes:0, high:0, nextTask:null,
@@ -300,6 +302,7 @@ export const createTodayDashboard = ({
           <${DashboardActionCard} onClick=${onOpenBooks} title="Libro actual" value=${summary.book?.title || 'Sin libro'} detail=${`Pag ${pn(summary.book?.current_page)} / ${pn(summary.book?.total_pages)} - ${summary.bookPct}%`} border="rgba(245,158,11,0.25)" background="rgba(245,158,11,0.08)" accent="#FCD34D" />
           <${DashboardActionCard} onClick=${onOpenHealth} title="Salud" value=${`R ${pn(summary.meds?.roaccutan)} - M ${pn(summary.meds?.minoxidil_finasteride)}`} detail=${summary.medsLow ? 'Reponer pronto' : medDashboardStatus.label} border=${summary.medsLow ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)'} background=${summary.medsLow ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'} accent=${summary.medsLow ? '#FCA5A5' : '#86EFAC'} />
           <${DashboardActionCard} onClick=${onOpenRecipes} title="Biblioteca" value=${loading ? '...' : summary.pantryLow} detail=${summary.pantryLow > 0 ? 'Items con stock bajo' : 'Sin alertas de stock'} border=${summary.pantryLow > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(56,189,248,0.25)'} background=${summary.pantryLow > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(56,189,248,0.08)'} accent=${summary.pantryLow > 0 ? '#FCD34D' : '#7DD3FC'} />
+          <${DashboardActionCard} onClick=${onOpenRoutines} title="Gimnasio" value=${gymSession?.length > 0 ? (gymSession._routineName || 'Entrenamiento') : 'Descanso'} detail=${gymSession?.length > 0 ? `${gymSession.length} ejercicios programados` : 'Hoy no toca entrenar según tu plan'} border="rgba(16,185,129,0.25)" background="rgba(16,185,129,0.08)" accent="#86EFAC" />
         </div>
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
           <div style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.25);background:rgba(56,189,248,0.08);">
