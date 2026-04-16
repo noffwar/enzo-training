@@ -10,10 +10,38 @@ export const createBooksView = ({
   fetchJsonWithTimeout,
   Card,
   SectionAccordion,
-  SegmentedPillGroup,
-  OcioNoteEntry,
   ISync
-}) => {  return function BooksView({session}) {
+}) => {
+
+  const SegmentedPillGroup = ({options, value, onChange}) => html`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      ${options.map(([val, label]) => html`
+        <button onClick=${()=>onChange(val)} style=${`padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid ${value===val?'rgba(99,102,241,0.5)':'#1E2D45'};background:${value===val?'rgba(99,102,241,0.15)':'rgba(15,23,41,0.6)'};color:${value===val?'#A5B4FC':'#64748B'};`}>
+          ${label}
+        </button>
+      `)}
+    </div>
+  `;
+
+  const OcioNoteEntry = ({ metaLabel, text, collapsed, onToggle, onDelete, onTask }) => html`
+    <div style="padding:10px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
+      <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onClick=${onToggle}>
+        <span style="font-size:11px;font-weight:700;color:#94A3B8;">${metaLabel}</span>
+        <span style="color:#64748B;">${collapsed ? '+' : '-'}</span>
+      </div>
+      ${!collapsed && html`
+        <div style="margin-top:8px;padding-top:8px;border-top:1px dashed #1E2D45;">
+          <p style="margin:0 0 10px;font-size:12px;color:#E2E8F0;white-space:pre-wrap;">${text}</p>
+          <div style="display:flex;gap:8px;">
+            <button onClick=${onDelete} style="padding:4px 8px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#FCA5A5;font-size:10px;font-weight:700;cursor:pointer;">BORRAR</button>
+            ${onTask && html`<button onClick=${onTask} style="padding:4px 8px;border-radius:6px;border:none;background:rgba(16,185,129,0.15);color:#86EFAC;font-size:10px;font-weight:700;cursor:pointer;">A TAREA</button>`}
+          </div>
+        </div>
+      `}
+    </div>
+  `;
+
+  return function BooksView({session}) {
       const [book, setBook] = useState(BOOK_DEFAULT);
       const [series, setSeries] = useState(SERIES_DEFAULT);
       const [notes, setNotes] = useState([]);

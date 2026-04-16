@@ -8,7 +8,13 @@ export const createGymPanel = (deps) => {
   
   const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload, onCompleteSession, onResetSessionChecks}) => {
     const [open,setOpen] = useState(true);
-    if(!session||session.length===0) return null;
+    if(!session||session.length===0) return html`
+      <${SectionAccordion} icon=${html`<${IDumb} s=${18}/>`} title="Rutina Gimnasio" isOpen=${true} onToggle=${()=>{}}>
+        <div style="padding:16px;text-align:center;color:#64748B;font-size:12px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;border-radius:10px;margin-bottom:10px;">
+          No hay rutina asignada para hoy.
+        </div>
+      <//>
+    `;
     const safeT = { gymStartTime:'', gymEndTime:'', ...t };
     const totalSets = session.reduce((acc, ex) => acc + (ex.sets?.length || 0), 0);
     const completedSets = session.reduce((acc, ex) => acc + ex.sets.filter(s => s.completed).length, 0);

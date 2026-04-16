@@ -19,10 +19,49 @@ export const createHealthView = ({
   DAYS,
   Card,
   SectionAccordion,
-  SegmentedPillGroup,
-  HealthStatusCard,
-  HealthHistoryRow, ISync, ICheck, IChevD
-}) => {  return function HealthView({session, onSyncDailyMeds, bodyWeight, onBodyWeight, todayMeds, previousDayMeds, weekTracker, healthWeekKey, onOpenDay}) {
+  ISync, ICheck, IChevD
+}) => {
+
+  const HealthHistoryRow = ({ entry, meta, editingHistoryAt, onEdit, onDelete }) => html`
+    <div style="padding:10px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style=${`padding:2px 6px;border-radius:6px;font-size:9px;font-weight:800;letter-spacing:0.05em;border:1px solid ${meta.border};background:${meta.bg};color:${meta.color};`}>
+            ${meta.badge}
+          </span>
+          <span style="font-size:11px;color:#94A3B8;font-family:'JetBrains Mono',monospace;">
+            ${entry.at ? new Date(entry.at).toLocaleString('es-AR') : 'Sin fecha'}
+          </span>
+        </div>
+        <p style="margin:0;font-size:12px;color:#E2E8F0;">${meta.text}</p>
+        ${entry.logical_date ? html`<p style="margin:4px 0 0;font-size:10px;color:#64748b;">Aplica al dia: ${entry.logical_date}</p>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onClick=${()=>onEdit(entry.at)} disabled=${editingHistoryAt === entry.at} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:700;cursor:pointer;">
+          ${editingHistoryAt === entry.at ? 'CORRIGIENDO...' : 'CORREGIR'}
+        </button>
+      </div>
+    </div>
+  `;
+
+  const HealthStatusCard = ({title, status}) => html`
+    <div style=${`padding:8px 10px;border-radius:8px;border:1px solid ${status.border};background:${status.bg};`}>
+      <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${title}</p>
+      <p style=${`margin:4px 0 0;font-size:13px;font-weight:700;color:${status.color};`}>${status.label}</p>
+    </div>
+  `;
+
+  const SegmentedPillGroup = ({options, value, onChange}) => html`
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      ${options.map(([val, label]) => html`
+        <button onClick=${()=>onChange(val)} style=${`padding:6px 12px;border-radius:999px;font-size:11px;font-weight:700;cursor:pointer;border:1px solid ${value===val?'rgba(99,102,241,0.5)':'#1E2D45'};background:${value===val?'rgba(99,102,241,0.15)':'rgba(15,23,41,0.6)'};color:${value===val?'#A5B4FC':'#64748B'};`}>
+          ${label}
+        </button>
+      `)}
+    </div>
+  `;
+
+  return function HealthView({session, onSyncDailyMeds, bodyWeight, onBodyWeight, todayMeds, previousDayMeds, weekTracker, healthWeekKey, onOpenDay}) {
       const [stock, setStock] = useState(MEDS_STOCK_DEFAULT);
       const [loading, setLoading] = useState(true);
       const [saving, setSaving] = useState(false);
