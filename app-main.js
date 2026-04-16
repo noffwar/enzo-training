@@ -44,7 +44,7 @@ export const createApp = (deps) => {
   const { WeekSummary, ProgressView } = createProgressViews(deps);
   const FloatingTimer = createTimerView(deps);
   const NotifView = createNotifView(deps);
-  const GymPanel = createGymPanel(deps);
+  const { GymPanel, RoutineManager } = createGymPanel(deps);
   const LoginView = createLoginView(deps);
   const TodayDashboard = createTodayDashboard(deps);
   const { HabitsPanel, getYesterdayFast, getRelativeDaySnapshot } = createHabitsPanel(deps);
@@ -119,7 +119,8 @@ export const createApp = (deps) => {
           const diff = Math.floor((week - base) / (7 * 24 * 3600 * 1000));
           return diff >= 6 && diff % 6 === 0;
         });
-        if(!rid || !rForWeek || wd.sessions[dayKey]) return prev;
+        if(!rid || !rForWeek) return prev;
+        if(wd.sessions[dayKey] && wd.sessions[dayKey]._routineId === rid) return prev;
         const session = rForWeek.exercises.map((ex, ei) => ({
           ...ex,
           id: `ex-${wkKey}-${dayKey}-${ei}`,
@@ -130,6 +131,7 @@ export const createApp = (deps) => {
             idealReps: s.reps
           }))
         }));
+        session._routineId = rid;
         return { ...prev, [wkKey]: { ...wd, sessions: { ...wd.sessions, [dayKey]: session } } };
       });
     }, [routineData]);
@@ -240,7 +242,7 @@ export const createApp = (deps) => {
       }
     }, [allWeeks]);
 
-    useEffect(() => ensureSession(currentWk, activeDay), [currentWk, activeDay]);
+    useEffect(() => ensureSession(currentWk, activeDay), [currentWk, activeDay, routineData, allWeeks[currentWk]?.dayMapping]);
 
     if(authLoading) return html`<div style="height:100vh;display:flex;align-items:center;justify-content:center;color:#64748b;">Iniciando seguridad...</div>`;
     if(!session) return html`<${LoginView} onDevBypass=${() => window.location.search += (window.location.search ? '&' : '?') + 'dev=1'} />`;
@@ -282,7 +284,7 @@ export const createApp = (deps) => {
           ${view === 'health' && html`<${HealthView} session=${session} todayMeds=${tracker.meds||{}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} onSyncDailyMeds=${(partial, dateKey) => {/* Placeholder hook */}} />`}
           ${view === 'books' && html`<${BooksView} session=${session} />`}
           ${view === 'notif' && html`<${NotifView} session=${session} />`}
-          ${view === 'routines' && html`<${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${() => {}} />`}
+          ${view === 'routines' && html`<${RoutineManager} weekKey=${currentWk} weekData=${wd} onMappingChange=${(dm) => upd(w => ({...w, dayMapping: dm}))} />`}
         </main>
 
         <nav style="position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:rgba(10,15,30,0.95);backdrop-filter:blur(16px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;">

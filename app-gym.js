@@ -156,7 +156,80 @@ export const createGymPanel = (deps) => {
     `;
   };
 
-  return GymPanel;
+  const RoutineManager = ({ weekKey, weekData, onMappingChange }) => {
+    const dm = weekData?.dayMapping || {};
+    const planMode = dm._planMode || '4';
+    
+    // Lista de opciones 4 o 5 dias
+    const planOptions = [['4', '4 Días'], ['5', '5 Días']];
+    
+    // Lista de rutinas disponibles (1 a 5)
+    const routineOptions = [
+      ['', 'Descanso'],
+      ['1', 'Día 1: Torso A'],
+      ['2', 'Día 2: Pierna/Brazos A'],
+      ['3', 'Día 3: Accesorios/Core'],
+      ['4', 'Día 4: Torso B'],
+      ['5', 'Día 5: Pierna/Brazos B']
+    ];
+
+    const DAYS_INFO = [
+      { key: '1', label: 'Lunes' },
+      { key: '2', label: 'Martes' },
+      { key: '3', label: 'Miércoles' },
+      { key: '4', label: 'Jueves' },
+      { key: '5', label: 'Viernes' },
+      { key: '6', label: 'Sábado' },
+      { key: '0', label: 'Domingo' }
+    ];
+
+    const applyStandardPlan = (mode) => {
+      // Necesitamos isGymClosedDate y getDayDate si queremos ser precisos, 
+      // pero buildPlanDayMapping ya los usa. 
+      // Por ahora usamos la version exportada.
+      const newMapping = buildPlanDayMapping(mode, weekKey, () => false, (wk, d) => d); 
+      onMappingChange(newMapping);
+    };
+
+    return html`
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <${SectionAccordion} icon="📋" title="Plan de Entrenamiento" isOpen=${true} onToggle=${()=>{}}>
+          <p style="margin:0 0 12px;font-size:12px;color:#94A3B8;">Selecciona tu frecuencia semanal para autoresetear los días:</p>
+          <div style="display:flex;gap:8px;margin-bottom:20px;">
+            ${planOptions.map(([val, lbl]) => html`
+              <button 
+                onClick=${() => applyStandardPlan(val)}
+                style=${`padding:10px 16px;border-radius:10px;border:1px solid ${planMode === val ? '#10B981' : '#1E2D45'};background:${planMode === val ? 'rgba(16,185,129,0.1)' : 'rgba(15,23,41,0.5)'};color:${planMode === val ? '#86EFAC' : '#94A3B8'};font-family:'Barlow Condensed',sans-serif;font-weight:700;cursor:pointer;flex:1;`}>
+                ${lbl}
+              </button>
+            `)}
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            ${DAYS_INFO.map(day => html`
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;">
+                <span style="font-size:14px;font-weight:700;color:#E2E8F0;width:80px;">${day.label}</span>
+                <select 
+                  value=${dm[day.key] || ''} 
+                  onChange=${e => onMappingChange({ ...dm, [day.key]: e.target.value })}
+                  style="background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:6px 10px;color:white;font-size:12px;flex:1;max-width:180px;">
+                  ${routineOptions.map(([val, lbl]) => html`<option value=${val}>${lbl}</option>`)}
+                </select>
+              </div>
+            `)}
+          </div>
+
+          <div style="margin-top:16px;padding:12px;border-radius:10px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.2);">
+            <p style="margin:0;font-size:11px;color:#A5B4FC;line-height:1.4;">
+              💡 <b>Tip:</b> Si cambias el plan, se resetearán las asignaciones. Puedes ajustar días individuales manualmente después.
+            </p>
+          </div>
+        <//>
+      </div>
+    `;
+  };
+
+  return { GymPanel, RoutineManager };
 };
 
 // ─── Gym Logic Helpers ──────────────────────────────────────
