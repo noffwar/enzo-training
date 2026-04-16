@@ -49,7 +49,6 @@ export const createApp = (deps) => {
   const TodayDashboard = createTodayDashboard(deps);
   const { HabitsPanel, getYesterdayFast, getRelativeDaySnapshot } = createHabitsPanel(deps);
   const RoutineEditor = createRoutineEditor(deps);
-  const RoutineEditor = createRoutineEditor(deps);
 
   return function App() {
     const [session, setSession] = useState(null);
