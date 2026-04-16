@@ -3,7 +3,7 @@
 export const createGymPanel = (deps) => {
   const {
     html, useState, useRef, IClock, IDumb, ICheck, SectionAccordion,
-    fn, pn, ft, resolveMuscleInfo
+    fn, pn, ft, resolveMuscleInfo, isGymClosedDate, getDayDate
   } = deps;
   
   const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload, onCompleteSession, onResetSessionChecks}) => {
@@ -184,10 +184,7 @@ export const createGymPanel = (deps) => {
     ];
 
     const applyStandardPlan = (mode) => {
-      // Necesitamos isGymClosedDate y getDayDate si queremos ser precisos, 
-      // pero buildPlanDayMapping ya los usa. 
-      // Por ahora usamos la version exportada.
-      const newMapping = buildPlanDayMapping(mode, weekKey, () => false, (wk, d) => d); 
+      const newMapping = buildPlanDayMapping(mode, weekKey, isGymClosedDate, getDayDate); 
       onMappingChange(newMapping);
     };
 

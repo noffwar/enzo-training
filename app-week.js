@@ -1,8 +1,8 @@
-﻿    const WeekSummary = ({weekData, weekKey}) => {
+    const WeekSummary = ({weekData, weekKey}) => {
       const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } = getRC();
       const [isMounted, setIsMounted] = useState(false);
       useEffect(() => {
-        // PequeÃ±o delay adicional para asegurar que el contenedor padre estÃ© listo
+        // Pequeño delay adicional para asegurar que el contenedor padre esté listo
         const timer = setTimeout(() => setIsMounted(true), 50);
         return () => clearTimeout(timer);
       }, []);
@@ -13,26 +13,26 @@
       const canRenderBarCharts = !!(isMounted && BarChart && Bar && XAxis && YAxis && CartesianGrid && Tooltip && ResponsiveContainer);
       const canRenderVolumeChart = canRenderBarCharts && ReferenceLine;
 
-      // â”€â”€ MÃ©tricas base
+      // ── Métricas base
       const totalSteps = Object.values(tracker).reduce((a,d)=>a+(d?.walked&&d?.steps?pn(d.steps):0),0);
       const totalWater = Object.values(tracker).reduce((a,d)=>a+(d?.water||0),0);
 
       const macByDay = DAYS.map(d=>{
         const t=tracker[d.key]||newDay();
         const tot = dayTotals(t.meals);
-        return{name:d.abbr, cals:tot.cals, prot:tot.prot, carb:tot.carb, fat:tot.fat};
+        return { name: d.abbr, cals: tot.cals, prot: tot.prot, carb: tot.carb, fat: tot.fat };
       });
       const wm = macByDay.reduce((a,d)=>({cals:a.cals+d.cals,prot:a.prot+d.prot,carb:a.carb+d.carb,fat:a.fat+d.fat}),{cals:0,prot:0,carb:0,fat:0});
 
-      // â”€â”€ SueÃ±o
+      // ── Sueño
       const sleepDays = Object.values(tracker).filter(d=>d?.sleepHours&&pn(d.sleepHours)>0);
       const sleepAvg  = sleepDays.length ? (sleepDays.reduce((a,d)=>a+pn(d.sleepHours),0)/sleepDays.length) : 0;
       const sleepColor = sleepAvg>=8?'#10B981':sleepAvg>=7?'#6366F1':sleepAvg>=6?'#F59E0B':'#EF4444';
 
-      // â”€â”€ DÃ­as de entrenamiento
+      // ── Días de entrenamiento
       const trainingDays = Object.values(getRoutineAssignments(weekData)).filter(v=>v!=='').length;
 
-      // â”€â”€ Volumen muscular
+      // ── Volumen muscular
       const canonicalMuscles = Array.from(new Set(MUSCLES.map(m => canonicalMuscleName(m)).filter(Boolean)));
       const vol = {}; canonicalMuscles.forEach(m=>vol[m]={direct:0,indirect:0});
       Object.values(sessions).forEach(s=>s&&s.forEach(ex=>{
@@ -63,14 +63,14 @@
 
       const tooltipStyle = {background:'#0F1729',border:'1px solid #1E2D45',borderRadius:'8px',fontFamily:'JetBrains Mono,monospace',fontSize:'11px'};
 
-      // â”€â”€ Macros ElÃ¡sticos: carbos objetivo se ajusta segÃºn la grasa real consumida
-      // C_objetivo = (2000 - 660 - (G_real Ã— 9)) / 4   |  ProteÃ­na fija: 165g = 660 kcal
-      // Bug 10 fix: usar grasa promedio diaria (no el total semanal) en fÃ³rmula diaria
+      // ── Macros Elásticos: carbos objetivo se ajusta según la grasa real consumida
+      // C_objetivo = (2000 - 660 - (G_real × 9)) / 4   |  Proteína fija: 165g = 660 kcal
+      // Bug 10 fix: usar grasa promedio diaria (no el total semanal) en fórmula diaria
       const fatDailyAvg   = wm.fat / 7;
       const carbsTarget     = Math.max(0, Math.round((TARGETS.kcal - (TARGETS.prot * 4) - (fatDailyAvg * 9)) / 4));
       const carbsTargetWeekly = carbsTarget * 7;
 
-      // â”€â”€ Adherencia a macros con carbos elÃ¡sticos
+      // ── Adherencia a macros con carbos elásticos
       const macroAdh = {
         prot: Math.min(100, Math.round(wm.prot  / (TARGETS.prot*7)      * 100)),
         carb: Math.min(100, Math.round(wm.carb  / (carbsTargetWeekly||1) * 100)),
@@ -112,12 +112,12 @@
 
           <!-- RESUMEN RÃPIDO -->
           <${Card}>
-            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">ðŸ“‹ Resumen Semanal</p>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#10B981;">📋 Resumen Semanal</p>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
               ${[
-                {icon:'ðŸ’ª',label:'Dias gym',value:trainingDays,unit:`/${weeklyGymGoal}`,color:'#6366F1'},
-                {icon:'ðŸš¶',label:'Pasos',value:fn(totalSteps),unit:'',color:'#10B981'},
-                {icon:'ðŸ’§',label:'Agua',value:(totalWater/1000).toFixed(1),unit:'L',color:'#38BDF8'},
+                {icon:'💪',label:'Dias gym',value:trainingDays,unit:`/${weeklyGymGoal}`,color:'#6366F1'},
+                {icon:'🚶',label:'Pasos',value:fn(totalSteps),unit:'',color:'#10B981'},
+                {icon:'💧',label:'Agua',value:(totalWater/1000).toFixed(1),unit:'L',color:'#38BDF8'},
               ].map(({icon,label,value,unit,color})=>html`
                 <div style="background:rgba(10,15,30,0.6);border:1px solid #1E2D45;border-radius:10px;padding:10px;text-align:center;">
                   <p style="margin:0 0 2px;font-size:16px;">${icon}</p>
@@ -128,9 +128,9 @@
             </div>
           <//>
 
-          <!-- SUEÃ‘O -->
+          <!-- SUEÑO -->
           <${Card}>
-            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#6366F1;">ðŸ˜´ Calidad de SueÃ±o</p>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#6366F1;">😴 Calidad de Sueño</p>
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
               <div style="flex:1;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
@@ -161,14 +161,14 @@
 
           <!-- ADHERENCIA MACROS -->
           <${Card}>
-            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">ðŸŽ¯ Adherencia Nutricional</p>
+            <p style="margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#F59E0B;">🎯 Adherencia Nutricional</p>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
               ${[['cals','Kcal','#F59E0B'],['prot','Prot','#10B981'],['carb','Carb','#6366F1'],['fat','Grasa','#EF4444']].map(([k,l,c]) => html`
                 <div style="background:rgba(10,15,30,0.6);border:1px solid ${c}33;border-radius:10px;padding:8px;text-align:center;">
                   <p style="margin:0 0 2px;font-size:10px;text-transform:uppercase;color:${c};">${l}</p>
                   <p style="margin:0;font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;">${fn(wm[k])}${k!=='cals'?'g':''}</p>
                   <p style="margin:1px 0 0;font-size:9px;color:#475569;">
-                    ${k==='carb' ? `obj: ${fn(carbsTarget)}g/dÃ­a` : k==='cals' ? `obj: ${fn(TARGETS.kcal)}` : k==='prot' ? `obj: ${TARGETS.prot}g` : `obj: ${TARGETS.fat}g`}
+                    ${k==='carb' ? `obj: ${fn(carbsTarget)}g/día` : k==='cals' ? `obj: ${fn(TARGETS.kcal)}` : k==='prot' ? `obj: ${TARGETS.prot}g` : `obj: ${TARGETS.fat}g`}
                   </p>
                   <p style="margin:1px 0 0;font-size:10px;color:${macroAdh[k]>=90?'#10B981':macroAdh[k]>=70?'#F59E0B':'#EF4444'};">${macroAdh[k]}%</p>
                 </div>
@@ -194,10 +194,10 @@
           <!-- VOLUMEN MUSCULAR con zonas MEV/MAV/MRV -->
           <${Card}>
             <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:#6366F1;display:flex;align-items:center;gap:6px;">
-              <${ITarget} s=${14}/>Series Efectivas â€” Zonas de Volumen
+              <${ITarget} s=${14}/>Series Efectivas — Zonas de Volumen
             </p>
             <div style="display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
-              ${[['MEV','mÃ­n','#EF4444',4],['MAV','Ã³ptimo','#10B981',10],['MRV','mÃ¡x','#F59E0B',20]].map(([z,l,c,v])=>html`
+              ${[['MEV','mín','#EF4444',4],['MAV','óptimo','#10B981',10],['MRV','máx','#F59E0B',20]].map(([z,l,c,v])=>html`
                 <div style="display:flex;align-items:center;gap:4px;">
                   <div style="width:16px;height:2px;background:${c};border-radius:1px;"></div>
                   <span style="font-size:10px;color:#64748b;">${z} ${l} (~${v})</span>

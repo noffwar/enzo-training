@@ -187,6 +187,95 @@ export const createApp = (deps) => {
     }, []);
 
     useEffect(() => {
+      refreshModuleAlerts();
+      const h = setInterval(refreshModuleAlerts, 60000 * 5); // cada 5 min
+      return () => clearInterval(h);
+    }, [refreshModuleAlerts]);
+
+    const restoreRemovedItemStock = useCallback((removedItem) => {
+      if(!removedItem?.recipe_id) return;
+      supabase.from('user_recipes').select('id, stock_qty').eq('id', removedItem.recipe_id).single().then(({ data }) => {
+        if(!data) return;
+        const delta = parseFloat(removedItem.stock_delta || 0);
+        if(delta > 0) {
+          supabase.from('user_recipes').update({ stock_qty: (parseFloat(data.stock_qty) || 0) + delta, updated_at: new Date().toISOString() }).eq('id', removedItem.recipe_id).then(()=>{});
+        }
+      });
+    }, []);
+
+    const addMealItem = (mealIdx, item) => upd(w => {
+      const meals = [...(w.tracker[activeDay].meals || [])];
+      meals[mealIdx] = { ...meals[mealIdx], items: [...(meals[mealIdx].items || []), item] };
+      return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+    });
+
+    const removeMealItem = (mealIdx, itemIdx, removedItem) => {
+      upd(w => {
+        const meals = [...(w.tracker[activeDay].meals || [])];
+        meals[mealIdx] = { ...meals[mealIdx], items: (meals[mealIdx].items || []).filter((_, i) => i !== itemIdx) };
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+      });
+      if(removedItem) restoreRemovedItemStock(removedItem);
+    };
+
+    const replaceMealItem = (mealIdx, itemIdx, item, prevItem) => {
+      upd(w => {
+        const meals = [...(w.tracker[activeDay].meals || [])];
+        const items = [...(meals[mealIdx].items || [])];
+        items[itemIdx] = item;
+        meals[mealIdx] = { ...meals[mealIdx], items };
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+      });
+      if(prevItem) restoreRemovedItemStock(prevItem);
+    };
+
+    const handleSetComplete = (ei, si, restSecs) => upd(w => {
+      const s = [...(w.sessions[activeDay] || [])];
+      if(!s[ei]) return w;
+      const sets = [...s[ei].sets];
+      const was = sets[si].completed;
+      sets[si] = { ...sets[si], completed: !was };
+      s[ei] = { ...s[ei], sets };
+      if(!was && restSecs > 0) { setTimerLeft(restSecs); setTimerActive(true); }
+      return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
+    });
+
+    const handleSetInput = (ei, si, field, val) => upd(w => {
+      const s = [...(w.sessions[activeDay] || [])];
+      if(!s[ei]) return w;
+      const sets = [...s[ei].sets];
+      sets[si] = { ...sets[si], [field]: val };
+      s[ei] = { ...s[ei], sets };
+      return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
+    });
+
+    const handleCompleteSession = () => upd(w => {
+      const s = [...(w.sessions[activeDay] || [])].map(ex => ({ ...ex, sets: ex.sets.map(st => ({ ...st, completed: true })) }));
+      const td = w.tracker[activeDay] || newDay();
+      const nowTime = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return { ...w, tracker: { ...w.tracker, [activeDay]: { ...td, gymEndTime: td.gymEndTime || nowTime } }, sessions: { ...w.sessions, [activeDay]: s } };
+    });
+
+    const handleResetSessionChecks = () => upd(w => {
+      const s = [...(w.sessions[activeDay] || [])].map(ex => ({ ...ex, sets: ex.sets.map(st => ({ ...st, completed: false })) }));
+      return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
+    });
+
+    const handleApplyOverload = (candidates) => {
+      const updatedRoutines = JSON.parse(JSON.stringify(routineData));
+      const rid = (allWeeks[currentWk]?.dayMapping || {})[activeDay];
+      if(!rid || !updatedRoutines[rid]) return;
+      candidates.forEach(cand => {
+        const ex = updatedRoutines[rid].exercises.find(e => e.name === cand.name);
+        if(!ex) return;
+        ex.sets = ex.sets.map(s => ({ ...s, weight: (pn(s.weight) + 2.5).toFixed(1).replace('.', ',') }));
+      });
+      setRoutineData(updatedRoutines);
+      saveRoutineRemote(supabase, stripRoutineMeta, rid, updatedRoutines[rid], updatedRoutines[rid]._revision || null, session);
+      Object.entries(updatedRoutines).forEach(([id, data]) => lsRoutineSave(id, { ...data, _updatedAt: new Date().toISOString() }));
+    };
+
+    useEffect(() => {
       const { weeklyCache, dailyCache, routinesCache } = loadLocalCaches();
       const localAllWeeks = buildAllWeeks(weeklyCache, dailyCache, hydrate);
       const initWk = currentWk >= START_WEEK ? currentWk : START_WEEK;
@@ -254,6 +343,10 @@ export const createApp = (deps) => {
     const wd = allWeeks[currentWk] || newWeek(currentWk);
     const tracker = wd.tracker[activeDay] || newDay();
     const gymSession = wd.sessions[activeDay] || [];
+    const yesterdayDate = new Date(); yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayWk = getWeekKey(yesterdayDate);
+    const yesterdayIdx = String(yesterdayDate.getDay());
+    const prevDayTracker = (allWeeks[yesterdayWk]?.tracker?.[yesterdayIdx]) || {};
     const yesterdayFastMsg = getYesterdayFast(allWeeks, currentWk, activeDay);
     const navBadges = { study: moduleAlerts.study > 0 ? (moduleAlerts.study > 9 ? '9+' : String(moduleAlerts.study)) : '', health: moduleAlerts.health ? '!' : '', books: moduleAlerts.books ? '•' : '', recipes: moduleAlerts.recipes > 0 ? (moduleAlerts.recipes > 9 ? '9+' : String(moduleAlerts.recipes)) : '', notif: moduleAlerts.notif ? '!' : '' };
 
@@ -277,15 +370,15 @@ export const createApp = (deps) => {
         <main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;padding-bottom:100px;">
           ${view === 'today' && html`
             <${TodayDashboard} session=${session} tracker=${tracker} gymSession=${gymSession} onOpenRoutines=${() => navigateTo('routines')} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('study')} onOpenBooks=${() => navigateTo('books')} onOpenHealth=${() => navigateTo('health')} onOpenRecipes=${() => navigateTo('recipes')} onOpenNotif=${() => navigateTo('notif')} />
-            <${HabitsPanel} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} yesterdayFastMsg=${yesterdayFastMsg} onChange=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onMed=${(m,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...(w.tracker[activeDay].meds||{}),[m]:v}}}}))} onMeal=${(i,f,v) => upd(w => {const meals=[...w.tracker[activeDay].meals];meals[i]={...meals[i],[f]:v};return{...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meals}}};})}/>
-            <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${(ei,si,rs) => upd(w => {const s=[...(w.sessions[activeDay]||[])];const sets=[...s[ei].sets];sets[si]={...sets[si],completed:!sets[si].completed};s[ei]={...s[ei],sets};if(sets[si].completed){setTimerLeft(rs);setTimerActive(true)};return{...w,sessions:{...w.sessions,[activeDay]:s}};})} />
+            <${HabitsPanel} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} yesterdayFastMsg=${yesterdayFastMsg} onChange=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onMed=${(m,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...(w.tracker[activeDay].meds||{}),[m]:v}}}}))} onMeal=${addMealItem} onAddItem=${addMealItem} onRemoveItem=${removeMealItem} onReplaceItem=${replaceMealItem}/>
+            <${GymPanel} session=${gymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
           `}
           ${view === 'tasks' && html`<${ProductivityView} session=${session} />`}
           ${view === 'week' && html`<${WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />`}
           ${view === 'progress' && html`<${ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />`}
           ${view === 'recipes' && html`<${RecipesView} session=${session} />`}
           ${view === 'study' && html`<${StudyView} session=${session} />`}
-          ${view === 'health' && html`<${HealthView} session=${session} todayMeds=${tracker.meds||{}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} onSyncDailyMeds=${(partial, dateKey) => {/* Placeholder hook */}} />`}
+          ${view === 'health' && html`<${HealthView} session=${session} todayMeds=${tracker.meds||{}} previousDayMeds=${prevDayTracker.meds||{}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} onSyncDailyMeds=${(partial, dk) => upd(w => {const dayIdx = new Date(dk+'T12:00:00').getDay(); const dayKey = String(dayIdx); const td = w.tracker[dayKey] || newDay(); return {...w, tracker: {...w.tracker, [dayKey]: {...td, meds: {...(td.meds||{}), ...partial}}}}})} onOpenDay=${d => {const dayIdx = new Date(d+'T12:00:00').getDay(); setActiveDay(String(dayIdx)); setView('today');}} />`}
           ${view === 'books' && html`<${BooksView} session=${session} />`}
           ${view === 'notif' && html`<${NotifView} session=${session} />`}
           ${view === 'routines' && html`<${RoutineManager} weekKey=${currentWk} weekData=${wd} onMappingChange=${(dm) => upd(w => ({...w, dayMapping: dm}))} />`}
