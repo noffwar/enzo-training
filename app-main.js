@@ -21,7 +21,7 @@ export const createApp = (deps) => {
     isValidDateValue, isDateKey, isWeekKey, isBeforeStart, stripRoutineMeta,
     // Constants
     TARGETS, HOME_FOODS, TRAINING_PLAN_VERSION, TRAINING_PLAN_EFFECTIVE_WEEK, TRAINING_PLAN_START, START_WEEK,
-    MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, BOOK_DEFAULT, DAY_KEYS, trainingPlanRoutines, HOLIDAYS_2026,
+    MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, BOOK_DEFAULT, DAY_KEYS, DAYS, trainingPlanRoutines, HOLIDAYS_2026,
     // Components
     IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock, IChevL, IChevR,
     Card, SectionAccordion, Inp, CheckRow,
@@ -34,6 +34,8 @@ export const createApp = (deps) => {
     // Habits
     createHabitsPanel
   } = deps;
+  console.log('[AppMain] Incoming deps:', deps);
+  console.log('[AppMain] Destructured DAYS:', DAYS);
 
   // Initialize modularized views
   const ProductivityView = createProductivityView(deps);
@@ -542,7 +544,17 @@ export const createApp = (deps) => {
                 </div>
               `}
 
-              <${TodayDashboard} session=${session} tracker=${tracker} gymSession=${effectiveGymSession} onOpenRoutines=${() => navigateTo('routines')} selectedDateKey=${activeDateKey} onOpenTasks=${() => navigateTo('tasks')} onOpenStudy=${() => navigateTo('study')} onOpenBooks=${() => navigateTo('books')} onOpenHealth=${() => navigateTo('health')} onOpenRecipes=${() => navigateTo('recipes')} onOpenNotif=${() => navigateTo('notif')} />
+              <${TodayDashboard} 
+                session=${session} 
+                tracker=${tracker} 
+                selectedDateKey=${activeDateKey} 
+                onOpenTasks=${() => navigateTo('tasks')} 
+                onOpenStudy=${() => navigateTo('study')} 
+                onOpenBooks=${() => navigateTo('books')} 
+                onOpenHealth=${() => navigateTo('health')} 
+                onOpenRecipes=${() => navigateTo('recipes')} 
+                onOpenNotif=${() => navigateTo('notif')} 
+              />
               <${HabitsPanel} tracker=${tracker} selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} yesterdayFastMsg=${yesterdayFastMsg} onChange=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onMed=${(m,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],meds:{...(w.tracker[activeDay].meds||{}),[m]:v}}}}))} onMeal=${addMealItem} onAddItem=${addMealItem} onRemoveItem=${removeMealItem} onReplaceItem=${replaceMealItem}/>
               <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
               
