@@ -1,8 +1,8 @@
-import { SectionAccordion } from './app-components.js';
+
 
 export const createGymPanel = (deps) => {
   const {
-    html, useState, useRef, IClock, IDumb, ICheck, 
+    html, useState, useRef, IClock, IDumb, ICheck, SectionAccordion,
     fn, pn, ft, resolveMuscleInfo
   } = deps;
   
