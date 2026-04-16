@@ -27,9 +27,9 @@ export const IActivity= ({html, s,c}) => html`<${Icon} html=${html} s=${s} c=${c
 // ═══════════════════════════════════════════════════
 //  COMPONENTES BASE (requieren html como prop — versiones legacy)
 // ═══════════════════════════════════════════════════
-export const Card = ({html, children, style=''}) => html`<div class="glass-card" style=${`padding:16px;${style}`}>${children}</div>`;
+const Card = ({html, children, style=''}) => html`<div class="glass-card" style=${`padding:16px;${style}`}>${children}</div>`;
 
-export const SectionAccordion = ({html, icon, title, isOpen, onToggle, children}) => html`
+const SectionAccordion = ({html, icon, title, isOpen, onToggle, children}) => html`
   <div class="glass-card" style="overflow:hidden;">
     <button class="section-toggle" onClick=${onToggle}>
       <span style="display:flex;align-items:center;gap:8px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.05em;">
@@ -45,7 +45,7 @@ export const SectionAccordion = ({html, icon, title, isOpen, onToggle, children}
   </div>
 `;
 
-export const Inp = ({html, label, value, onChange, placeholder, type='text'}) => html`
+const Inp = ({html, label, value, onChange, placeholder, type='text'}) => html`
   <div>
     ${label && html`<label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">${label}</label>`}
     <input type=${type} value=${value} onInput=${e=>onChange(e.target.value)} placeholder=${placeholder||''}
@@ -53,7 +53,7 @@ export const Inp = ({html, label, value, onChange, placeholder, type='text'}) =>
   </div>
 `;
 
-export const CheckRow = ({html, label, checked, onChange, children}) => html`
+const CheckRow = ({html, label, checked, onChange, children}) => html`
   <div style="display:flex;flex-direction:column;gap:8px;">
     <label style="display:flex;align-items:center;gap:10px;cursor:pointer;min-height:44px;">
       <input type="checkbox" checked=${checked} onChange=${e=>onChange(e.target.checked)} />
