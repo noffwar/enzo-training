@@ -51,7 +51,7 @@ export const createRoutineStore = ({
     }
 
     Object.entries(routines).forEach(([id, data]) => {
-      saveRoutineRemote(id, stripRoutineMeta(data), prevRevisions[id] || null).catch(() => {});
+      saveRoutineRemote(null, stripRoutineMeta, id, data, prevRevisions[id] || null, null).catch(() => {});
     });
   };
 

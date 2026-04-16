@@ -144,17 +144,27 @@ export const createApp = (deps) => {
     }, [routineData]);
 
     useEffect(() => {
+      console.log('[Auth] Initializing...');
       const params = new URLSearchParams(window.location.search);
       if(params.get('dev') === '1' || params.get('bypass') === '1') {
+        console.log('[Auth] Dev bypass active');
         setSession({ user: { id: '00000000-0000-0000-0000-000000000000', email: 'guest@enzo.training' } });
         setAuthLoading(false);
         return;
       }
-      supabase.auth.getSession().then(({ data }) => {
-        setSession(data.session);
+      
+      supabase.auth.getSession().then(({ data, error }) => {
+        if (error) console.error('[Auth] getSession error:', error);
+        console.log('[Auth] getSession resolved:', !!data?.session);
+        setSession(data?.session || null);
+        setAuthLoading(false);
+      }).catch(err => {
+        console.error('[Auth] getSession critical error:', err);
         setAuthLoading(false);
       });
+
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
+        console.log('[Auth] State change:', _event, !!sess);
         if(!new URLSearchParams(window.location.search).get('dev')) {
           setSession(sess);
           setAuthLoading(false);

@@ -156,7 +156,8 @@ export const createGymPanel = (deps) => {
     `;
   };
 
-  const RoutineManager = ({ weekKey, weekData, onMappingChange }) => {
+  const RoutineManager = (props) => {
+    const { weekKey, weekData, onMappingChange } = props;
     const dm = weekData?.dayMapping || {};
     const planMode = dm._planMode || '4';
     
@@ -165,7 +166,7 @@ export const createGymPanel = (deps) => {
     
     const routineOptions = [
       ['', 'Descanso'],
-      ...Object.values(deps.routineData || {}).map(r => [r.id, r.name])
+      ...Object.values(props.routineData || deps.routineData || {}).map(r => [r.id, r.name])
     ];
 
     const DAYS_INFO = [

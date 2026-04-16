@@ -140,6 +140,7 @@
         Object.assign(viewDeps, dynamicComponents);
 
         console.log('[App] Final dependencies (with dynamic components):', viewDeps);
+        console.log('[App] SUPA_URL:', cons.SUPA_URL);
 
         const App = createApp(viewDeps);
         render(h(App), document.getElementById('app'));
