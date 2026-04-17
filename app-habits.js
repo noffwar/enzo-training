@@ -467,6 +467,7 @@ export const createHabitsPanel = (deps) => {
                 <${Inp} label="Inicio (HH:MM)" type="time" value=${t.fastStartTime} onChange=${v=>onChange('fastStartTime',v)}/>
                 <${Inp} label="Duración (hs)" value=${t.fastHours} onChange=${v=>onChange('fastHours',v)} placeholder="Ej: 16"/>
               </div>
+              ${(() => {
                 const fs = getFastStats(t, selectedDateKey);
                 if (!fs.active || !fs.startTime) return null;
                 const hh = Math.floor(fs.elapsed);
