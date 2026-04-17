@@ -22,6 +22,7 @@ export const createApp = (deps) => {
     // Constants
     TARGETS, HOME_FOODS, TRAINING_PLAN_VERSION, TRAINING_PLAN_EFFECTIVE_WEEK, TRAINING_PLAN_START, START_WEEK,
     MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, BOOK_DEFAULT, DAY_KEYS, DAYS, trainingPlanRoutines, HOLIDAYS_2026,
+    HEALTH_HISTORY_FILTERS, getHealthEntryMeta,
     // Components
     IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock, IChevL, IChevR,
     Card, SectionAccordion, Inp, CheckRow,

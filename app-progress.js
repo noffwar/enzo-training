@@ -56,7 +56,7 @@ const WeekSummary = ({weekData, weekKey}) => {
             if(vol[key]) vol[key].indirect += done;
           });
         }
-      }));
+      }); });
       const volumeScaleMax = Math.max(20, ...Object.values(vol).map(v => (v.direct + v.indirect)), 0);
       const volumeData = Object.entries(vol).map(([m,v])=>({
         name:m.slice(0,4),
