@@ -10,7 +10,6 @@ const WeekSummary = ({weekData, weekKey}) => {
       const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } = getRC();
       const [isMounted, setIsMounted] = useState(false);
       useEffect(() => {
-        // Pequeño delay adicional para asegurar que el contenedor padre esté listo
         const timer = setTimeout(() => setIsMounted(true), 50);
         return () => clearTimeout(timer);
       }, []);
@@ -43,20 +42,24 @@ const WeekSummary = ({weekData, weekKey}) => {
       // ── Volumen muscular
       const canonicalMuscles = Array.from(new Set(MUSCLES.map(m => canonicalMuscleName(m)).filter(Boolean)));
       const vol = {}; canonicalMuscles.forEach(m=>vol[m]={direct:0,indirect:0});
-      Object.values(sessions).forEach(s => { if(!Array.isArray(s)) return; s.forEach(ex => { if(!ex || !Array.isArray(ex.sets)) return;
-        const done=ex.sets.filter(s=>s.completed).length;
-        const muscles = resolveMuscleInfo(ex.name);
-        if(done>0 && muscles){
-          muscles.direct.forEach(m=>{
-            const key = canonicalMuscleName(m);
-            if(vol[key]) vol[key].direct += done;
-          });
-          muscles.indirect.forEach(m=>{
-            const key = canonicalMuscleName(m);
-            if(vol[key]) vol[key].indirect += done;
-          });
-        }
-      }); });
+      Object.values(sessions).forEach(s => {
+        if (!Array.isArray(s)) return;
+        s.forEach(ex => {
+          if (!ex || !Array.isArray(ex.sets)) return;
+          const done = ex.sets.filter(s => s.completed).length;
+          const muscles = resolveMuscleInfo(ex.name);
+          if (done > 0 && muscles) {
+            muscles.direct.forEach(m => {
+              const key = canonicalMuscleName(m);
+              if (vol[key]) vol[key].direct += done;
+            });
+            muscles.indirect.forEach(m => {
+              const key = canonicalMuscleName(m);
+              if (vol[key]) vol[key].indirect += done;
+            });
+          }
+        });
+      });
       const volumeScaleMax = Math.max(20, ...Object.values(vol).map(v => (v.direct + v.indirect)), 0);
       const volumeData = Object.entries(vol).map(([m,v])=>({
         name:m.slice(0,4),
@@ -72,8 +75,6 @@ const WeekSummary = ({weekData, weekKey}) => {
       const tooltipStyle = {background:'#0F1729',border:'1px solid #1E2D45',borderRadius:'8px',fontFamily:'JetBrains Mono,monospace',fontSize:'11px'};
 
       // ── Macros Elásticos: carbos objetivo se ajusta según la grasa real consumida
-      // C_objetivo = (2000 - 660 - (G_real × 9)) / 4   |  Proteína fija: 165g = 660 kcal
-      // Bug 10 fix: usar grasa promedio diaria (no el total semanal) en fórmula diaria
       const fatDailyAvg   = wm.fat / 7;
       const carbsTarget     = Math.max(0, Math.round((TARGETS.kcal - (TARGETS.prot * 4) - (fatDailyAvg * 9)) / 4));
       const carbsTargetWeekly = carbsTarget * 7;
@@ -212,14 +213,11 @@ const WeekSummary = ({weekData, weekKey}) => {
                 </div>
               `)}
             </div>
-            ${!hasVolumeData && html`
-              ${!hasVolumeData && html`
-                <div style="margin-bottom:10px;padding:10px;border-radius:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);">
-                  <p style="margin:0;font-size:12px;color:#C7D2FE;">todavía no hay series efectivas registradas esta semana. Marca series como completadas en GIMNASIO para ver el volumen por musculo.</p>
-                </div>
-              `}
-            `}
-            ${hasVolumeData && html`
+            ${!hasVolumeData ? html`
+              <div style="margin-bottom:10px;padding:10px;border-radius:8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);">
+                <p style="margin:0;font-size:12px;color:#C7D2FE;">todavía no hay series efectivas registradas esta semana. Marca series como completadas en GIMNASIO para ver el volumen por musculo.</p>
+              </div>
+            ` : html`
               <div style="display:flex;flex-direction:column;gap:8px;">
                 ${volumeData.filter(row => row.total > 0).sort((a,b) => b.total - a.total).map(row => html`
                   <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.6);border:1px solid #1E2D45;">
@@ -262,7 +260,6 @@ const ProgressView = ({allWeeks, onMount}) => {
       const canRenderLineChart = !!(isMounted && LineChart && Line && XAxis && YAxis && CartesianGrid && Tooltip && ResponsiveContainer);
       const canRenderBarChart = !!(isMounted && BarChart && Bar && XAxis && YAxis && CartesianGrid && Tooltip && ResponsiveContainer);
 
-      // Carga el historial completo la primera vez que se abre la tab
       useEffect(()=>{
         if(onMount) { setLoadingAll(true); onMount().finally(()=>setLoadingAll(false)); }
       },[]);
@@ -280,13 +277,11 @@ const ProgressView = ({allWeeks, onMount}) => {
         };
       }, [onMount]);
 
-      // Años disponibles en el historial
       const availableYears = useMemo(()=>{
         const ys = new Set(Object.keys(allWeeks).filter(wk=>!isBeforeStart(wk)).map(wk=>wk.slice(0,4)));
         return Array.from(ys).sort().reverse();
       },[allWeeks]);
 
-      // Semanas filtradas por año/mes
       const filteredWeeks = useMemo(()=>
         Object.entries(allWeeks)
           .filter(([wk])=> !isBeforeStart(wk))
@@ -297,7 +292,6 @@ const ProgressView = ({allWeeks, onMount}) => {
 
       const filteredWeeksObj = useMemo(()=>Object.fromEntries(filteredWeeks),[filteredWeeks]);
 
-      // Historial de peso corporal
       const weightHistory = useMemo(()=>
         Object.entries(allWeeks)
           .filter(([wk])=> !isBeforeStart(wk) && allWeeks[wk]?.bodyWeight)
@@ -305,7 +299,6 @@ const ProgressView = ({allWeeks, onMount}) => {
           .map(([wk,w])=>({ week: formatWeekLabel(wk).slice(0,6), kg: parseFloat(w.bodyWeight)||0 }))
       ,[allWeeks]);
 
-      // Exportar PROGRESO como imagen PNG
       const exportImage = async () => {
         const el = document.getElementById('progress-export-area');
         if(!el) return;
@@ -323,27 +316,46 @@ const ProgressView = ({allWeeks, onMount}) => {
           a.click();
         } catch(e) {
           console.warn('[Export]', e.message);
-          window.print(); // fallback si html2canvas falla
+          window.print();
         }
       };
 
-      const allExercises = useMemo(()=>{const s=new Set();Object.values(filteredWeeksObj).forEach(w=>Object.values(w.sessions||{}).forEach(ss=>ss&&ss.forEach(ex=>s.add(ex.name))));return Array.from(s).sort();},[filteredWeeksObj]);
+      const allExercises = useMemo(()=>{
+        const s = new Set();
+        Object.values(filteredWeeksObj).forEach(w => {
+          Object.values(w.sessions || {}).forEach(ss => {
+            if (Array.isArray(ss)) {
+              ss.forEach(ex => { if(ex && ex.name) s.add(ex.name); });
+            }
+          });
+        });
+        return Array.from(s).sort();
+      }, [filteredWeeksObj]);
+
       const exHistory = useMemo(()=>{
         if(!selEx) return [];
         const pts=[];
         Object.entries(filteredWeeksObj)
           .sort(([a],[b])=>a.localeCompare(b))
-          .forEach(([wk,w])=>Object.values(w.sessions||{}).forEach(ss=>ss&&ss.forEach(ex=>{
-            if(ex.name===selEx) ex.sets.filter(s=>s.completed).forEach((set,si)=>{
-              const wt=pn(set.weight);
-              if(wt>0) pts.push({
-                week: formatWeekLabel(wk).slice(0,6),
-                weight: wt,
-                rpe: set.rpe ? parseInt(set.rpe) : null,
-                set: si+1
-              });
+          .forEach(([wk,w]) => {
+            Object.values(w.sessions || {}).forEach(ss => {
+              if (Array.isArray(ss)) {
+                ss.forEach(ex => {
+                  if (ex && ex.name === selEx && Array.isArray(ex.sets)) {
+                    ex.sets.filter(s => s.completed).forEach((set, si) => {
+                      const wt = pn(set.weight);
+                      if (wt > 0) pts.push({
+                        week: formatWeekLabel(wk).slice(0, 6),
+                        weight: wt,
+                        rpe: set.rpe ? parseInt(set.rpe) : null,
+                        set: si + 1
+                      });
+                    });
+                  }
+                });
+              }
             });
-          })));
+          });
         return pts;
       },[selEx, filteredWeeksObj]);
 
@@ -352,10 +364,16 @@ const ProgressView = ({allWeeks, onMount}) => {
           .sort(([a],[b])=>a.localeCompare(b))
           .map(([wk,w])=>{
             let cals=0,prot=0;
-            Object.values(w.tracker||{}).forEach(d=>{ const t=dayTotals(d.meals||[]); cals+=t.cals; prot+=t.prot; });
+            Object.values(w.tracker || {}).forEach(d => {
+              if (d && Array.isArray(d.meals)) {
+                const t = dayTotals(d.meals);
+                cals += t.cals; prot += t.prot;
+              }
+            });
             return{week:formatWeekLabel(wk).slice(0,6),cals,prot};
           })
       ,[filteredWeeksObj]);
+
       const caloriesScaleMax = Math.max(weeklyCaloriesTarget, ...macHistory.map(row => row.cals || 0), 1);
       const caloriesBars = macHistory.map(row => ({
         ...row,
@@ -368,19 +386,25 @@ const ProgressView = ({allWeeks, onMount}) => {
       const weightRange = Math.max(1, weightScaleMax - weightScaleMin);
       const weightRows = weightHistory.map(row => ({ ...row, pct: ((row.kg - weightScaleMin) / weightRange) * 100 }));
 
-      // PRs: máximo de TODO el historial (no filtrado — son records históricos)
       const personalRecords = useMemo(()=>{
         const prs = {};
-        Object.values(allWeeks).forEach(w=>
-          Object.values(w.sessions||{}).forEach(ss=>ss&&ss.forEach(ex=>{
-            ex.sets.filter(s=>s.completed).forEach(set=>{
-              const wt = pn(set.weight);
-              if(wt > 0 && (!prs[ex.name] || wt > prs[ex.name])) prs[ex.name] = wt;
-            });
-          }))
-        );
+        Object.values(allWeeks).forEach(w => {
+          Object.values(w.sessions || {}).forEach(ss => {
+            if (Array.isArray(ss)) {
+              ss.forEach(ex => {
+                if (ex && Array.isArray(ex.sets)) {
+                  ex.sets.filter(s => s.completed).forEach(set => {
+                    const wt = pn(set.weight);
+                    if (wt > 0 && (!prs[ex.name] || wt > prs[ex.name])) prs[ex.name] = wt;
+                  });
+                }
+              });
+            }
+          });
+        });
         return Object.entries(prs).sort(([,a],[,b])=>b-a);
       },[allWeeks]);
+
       const tooltipStyle = {background:'#0F1729',border:'1px solid #1E2D45',borderRadius:'8px',fontFamily:'JetBrains Mono,monospace',fontSize:'11px'};
 
       const exportProgressData = () => {
@@ -428,7 +452,6 @@ const ProgressView = ({allWeeks, onMount}) => {
             </div>
           `}
           <${Card}>
-            <!-- D. Filtro por Año/Mes -->
             <div style="display:flex;gap:6px;margin-bottom:12px;">
               <select class="inp" style="flex:1;font-size:12px;padding:6px 8px;"
                 value=${filterYear} onChange=${e=>{ setFilterYear(e.target.value); setFilterMonth(''); }}>
@@ -566,7 +589,7 @@ const ProgressView = ({allWeeks, onMount}) => {
               </div>
               <div style="display:flex;flex-direction:column;gap:8px;">
                 ${weightRows.map(row => html`
-                  <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.6);border:1px solid #1E2D45;">
+                  <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.4);border:1px solid #1E2D45;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
                       <span style="font-size:11px;color:#CBD5E1;font-weight:700;">${row.week}</span>
                       <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#38BDF8;">${row.kg} kg</span>
@@ -598,4 +621,3 @@ const ProgressView = ({allWeeks, onMount}) => {
 
   return { WeekSummary, ProgressView };
 };
-
