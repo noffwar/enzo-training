@@ -73,7 +73,7 @@ export const createGymPanel = (deps) => {
         </div>
 
         <!-- Ejercicios -->
-        ${session.map((ex,ei) => html`
+        ${(Array.isArray(session) ? session : []).map((ex,ei) => html`
           <div style="border-radius:12px;overflow:hidden;border:1px solid #1E2D45;margin-bottom:12px;background:rgba(15,23,41,0.5);box-shadow:0 4px 12px rgba(0,0,0,0.4);">
             <div style="padding:10px 14px;background:rgba(22,32,53,0.85);border-left:4px solid #10B981;display:flex;justify-content:space-between;align-items:center;">
               <div>
@@ -99,7 +99,7 @@ export const createGymPanel = (deps) => {
                   </tr>
                 </thead>
                 <tbody>
-                  ${ex.sets.map((set,si) => html`
+                  ${(Array.isArray(ex.sets) ? ex.sets : []).map((set,si) => html`
                     <tr style=${`background:${set.completed?'rgba(16,185,129,0.05)':'transparent'};`}>
                       <td style="text-align:center;font-size:11px;font-family:'JetBrains Mono',monospace;color:#475569;">${si+1}</td>
                       <td><input class="inp-xs" style="width:100%;max-width:45px;background:#0F1729;border-color:#1E2D45;border-radius:6px;font-family:'JetBrains Mono',monospace;" value=${set.reps} onInput=${e=>onInput(ei,si,'reps',e.target.value)}/></td>
@@ -316,13 +316,11 @@ export const createRoutineEditor = (deps) => {
                   <button onClick=${() => removeExercise(ei)}
                     style="width:28px;height:28px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#EF4444;font-size:16px;cursor:pointer;flex-shrink:0;">×</button>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
-        <!-- Ejercicios -->
-        ${(Array.isArray(session) ? session : []).map((ex,ei) => html`
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:10px;">
                   <div style="display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 28px;gap:4px;padding:0 2px;">
                     ${['#', 'Reps', 'Kg', 'RIR', 'Pausa', ''].map(h => html`<span style="font-size:9px;text-transform:uppercase;color:#475569;text-align:center;">${h}</span>`)}
                   </div>
-                  ${ex.sets.map((s, si) => html`
+                  ${(Array.isArray(ex.sets) ? ex.sets : []).map((s, si) => html`
                     <div style="display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 28px;gap:4px;align-items:center;">
                       <span style="font-size:10px;color:#475569;text-align:center;font-family:'JetBrains Mono',monospace;">${si + 1}</span>
                       ${['reps', 'weight', 'rir', 'restStr'].map(f => html`
