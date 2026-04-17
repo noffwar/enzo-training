@@ -547,7 +547,8 @@ export const getRoutineAssignments = (weekData) => {
 };
 
 export const didTrainDay = (weekData, dayKey) => {
-  const session = weekData?.sessions?.[dayKey] || [];
+  const sessionData = weekData?.sessions?.[dayKey];
+  const session = Array.isArray(sessionData) ? sessionData : [];
   const hasCompletedSet = session.some(ex => (ex?.sets || []).some(set => !!set.completed));
   const trackerDay = weekData?.tracker?.[dayKey] || {};
   return hasCompletedSet || !!trackerDay.gymStartTime || !!trackerDay.gymEndTime;

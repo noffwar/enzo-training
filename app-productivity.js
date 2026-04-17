@@ -1,4 +1,4 @@
-﻿export const createProductivityView = ({
+export const createProductivityView = ({
   html,
   useState,
   useEffect,
@@ -20,6 +20,7 @@
   saveThoughtThreads,
   fetchJsonWithTimeout,
   formatTaskDate,
+  priorityColor,
   CATEGORY_OPTIONS,
   NOTE_KIND_OPTIONS,
   RECURRENCE_OPTIONS,

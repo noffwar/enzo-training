@@ -91,6 +91,17 @@ export const createApp = (deps) => {
     const prevTrackerRef = useRef(null);
     const prevWeeklyRef = useRef(null);
 
+    const upd = (fn) => setAllWeeks(prev => {
+      const wk = { ...(prev[currentWk] || newWeek(currentWk)) };
+      const nextWk = fn(wk);
+      const activeDate = getDayDate(currentWk, parseInt(activeDay, 10));
+      if (nextWk.tracker[activeDay]) {
+        saveDayRemote(supabase, activeDate, nextWk.tracker[activeDay], session, nextWk.tracker[activeDay]._revision);
+      }
+      saveWeeklyRemote(supabase, currentWk, nextWk.bodyWeight, nextWk.dayMapping, nextWk._revision, session);
+      return { ...prev, [currentWk]: nextWk };
+    });
+
     const navigateTo = (tab) => {
       setView(tab);
       if(!chartsReady && (tab === 'week' || tab === 'progress')) {
@@ -346,42 +357,64 @@ export const createApp = (deps) => {
       syncMedsInventoryFromToggle(field, value, targetDateKey);
     };
 
+    const updateHabit = (field, value) => upd(w => {
+      const day = w.tracker[activeDay] || newDay();
+      return {
+        ...w,
+        tracker: { ...w.tracker, [activeDay]: { ...day, [field]: value } }
+      };
+    });
+
+    const updateMed = (field, value) => upd(w => {
+      const day = w.tracker[activeDay] || newDay();
+      return {
+        ...w,
+        tracker: {
+          ...w.tracker,
+          [activeDay]: {
+            ...day,
+            meds: { ...(day.meds || {}), [field]: value }
+          }
+        }
+      };
+    });
+
     const updateMeal = (mealIdx, field, value) => upd(w => {
       const day = w.tracker[activeDay] || newDay();
       const meals = [...(day.meals || newDay().meals)];
       meals[mealIdx] = { ...(meals[mealIdx] || newDay().meals[0]), [field]: value };
       return {
         ...w,
-        tracker: {
-          ...w.tracker,
-          [activeDay]: { ...day, meals }
-        }
+        tracker: { ...w.tracker, [activeDay]: { ...day, meals } }
       };
     });
 
     const addMealItem = (mealIdx, item) => upd(w => {
-      const meals = [...(w.tracker[activeDay].meals || [])];
-      meals[mealIdx] = { ...meals[mealIdx], items: [...(meals[mealIdx].items || []), item] };
-      return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+      const day = w.tracker[activeDay] || newDay();
+      const meals = [...(day.meals || [])];
+      meals[mealIdx] = { ...meals[mealIdx], items: [...(meals[mealIdx]?.items || []), item] };
+      return { ...w, tracker: { ...w.tracker, [activeDay]: { ...day, meals } } };
     });
 
     const removeMealItem = (mealIdx, itemIdx, removedItem) => {
       upd(w => {
-        const meals = [...(w.tracker[activeDay].meals || [])];
-        const nextItems = (meals[mealIdx].items || []).filter((_, i) => i !== itemIdx);
+        const day = w.tracker[activeDay] || newDay();
+        const meals = [...(day.meals || [])];
+        const nextItems = (meals[mealIdx]?.items || []).filter((_, i) => i !== itemIdx);
         meals[mealIdx] = { ...meals[mealIdx], items: nextItems };
-        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...day, meals } } };
       });
       if(removedItem) restoreRemovedItemStock(removedItem);
     };
 
     const replaceMealItem = (mealIdx, itemIdx, item, prevItem) => {
       upd(w => {
-        const meals = [...(w.tracker[activeDay].meals || [])];
-        const items = [...(meals[mealIdx].items || [])];
+        const day = w.tracker[activeDay] || newDay();
+        const meals = [...(day.meals || [])];
+        const items = [...(meals[mealIdx]?.items || [])];
         items[itemIdx] = item;
         meals[mealIdx] = { ...meals[mealIdx], items };
-        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...day, meals } } };
       });
       if(prevItem) restoreRemovedItemStock(prevItem);
     };
@@ -570,11 +603,7 @@ export const createApp = (deps) => {
       && didTrainDay(wd, previousTwoDayKey)
       && !isDeloadWeek(currentWk);
 
-    const yesterdayDate = new Date(); yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-    const yesterdayWk = getWeekKey(yesterdayDate);
-    const yesterdayIdx = String(yesterdayDate.getDay());
-    const prevDayTracker = (allWeeks[yesterdayWk]?.tracker?.[yesterdayIdx]) || {};
-    const yesterdayFastMsg = getYesterdayFast(allWeeks, currentWk, activeDay);
+    const previousSnapshot = getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1);
     const navBadges = { study: moduleAlerts.study > 0 ? (moduleAlerts.study > 9 ? '9+' : String(moduleAlerts.study)) : '', health: moduleAlerts.health ? '!' : '', books: moduleAlerts.books ? '•' : '', recipes: moduleAlerts.recipes > 0 ? (moduleAlerts.recipes > 9 ? '9+' : String(moduleAlerts.recipes)) : '', notif: moduleAlerts.notif ? '!' : '' };
 
     return html`
@@ -731,8 +760,8 @@ export const createApp = (deps) => {
               <${NutritionReviewCard}
                 currentDateKey=${activeDateKey}
                 currentTracker=${tracker}
-                previousDateKey=${getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1).dateKey}
-                previousTracker=${getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1).tracker}
+                previousDateKey=${previousSnapshot.dateKey}
+                previousTracker=${previousSnapshot.tracker}
               />
               
               <${SmartCena}
