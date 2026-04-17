@@ -319,13 +319,6 @@ export const createApp = (deps) => {
       });
     }, []);
 
-    const updateHabit = (field, value) => upd(w => ({
-      ...w,
-      tracker: {
-        ...w.tracker,
-        [activeDay]: { ...(w.tracker[activeDay] || newDay()), [field]: value }
-      }
-    }));
 
     const updateMed = (field, value) => {
       const now = new Date();
@@ -365,19 +358,6 @@ export const createApp = (deps) => {
       };
     });
 
-    const updateMed = (field, value) => upd(w => {
-      const day = w.tracker[activeDay] || newDay();
-      return {
-        ...w,
-        tracker: {
-          ...w.tracker,
-          [activeDay]: {
-            ...day,
-            meds: { ...(day.meds || {}), [field]: value }
-          }
-        }
-      };
-    });
 
     const updateMeal = (mealIdx, field, value) => upd(w => {
       const day = w.tracker[activeDay] || newDay();
@@ -789,7 +769,7 @@ export const createApp = (deps) => {
           ${view === 'health' && html`<${HealthView} 
             session=${session} 
             todayMeds=${tracker.meds||{}} 
-            previousDayMeds=${prevDayTracker.meds||{}} 
+            previousDayMeds=${previousSnapshot.tracker?.meds || {}} 
             weekTracker=${wd.tracker||{}} 
             healthWeekKey=${currentWk} 
             bodyWeight=${wd.bodyWeight||''} 
