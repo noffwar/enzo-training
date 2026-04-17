@@ -16,14 +16,14 @@ export const createGymPanel = (deps) => {
       <//>
     `;
     const safeT = { gymStartTime:'', gymEndTime:'', ...t };
-    const totalSets = session.reduce((acc, ex) => acc + (ex.sets?.length || 0), 0);
-    const completedSets = session.reduce((acc, ex) => acc + ex.sets.filter(s => s.completed).length, 0);
-    const completedExercises = session.filter(ex => ex.sets.length > 0 && ex.sets.every(s => s.completed)).length;
+    const safeSession = Array.isArray(session) ? session : [];
+    const totalSets = safeSession.reduce((acc, ex) => acc + (Array.isArray(ex.sets) ? ex.sets.length : 0), 0);
+    const completedSets = safeSession.reduce((acc, ex) => acc + (Array.isArray(ex.sets) ? ex.sets.filter(s => s.completed).length : 0), 0);
+    const completedExercises = safeSession.filter(ex => Array.isArray(ex.sets) && ex.sets.length > 0 && ex.sets.every(s => s.completed)).length;
     const progressPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
 
-    // Detecta ejercicios donde se superaron las reps objetivo en al menos 1 serie
-    const overloadCandidates = session.filter(ex =>
-      ex.sets.some(s => s.completed && parseInt(s.reps) > parseInt(s.idealReps||s.reps))
+    const overloadCandidates = safeSession.filter(ex =>
+      Array.isArray(ex.sets) && ex.sets.some(s => s.completed && parseInt(s.reps) > parseInt(s.idealReps||s.reps))
     );
 
     return html`

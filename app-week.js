@@ -35,20 +35,24 @@
       // ── Volumen muscular
       const canonicalMuscles = Array.from(new Set(MUSCLES.map(m => canonicalMuscleName(m)).filter(Boolean)));
       const vol = {}; canonicalMuscles.forEach(m=>vol[m]={direct:0,indirect:0});
-      Object.values(sessions).forEach(s=>s&&s.forEach(ex=>{
-        const done=ex.sets.filter(s=>s.completed).length;
-        const muscles = resolveMuscleInfo(ex.name);
-        if(done>0 && muscles){
-          muscles.direct.forEach(m=>{
-            const key = canonicalMuscleName(m);
-            if(vol[key]) vol[key].direct += done;
-          });
-          muscles.indirect.forEach(m=>{
-            const key = canonicalMuscleName(m);
-            if(vol[key]) vol[key].indirect += done;
-          });
-        }
-      }));
+      Object.values(sessions).forEach(s => {
+        if(!Array.isArray(s)) return;
+        s.forEach(ex => {
+          if(!ex || !Array.isArray(ex.sets)) return;
+          const done = ex.sets.filter(s=>s.completed).length;
+          const muscles = resolveMuscleInfo(ex.name);
+          if(done>0 && muscles){
+            muscles.direct.forEach(m=>{
+              const key = canonicalMuscleName(m);
+              if(vol[key]) vol[key].direct += done;
+            });
+            muscles.indirect.forEach(m=>{
+              const key = canonicalMuscleName(m);
+              if(vol[key]) vol[key].indirect += done;
+            });
+          }
+        });
+      });
       const volumeScaleMax = Math.max(20, ...Object.values(vol).map(v => (v.direct + v.indirect)), 0);
       const volumeData = Object.entries(vol).map(([m,v])=>({
         name:m.slice(0,4),
