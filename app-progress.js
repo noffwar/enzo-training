@@ -43,7 +43,7 @@ const WeekSummary = ({weekData, weekKey}) => {
       // ── Volumen muscular
       const canonicalMuscles = Array.from(new Set(MUSCLES.map(m => canonicalMuscleName(m)).filter(Boolean)));
       const vol = {}; canonicalMuscles.forEach(m=>vol[m]={direct:0,indirect:0});
-      Object.values(sessions).forEach(s=>s&&s.forEach(ex=>{
+      Object.values(sessions).forEach(s => { if(!Array.isArray(s)) return; s.forEach(ex => { if(!ex || !Array.isArray(ex.sets)) return;
         const done=ex.sets.filter(s=>s.completed).length;
         const muscles = resolveMuscleInfo(ex.name);
         if(done>0 && muscles){
@@ -598,3 +598,4 @@ const ProgressView = ({allWeeks, onMount}) => {
 
   return { WeekSummary, ProgressView };
 };
+
