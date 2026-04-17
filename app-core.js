@@ -324,23 +324,21 @@ const bodyWeightToNumeric = (bw) => {
   return isNaN(n) ? null : n;
 };
 
-export const saveDayRemote = async (supabase, date, tracker, session, baseRevision) => {
-  const email = session?.user?.email || '';
+export const saveDayRemote = async (supabase, date, tracker, authSession, baseRevision) => {
+  const email = authSession?.user?.email || '';
   if (email === 'guest@enzo.training' || email.includes('guest@enzo.dev')) return { ok: true, queued: false };
   const nowIso = new Date().toISOString();
   const existing = lsDayLoad(date) || {};
   lsDaySave(date, {
     ...existing,
     ...tracker,
-    _session: session||null,
     _revision: tracker?._revision || baseRevision || existing._revision || null,
     _updatedAt: nowIso,
     _dirty: true
   });
   try {
-    // Guest check already done above
     const { data, error } = await supabase.rpc('save_daily_log', {
-      p_date: date, p_tracker: tracker, p_session: session||null,
+      p_date: date, p_tracker: tracker, p_session: null, 
       p_base_revision: baseRevision||null, p_device_id: DEVICE_ID
     });
     if(error) throw new Error(error.message);

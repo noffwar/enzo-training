@@ -316,7 +316,9 @@ export const createRoutineEditor = (deps) => {
                   <button onClick=${() => removeExercise(ei)}
                     style="width:28px;height:28px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#EF4444;font-size:16px;cursor:pointer;flex-shrink:0;">×</button>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:8px;">
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+        <!-- Ejercicios -->
+        ${(Array.isArray(session) ? session : []).map((ex,ei) => html`
                   <div style="display:grid;grid-template-columns:32px 1fr 1fr 1fr 1fr 28px;gap:4px;padding:0 2px;">
                     ${['#', 'Reps', 'Kg', 'RIR', 'Pausa', ''].map(h => html`<span style="font-size:9px;text-transform:uppercase;color:#475569;text-align:center;">${h}</span>`)}
                   </div>
