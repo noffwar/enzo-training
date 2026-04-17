@@ -11,10 +11,11 @@ export const createHabitsPanel = (deps) => {
     ProteinProgress, WaterTracker, SmartCena, NutritionReviewCard,
     IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity,
     supabase, DEVICE_ID, fetchJsonWithTimeout, TARGETS, HOME_FOODS,
-    localDateKey, getDayDate, getWeekKey, isValidDateValue
+    localDateKey, getDayDate, getWeekKey, isValidDateValue, mealTotals
   } = deps;
 
-  // Helpers internos movidos desde index.html
+  // --- Helpers Locales (Legacy Restoration) ---
+
   const getYesterdayFast = (allWeeks, currentWk, activeDay) => {
     try {
       const todayDt = new Date(getDayDate(currentWk, parseInt(activeDay, 10)) + 'T12:00:00');
@@ -57,8 +58,10 @@ export const createHabitsPanel = (deps) => {
     }
   };
 
-  const normalizeRecipeText = (s='') =>
+  const normalizeFoodText = (s='') =>
     String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+
+  const normalizeRecipeText = normalizeFoodText;
 
   const parseLeadingRecipeAmount = (text='') => {
     const raw = String(text || '').trim().toLowerCase();
@@ -76,6 +79,22 @@ export const createHabitsPanel = (deps) => {
       return { value: base + (hasHalf ? 0.5 : 0), rest: String(match[2] || '').trim(), label: hasHalf ? `${match[1]} y media` : String(match[1]) };
     }
     return null;
+  };
+
+  const parseRecipeAmount = (text='') => {
+    const raw = String(text || '').toLowerCase().trim();
+    const lead = parseLeadingRecipeAmount(raw);
+    const amountPart = lead ? raw.slice(0, raw.length - lead.rest.length).trim() : raw;
+    const m = amountPart.match(/(\d+(?:[.,]\d+)?|\d+\s*\/\s*\d+|media|medio|una\s+y\s+media|un\s+y\s+media|1\s+y\s+media)\s*(kg|g|gramos?|porciones?|porcion|u|unidades?)/);
+    if(!m) return null;
+    const parsed = parseLeadingRecipeAmount(`${m[1]} x`) || { value: parseFloat(String(m[1]).replace(',', '.')) || 0 };
+    return { value: parsed.value, unit: m[2] };
+  };
+
+  const parseRecipeCountNoun = (text='') => {
+    const parsed = parseLeadingRecipeAmount(text);
+    if(!parsed || !(parsed.value > 0) || !parsed.rest) return null;
+    return { value: parsed.value, noun: normalizeRecipeText(parsed.rest || ''), label: parsed.label || '', rawRest: String(parsed.rest || '').trim() };
   };
 
   const stripRecipeAmount = (text='') => {
@@ -108,6 +127,24 @@ export const createHabitsPanel = (deps) => {
     return null;
   };
 
+  const formatRecipeQty = (value, unit) => {
+    const n = Number(value);
+    const rounded = Math.round(n * 100) / 100;
+    let clean = '';
+    if(Number.isInteger(rounded)) {
+      clean = String(rounded);
+    } else {
+      const whole = Math.trunc(rounded);
+      const fraction = Math.abs(rounded - whole);
+      if(Math.abs(fraction - 0.5) < 0.01) {
+        clean = whole === 0 ? '1/2' : `${whole} 1/2`;
+      } else {
+        clean = String(rounded).replace('.', ',');
+      }
+    }
+    return `${clean} ${unit}`.trim();
+  };
+
   const normalizeStockUnit = (unit='') => {
     const u = normalizeRecipeText(unit);
     if(!u) return '';
@@ -129,6 +166,12 @@ export const createHabitsPanel = (deps) => {
   };
 
   const recipeHasIngredientList = (recipe) => Array.isArray(recipe?.ingredients) && recipe.ingredients.some(it => String(it?.name||'').trim());
+
+  const recipeTracksPantryStock = (recipe) => {
+    if(!recipe) return false;
+    if(recipeHasIngredientList(recipe)) return false;
+    return !(recipe.stock_qty == null || recipe.stock_qty === '') && !!normalizeStockUnit(recipe.stock_unit || '');
+  };
 
   const getRecipeUsageFactor = (recipe, item) => {
     const bQ = parseFloat(recipe?.base_qty) || 1;
@@ -153,68 +196,158 @@ export const createHabitsPanel = (deps) => {
   const findRecipeMatch = (recipes, inputText) => {
     const raw = String(inputText || '').trim();
     if(!raw) return null;
-    const nFull = normalizeRecipeText(raw);
-    const nName = stripRecipeAmount(raw);
-    const nFullK = normalizeRecipeKey(raw);
-    const nNameK = normalizeRecipeKey(nName);
-    const pLead = parseLeadingRecipeAmount(raw);
-    const pLeadK = pLead ? normalizeRecipeKey(pLead.rest) : '';
+    const normalizedFull = normalizeRecipeText(raw);
+    const normalizedNameOnly = stripRecipeAmount(raw);
+    const normalizedFullKey = normalizeRecipeKey(raw);
+    const normalizedNameKey = normalizeRecipeKey(normalizedNameOnly);
+    const parsedAmount = parseRecipeAmount(raw);
+    const parsedCountNoun = parseRecipeCountNoun(raw);
+    const parsedCountNounKey = parsedCountNoun ? normalizeRecipeKey(parsedCountNoun.noun) : '';
+    const exactMatches = [];
+    const fuzzyMatches = [];
 
-    for(const r of (recipes || [])) {
-      const names = [r.recipe_name, ...(r.aliases||[])].filter(Boolean).map(normalizeRecipeText);
-      const keys = [r.recipe_name, ...(r.aliases||[])].filter(Boolean).map(normalizeRecipeKey);
-      if(names.includes(nFull) || names.includes(nName) || keys.includes(nFullK) || keys.includes(nNameK) || (pLeadK && keys.includes(pLeadK))) return r;
+    for(const recipe of (recipes || [])) {
+      const names = [recipe.recipe_name, ...(recipe.aliases||[])].filter(Boolean).map(normalizeRecipeText);
+      const keys = [recipe.recipe_name, ...(recipe.aliases||[])].filter(Boolean).map(normalizeRecipeKey);
+      
+      const exact = names.includes(normalizedFull) || names.includes(normalizedNameOnly) || keys.includes(normalizedFullKey) || keys.includes(normalizedNameKey) || (parsedCountNounKey && keys.includes(parsedCountNounKey));
+      
+      const fuzzy = !exact && (
+        keys.some(k => {
+          if(!k) return false;
+          const words = k.split(' ').filter(Boolean);
+          if(words.length === 1 && words[0].length <= 3) return false;
+          return normalizedFullKey.startsWith(k) || normalizedNameKey.startsWith(k) || k.startsWith(normalizedFullKey) || k.startsWith(normalizedNameKey) || normalizedFullKey.endsWith(` ${k}`) || normalizedNameKey.endsWith(` ${k}`);
+        }) || (parsedCountNounKey && keys.some(k => k && (parsedCountNounKey.includes(k) || k.includes(parsedCountNounKey))))
+      );
+
+      if(!exact && !fuzzy) continue;
+
+      let factor = 1;
+      let qty = formatRecipeQty(recipe.base_qty || 1, recipe.base_unit || 'porcion');
+      let stockDelta = parseFloat(recipe.base_qty) || 1;
+      let stockDeltaUnit = normalizeStockUnit(recipe.base_unit || 'porcion');
+
+      if(parsedAmount?.value > 0) {
+        const baseQty = parseFloat(recipe.base_qty) || 1;
+        const inputGrams = unitToGrams(parsedAmount.value, parsedAmount.unit);
+        const baseGrams = unitToGrams(baseQty, recipe.base_unit);
+        if(inputGrams && baseGrams) {
+          factor = inputGrams / baseGrams;
+          qty = `${formatRecipeQty(parsedAmount.value, parsedAmount.unit)} (${recipe.base_unit})`;
+          stockDelta = parsedAmount.value;
+          stockDeltaUnit = normalizeStockUnit(parsedAmount.unit);
+        }
+      } else if(parsedCountNoun?.value > 0 && (normalizeStockUnit(recipe.base_unit || '') === 'unidad' || normalizeStockUnit(recipe.stock_unit || '') === 'unidad' || normalizeStockUnit(recipe.base_unit || '') === 'porcion')) {
+        const baseQty = parseFloat(recipe.base_qty) || 1;
+        factor = parsedCountNoun.value / baseQty;
+        qty = formatRecipeQty(parsedCountNoun.value, normalizeStockUnit(recipe.base_unit || '') === 'porcion' ? (parsedCountNoun.value === 1 ? 'porcion':'porciones') : (parsedCountNoun.value === 1 ? 'unidad':'unidades'));
+        stockDelta = parsedCountNoun.value;
+        stockDeltaUnit = normalizeStockUnit(recipe.base_unit || '') === 'porcion' ? 'porcion' : 'unidad';
+      }
+
+      const result = {
+        name: recipe.recipe_name,
+        qty,
+        nota: recipe.notes || 'Receta guardada',
+        recipe_id: recipe.id,
+        recipe_name: recipe.recipe_name,
+        stock_qty: recipeTracksPantryStock(recipe) ? recipe.stock_qty : null,
+        stock_unit: recipeTracksPantryStock(recipe) ? (recipe.stock_unit || '') : '',
+        low_stock_threshold: recipe.low_stock_threshold,
+        stock_trackable: recipeTracksPantryStock(recipe),
+        stock_delta: stockDelta,
+        stock_delta_unit: stockDeltaUnit,
+        ...scaleRecipeMacros(recipe, factor)
+      };
+      if(exact) exactMatches.push(result); else fuzzyMatches.push(result);
     }
+
+    if(exactMatches.length === 1) return { kind:'exact', item: exactMatches[0] };
+    if(exactMatches.length > 1) return { kind:'ambiguous', options: exactMatches.slice(0,3) };
+    if(fuzzyMatches.length === 1) return { kind:'fuzzy', item: fuzzyMatches[0] };
+    if(fuzzyMatches.length > 1) return { kind:'ambiguous', options: fuzzyMatches.slice(0,3) };
     return null;
   };
+
+  const splitMealDraftParts = (text='') => {
+    const raw = String(text || '').trim();
+    if(!raw) return [];
+    const normalized = raw.replace(/\s+/g, ' ').trim();
+    const normalizedForSplit = normalized
+      .replace(/\s+y\s+(?=(\d+|,|media|medio|una|un)\b)/ig, ' | ')
+      .replace(/,\s*(?=(\d+|,|media|medio|una|un)\b)/ig, ' | ')
+      .replace(/\s*\+\s*(?=(\d+|,|media|medio|una|un)\b)/ig, ' | ');
+    const parts = normalizedForSplit.split(/\s*\|\s*/i).map(part => part.trim()).filter(Boolean);
+    return parts.length > 1 ? parts : [normalized];
+  };
+
+  const cleanMealPartPrefix = (text='') => String(text || '').replace(/^(?:con|mas|más|acompañado de|acompanado de|postre|de postre|bebida|de bebida)\s*:?\s+/i, '').trim();
+
+  // --- HabitsPanel Component ---
 
   const HabitsPanel = ({tracker:t, selectedDateKey, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem, onReplaceItem}) => {
     const [open, setOpen] = useState(true);
     const [aiLoading, setAiLoading] = useState([false,false,false]);
     const [aiError, setAiError] = useState(['','','']);
+    const [savedRecipes, setSavedRecipes] = useState([]);
+    const [recipesLoading, setRecipesLoading] = useState(false);
+    
+    // Split States
+    const [mealSplitEditOpen, setMealSplitEditOpen] = useState([false,false,false]);
+    const [mealSplitDrafts, setMealSplitDrafts] = useState(['','','']);
+    
+    // Edit State
+    const [editingMealItem, setEditingMealItem] = useState({ mealIndex:-1, itemIndex:-1 });
+    
+    // Stock Busy
+    const [stockBusyKey, setStockBusyKey] = useState('');
+    const [recipeMsg, setRecipeMsg] = useState(['','','']);
+    const [recipeSaving, setRecipeSaving] = useState([false,false,false]);
+
     const recipesRef = useRef(null);
 
     const getRecipes = async () => {
       if(recipesRef.current) return recipesRef.current;
+      setRecipesLoading(true);
       const { data, error } = await supabase.from('user_recipes')
         .select('id, recipe_name, aliases, base_qty, base_unit, stock_qty, stock_unit, low_stock_threshold, macros, ingredients, notes')
         .order('updated_at', { ascending: false });
+      setRecipesLoading(false);
       if(!error && data) {
         recipesRef.current = data;
+        setSavedRecipes(data);
         return data;
       }
       return [];
     };
 
+    useEffect(() => {
+      getRecipes();
+    }, []);
+
     const updateMealDraft = (mealIndex, text) => {
       onMeal(mealIndex, 'aiDraft', text);
+      setMealSplitEditOpen(prev => { const n=[...prev]; n[mealIndex]=false; return n; });
     };
 
-    const analyzeMeal = async (mealIndex) => {
-      const text = String(t.meals?.[mealIndex]?.aiDraft || '').trim();
-      if(!text) return;
-      
-      setAiLoading(prev => { const n=[...prev]; n[mealIndex]=true; return n; });
-      setAiError(prev   => { const n=[...prev]; n[mealIndex]='';   return n; });
-
+    const analyzeSingleMealEntry = async (mealIndex, text) => {
       try {
         const recipes = await getRecipes();
         const recipeSearch = findRecipeMatch(recipes, text);
-        const recipeHit = recipeSearch?.item || (recipeSearch?.options ? recipeSearch.options[0] : null);
         
+        const recipeHit = recipeSearch?.item || (recipeSearch?.options ? recipeSearch.options[0] : null);
         if(recipeHit) {
-          const shouldUseLibrary = recipeSearch?.kind === 'exact' ? true : window.confirm(`Encontré "${recipeHit.recipe_name}" en tu biblioteca. ¿Usar ese valor guardado?`);
+          const shouldUseLibrary = recipeSearch?.kind === 'exact' ? true : window.confirm(`Encontré "${recipeHit.name}" en tu biblioteca. ¿Usar ese valor guardado?`);
           if(shouldUseLibrary) {
-            onAddItem(mealIndex, {
-              name: recipeHit.recipe_name,
-              qty: recipeHit.base_qty ? `${recipeHit.base_qty}${recipeHit.base_unit || ''}` : '1',
-              cals: Math.round(parseFloat(recipeHit.macros?.cals)||0),
-              prot: Math.round(parseFloat(recipeHit.macros?.prot)||0),
-              carb: Math.round(parseFloat(recipeHit.macros?.carb)||0),
-              fat:  Math.round(parseFloat(recipeHit.macros?.fat)||0),
-              nota: recipeHit.notes || ''
-            });
-            updateMealDraft(mealIndex, '');
+            const finalItem = { ...recipeHit };
+            if(editingMealItem.mealIndex === mealIndex && editingMealItem.itemIndex >= 0) {
+              onReplaceItem(mealIndex, editingMealItem.itemIndex, finalItem);
+              setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
+            } else {
+              onAddItem(mealIndex, finalItem);
+            }
+            if(finalItem.stock_trackable) await discountItemStock(mealIndex, finalItem);
             return;
           }
         }
@@ -225,7 +358,7 @@ export const createHabitsPanel = (deps) => {
         });
         if(!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
-        onAddItem(mealIndex, {
+        const nextItem = {
           name: data.name || text,
           qty:  data.qty  || '1 porción',
           cals: Math.round(parseFloat(data.cals)||0),
@@ -233,7 +366,38 @@ export const createHabitsPanel = (deps) => {
           carb: Math.round(parseFloat(data.carb)||0),
           fat:  Math.round(parseFloat(data.fat) ||0),
           nota: data.nota || ''
-        });
+        };
+        
+        if(editingMealItem.mealIndex === mealIndex && editingMealItem.itemIndex >= 0) {
+          onReplaceItem(mealIndex, editingMealItem.itemIndex, nextItem);
+          setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
+        } else {
+          onAddItem(mealIndex, nextItem);
+        }
+      } catch(e) {
+        throw e;
+      }
+    };
+
+    const analyzeMeal = async (mealIndex) => {
+      const text = String(t.meals?.[mealIndex]?.aiDraft || '').trim();
+      if(!text) return;
+
+      const parts = splitMealDraftParts(text).map(cleanMealPartPrefix).filter(Boolean);
+      if(parts.length > 1 && !mealSplitEditOpen[mealIndex]) {
+        setMealSplitDrafts(prev => { const n=[...prev]; n[mealIndex]=parts.join('\n'); return n; });
+        setMealSplitEditOpen(prev => { const n=[...prev]; n[mealIndex]=true; return n; });
+        return;
+      }
+
+      setAiLoading(prev => { const n=[...prev]; n[mealIndex]=true; return n; });
+      setAiError(prev   => { const n=[...prev]; n[mealIndex]='';   return n; });
+
+      try {
+        const finalParts = mealSplitEditOpen[mealIndex] ? mealSplitDrafts[mealIndex].split('\n').filter(Boolean) : parts;
+        for(const p of finalParts) {
+          await analyzeSingleMealEntry(mealIndex, p);
+        }
         updateMealDraft(mealIndex, '');
       } catch(e) {
         console.error('[IA]', e);
@@ -243,8 +407,44 @@ export const createHabitsPanel = (deps) => {
       }
     };
 
-    const fs = getFastStats(t);
-    const macros = dayTotals(t.meals);
+    const discountItemStock = async (mealIdx, item) => {
+      if(!item.recipe_id || !item.stock_trackable) return;
+      setStockBusyKey(`${mealIdx}:${item.recipe_id}`);
+      try {
+        const { data, error } = await supabase.from('user_recipes').select('stock_qty').eq('id', item.recipe_id).single();
+        if(error) throw error;
+        const nextQty = Math.max(0, (parseFloat(data.stock_qty)||0) - pn(item.stock_delta));
+        await supabase.from('user_recipes').update({ stock_qty: nextQty, updated_at: new Date().toISOString() }).eq('id', item.recipe_id);
+        recipesRef.current = null;
+        await getRecipes();
+      } catch(e) { console.error('[STOCK]', e); }
+      finally { setStockBusyKey(''); }
+    };
+
+    const saveMealAsRecipe = async (mealIdx) => {
+      const meal = t.meals?.[mealIdx];
+      if(!meal?.items?.length) return;
+      const recipeName = window.prompt('Nombre de la receta:', `Mi Comida ${mealIdx+1}`);
+      if(!recipeName) return;
+      
+      setRecipeSaving(prev => { const n=[...prev]; n[mealIdx]=true; return n; });
+      try {
+        const totals = mealTotals(meal);
+        const payload = {
+          recipe_name: recipeName,
+          base_qty: 1, base_unit: 'porcion',
+          macros: totals,
+          ingredients: meal.items.map(it => ({ name: it.name, qty: it.qty })),
+          notes: 'Guardada desde el diario'
+        };
+        const { error } = await supabase.from('user_recipes').insert(payload);
+        if(error) throw error;
+        recipesRef.current = null;
+        await getRecipes();
+      } catch(e) { alert(e.message); }
+      finally { setRecipeSaving(prev => { const n=[...prev]; n[mealIdx]=false; return n; }); }
+    };
+
     const medStatus = getMedicationStatusForView({ selectedDateKey, medsState: t.meds || {}, now: new Date() });
 
     return html`
@@ -272,63 +472,78 @@ export const createHabitsPanel = (deps) => {
 
           <!-- Comidas -->
           <div style="display:flex;flex-direction:column;gap:12px;">
-            ${(t.meals||[]).map((meal, mIdx) => html`
-              <div class="glass-card" style="padding:12px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                  <span style="font-size:12px;font-weight:700;color:#E2E8F0;">Comida ${mIdx+1}</span>
-                  <div style="display:flex;gap:8px;align-items:center;">
-                    <input type="time" value=${meal.firstBite||''} onBlur=${e=>onMeal(mIdx,'firstBite',e.target.value)}
-                      style="background:transparent;border:none;color:#94A3B8;font-size:11px;font-family:'JetBrains Mono',monospace;"/>
-                    <span style="color:#475569;">-</span>
-                    <input type="time" value=${meal.lastBite||''} onBlur=${e=>onMeal(mIdx,'lastBite',e.target.value)}
-                      style="background:transparent;border:none;color:#94A3B8;font-size:11px;font-family:'JetBrains Mono',monospace;"/>
+            ${[0,1,2].map(mIdx => {
+              const meal = t.meals?.[mIdx] || { items: [] };
+              return html`
+                <div class="glass-card" style="padding:12px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <span style="font-size:12px;font-weight:700;color:#E2E8F0;">Comida ${mIdx+1}</span>
+                    <button onClick=${()=>saveMealAsRecipe(mIdx)} style="font-size:10px;background:transparent;border:1px solid #1E2D45;color:#64748B;padding:2px 6px;border-radius:4px;cursor:pointer;">
+                      ${recipeSaving[mIdx] ? '...' : 'Guardar Receta'}
+                    </button>
                   </div>
-                </div>
-                <!-- Items list -->
-                <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-                  ${(meal.items||[]).map((it, iIdx) => html`
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
-                      <div style="flex:1;">
-                        <p style="margin:0;font-size:13px;color:#cbd5e1;">${it.name} ${it.qty?`· ${it.qty}`:''}</p>
-                        <p style="margin:2px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${it.cals}kcal · ${it.prot}P · ${it.carb}C · ${it.fat}G</p>
+                  
+                  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+                    ${(meal.items||[]).map((it, iIdx) => html`
+                      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+                        <div style="flex:1;">
+                          <p style="margin:0;font-size:13px;color:#cbd5e1;">${it.name} ${it.qty?`· ${it.qty}`:''}</p>
+                          <p style="margin:2px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${it.cals}kcal · ${it.prot}P · ${it.carb}C · ${it.fat}G</p>
+                        </div>
+                        <div style="display:flex;gap:4px;">
+                          <button onClick=${() => {
+                            setEditingMealItem({ mealIndex: mIdx, itemIndex: iIdx });
+                            onMeal(mIdx, 'aiDraft', `${it.qty} ${it.name}`);
+                          }} style="background:transparent;border:none;color:#6366F1;font-size:16px;cursor:pointer;padding:0 8px;">✎</button>
+                          <button onClick=${()=>onRemoveItem(mIdx, iIdx)} style="background:transparent;border:none;color:#EF4444;font-size:16px;cursor:pointer;padding:0 8px;">×</button>
+                        </div>
                       </div>
-                      <button onClick=${()=>onRemoveItem(mIdx, iIdx)} style="background:transparent;border:none;color:#EF4444;font-size:16px;cursor:pointer;padding:0 8px;">×</button>
-                    </div>
-                  `)}
-                </div>
-                <div style="display:flex;gap:8px;margin-top:8px;">
-                  <input
-                    type="text"
-                    value=${meal.aiDraft || ''}
-                    onInput=${e => updateMealDraft(mIdx, e.target.value)}
-                    onKeyDown=${e => { if(e.key === 'Enter' && !aiLoading[mIdx]) analyzeMeal(mIdx); }}
-                    placeholder="Sumar alimento a la leyenda..."
-                    disabled=${aiLoading[mIdx]}
-                    style="flex:1;background:rgba(0,0,0,0.2);border:1px solid #1E2D45;border-radius:6px;padding:8px 10px;color:#cbd5e1;font-size:13px;"
-                  />
-                  <button
-                    onClick=${() => analyzeMeal(mIdx)}
-                    disabled=${aiLoading[mIdx] || !String(meal.aiDraft || '').trim()}
-                    style="background:#10B981;color:#0F1729;border:none;border-radius:6px;padding:0 16px;font-weight:700;font-size:12px;cursor:pointer;opacity:${aiLoading[mIdx]?0.5:1};"
-                  >
-                    ${aiLoading[mIdx] ? '...' : 'IA 🧠'}
-                  </button>
-                </div>
-                ${aiError[mIdx] && html`<p style="color:#EF4444;font-size:11px;margin:8px 0 0;">Error: ${aiError[mIdx]}</p>`}
-              </div>
-            `)}
-          </div>
+                    `)}
+                  </div>
 
-          <!-- Totales y Dash -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div class="glass-card" style="padding:10px;text-align:center;">
-              <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;">Calorías Totales</p>
-              <p style="margin:4px 0 0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#FBBF24;">${Math.round(macros.cals)}</p>
-            </div>
-            <div class="glass-card" style="padding:10px;text-align:center;">
-              <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;">Proteínas (P)</p>
-              <p style="margin:4px 0 0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#10B981;">${Math.round(macros.prot)}g</p>
-            </div>
+                  ${mealSplitEditOpen[mIdx] && html`
+                    <textarea 
+                      value=${mealSplitDrafts[mIdx]}
+                      onInput=${e => setMealSplitDrafts(prev => { const n=[...prev]; n[mIdx]=e.target.value; return n; })}
+                      placeholder="Una fila por alimento..."
+                      style="width:100%;background:rgba(0,0,0,0.2);border:1px solid #6366F1;border-radius:6px;padding:8px 10px;color:#cbd5e1;font-size:13px;min-height:80px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;"
+                    />
+                  `}
+
+                  <div style="display:flex;gap:8px;margin-top:8px;">
+                    <input
+                      type="text"
+                      value=${meal.aiDraft || ''}
+                      onInput=${e => updateMealDraft(mIdx, e.target.value)}
+                      onKeyDown=${e => { if(e.key === 'Enter' && !aiLoading[mIdx]) analyzeMeal(mIdx); }}
+                      placeholder=${editingMealItem.mealIndex === mIdx ? "Editando ítem..." : "Añadir alimento..."}
+                      disabled=${aiLoading[mIdx]}
+                      style="flex:1;background:rgba(0,0,0,0.2);border:1px solid #1E2D45;border-radius:6px;padding:8px 10px;color:#cbd5e1;font-size:13px;"
+                    />
+                    <button
+                      onClick=${() => analyzeMeal(mIdx)}
+                      disabled=${aiLoading[mIdx] || !String(meal.aiDraft || '').trim()}
+                      style="background:#10B981;color:#0F1729;border:none;border-radius:6px;padding:0 16px;font-weight:700;font-size:12px;cursor:pointer;opacity:${aiLoading[mIdx]?0.5:1};"
+                    >
+                      ${aiLoading[mIdx] ? '...' : 'IA 🧠'}
+                    </button>
+                  </div>
+                  
+                  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;">
+                    ${savedRecipes.filter(r => {
+                      const draft = normalizeFoodText(meal.aiDraft || '');
+                      return !draft || normalizeFoodText(r.recipe_name).includes(draft);
+                    }).slice(0, 5).map(r => html`
+                      <button onClick=${() => updateMealDraft(mIdx, r.recipe_name)} style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);color:#A5B4FC;font-size:9px;padding:2px 6px;border-radius:4px;cursor:pointer;">
+                        + ${r.recipe_name}
+                      </button>
+                    `)}
+                  </div>
+
+                  ${aiError[mIdx] && html`<p style="color:#EF4444;font-size:11px;margin:8px 0 0;">Error: ${aiError[mIdx]}</p>`}
+                </div>
+              `;
+            })}
           </div>
         </div>
       <//>

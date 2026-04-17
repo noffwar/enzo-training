@@ -104,6 +104,21 @@ export const createTodayDashboard = ({
         const tasks = taskRows || [];
         const notes = (noteRows || []).filter(n => n.kind !== 'converted');
         const inventory = Object.fromEntries((invRows || []).map(row => [row.key, row.data || {}]));
+        
+        // Fallbacks locales para robustez (especialmente modo bypass/dev)
+        if (!inventory.meds_stock) {
+          try {
+            const localMeds = JSON.parse(localStorage.getItem('enzo_meds_stock_v3') || 'null');
+            if (localMeds) inventory.meds_stock = localMeds;
+          } catch(_) {}
+        }
+        if (!inventory.reading_progress) {
+          try {
+            const localBooks = JSON.parse(localStorage.getItem('enzo_reading_progress_v3') || 'null');
+            if (localBooks) inventory.reading_progress = localBooks;
+          } catch(_) {}
+        }
+
         const study = studyRows || [];
         const recipes = recipeRows || [];
         const now = new Date();
@@ -202,6 +217,12 @@ export const createTodayDashboard = ({
     useEffect(() => {
       loadSummary();
     }, [loadSummary, selectedDateKey]);
+
+    useEffect(() => {
+      const h = () => loadSummary();
+      window.addEventListener('enzo-health-changed', h);
+      return () => window.removeEventListener('enzo-health-changed', h);
+    }, [loadSummary]);
 
     const loadWeather = useCallback(async () => {
       const cacheKey = 'enzo_weather_san_rafael';

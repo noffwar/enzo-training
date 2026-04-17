@@ -108,6 +108,11 @@ export const createApp = (deps) => {
       });
     };
 
+    const getWeekAndDayFromDateKey = (dateKey) => {
+      const d = new Date(dateKey + 'T12:00:00');
+      return { weekKey: getWeekKey(d), dayIdx: String(d.getDay()) };
+    };
+
     const isDeloadWeek = useCallback((wkKey = '') => {
       const base = new Date(`${TRAINING_PLAN_START}T12:00:00`);
       const week = new Date(`${wkKey}T12:00:00`);
@@ -205,6 +210,93 @@ export const createApp = (deps) => {
       return () => clearInterval(h);
     }, [refreshModuleAlerts]);
 
+    const normalizeRecipeKeyApp = (text='') => {
+      const s = String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+      return s.split(' ').filter(Boolean).map(w => (w.endsWith('es') && w.length > 4) ? w.slice(0, -2) : (w.endsWith('s') && w.length > 3) ? w.slice(0, -1) : w).join(' ');
+    };
+
+    const recalculateMealsUsingRecipe = (recipe) => {
+      if(!recipe) return;
+      setAllWeeks(prev => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach(wkKey => {
+          const wk = { ...next[wkKey] };
+          let wkChanged = false;
+          Object.keys(wk.tracker || {}).forEach(dayIdx => {
+            const day = { ...wk.tracker[dayIdx] };
+            let dayChanged = false;
+            const nextMeals = (day.meals || []).map(meal => {
+              let mealChanged = false;
+              const nextItems = (meal.items || []).map(item => {
+                if(item.recipe_id === recipe.id || (item.name && normalizeRecipeKeyApp(item.name) === normalizeRecipeKeyApp(recipe.recipe_name))) {
+                  mealChanged = true;
+                  dayChanged = true;
+                  wkChanged = true;
+                  changed = true;
+                  const factor = (() => {
+                    const bC = parseFloat(recipe.macros?.cals) || 0;
+                    const iC = parseFloat(item.cals) || 0;
+                    if(bC > 0 && iC > 0) return iC / bC;
+                    return 1;
+                  })();
+                  return {
+                    ...item,
+                    recipe_id: recipe.id,
+                    name: recipe.recipe_name,
+                    nota: recipe.notes || item.nota || 'Receta guardada',
+                    cals: Math.round((parseFloat(recipe.macros?.cals) || 0) * factor),
+                    prot: Math.round((parseFloat(recipe.macros?.prot) || 0) * factor),
+                    carb: Math.round((parseFloat(recipe.macros?.carb) || 0) * factor),
+                    fat: Math.round((parseFloat(recipe.macros?.fat) || 0) * factor)
+                  };
+                }
+                return item;
+              });
+              return mealChanged ? { ...meal, items: nextItems } : meal;
+            });
+            if(dayChanged) {
+              day.meals = nextMeals;
+              wk.tracker[dayIdx] = day;
+              lsDaySave(getDayDate(wkKey, parseInt(dayIdx)), day);
+            }
+          });
+          if(wkChanged) {
+            next[wkKey] = wk;
+            saveWeeklyRemote(supabase, wkKey, wk.bodyWeight, wk.dayMapping, wk._revision, session);
+          }
+        });
+        return changed ? next : prev;
+      });
+    };
+
+    const syncMedsInventoryFromToggle = async (med, val, targetDateKey) => {
+      try {
+        const isDinnerMed = med === 'finasteride' || med === 'minoxidil';
+        const deltaRoaccutan = (med === 'roacuttan') ? (val ? -1 : 1) : 0;
+        const deltaCombo = isDinnerMed ? (val ? -1 : 1) : 0;
+        
+        const { data: invRow } = await supabase.from('app_inventory').select('data').eq('key', 'meds_stock').maybeSingle();
+        const base = { ...MEDS_STOCK_DEFAULT, ...(invRow?.data || {}) };
+        const nowIso = new Date().toISOString();
+        
+        const nextPayload = {
+          ...base,
+          roaccutan: Math.max(0, pn(base.roaccutan) + deltaRoaccutan),
+          minoxidil_finasteride: Math.max(0, pn(base.minoxidil_finasteride) + deltaCombo),
+          _updatedAt: nowIso,
+          last_taken_at: val ? nowIso : base.last_taken_at,
+          last_roaccutan_at: (med === 'roacuttan' && val) ? nowIso : base.last_roaccutan_at,
+          last_dinner_meds_at: (isDinnerMed && val) ? nowIso : base.last_dinner_meds_at,
+          last_dinner_logical_date: (isDinnerMed && val) ? targetDateKey : base.last_dinner_logical_date
+        };
+
+        localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(nextPayload));
+        window.dispatchEvent(new CustomEvent('enzo-health-changed', { detail: nextPayload }));
+        await supabase.from('app_inventory').upsert({ key: 'meds_stock', data: nextPayload, updated_at: nowIso }, { onConflict: 'key' });
+      } catch(e) { console.warn('[MEDS_SYNC]', e); }
+    };
+
     const restoreRemovedItemStock = useCallback((removedItem) => {
       if(!removedItem?.recipe_id) return;
       supabase.from('user_recipes').select('id, stock_qty').eq('id', removedItem.recipe_id).single().then(({ data }) => {
@@ -224,19 +316,35 @@ export const createApp = (deps) => {
       }
     }));
 
-    const updateMed = (field, value) => upd(w => {
-      const day = w.tracker[activeDay] || newDay();
-      return {
-        ...w,
-        tracker: {
-          ...w.tracker,
-          [activeDay]: {
-            ...day,
-            meds: { ...(day.meds || {}), [field]: value }
-          }
-        }
-      };
-    });
+    const updateMed = (field, value) => {
+      const now = new Date();
+      const selectedDate = getDayDate(currentWk, parseInt(activeDay, 10));
+      const todayDate = localDateKey(now);
+      const dinnerLogicalDate = getDinnerLogicalDateKey(now);
+      const isDinnerMed = field === 'finasteride' || field === 'minoxidil';
+      
+      const targetDateKey = (isDinnerMed && selectedDate === todayDate && dinnerLogicalDate !== todayDate)
+        ? dinnerLogicalDate
+        : selectedDate;
+        
+      const { weekKey, dayIdx } = getWeekAndDayFromDateKey(targetDateKey);
+
+      setAllWeeks(prev => {
+        const wk = prev[weekKey] || newWeek(weekKey);
+        const day = wk.tracker[dayIdx] || newDay();
+        const nextDay = {
+          ...day,
+          meds: { ...(day.meds || {}), [field]: value },
+          _updatedAt: new Date().toISOString()
+        };
+        lsDaySave(targetDateKey, nextDay);
+        return { 
+          ...prev, 
+          [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: nextDay } } 
+        };
+      });
+      syncMedsInventoryFromToggle(field, value, targetDateKey);
+    };
 
     const updateMeal = (mealIdx, field, value) => upd(w => {
       const day = w.tracker[activeDay] || newDay();
@@ -260,7 +368,8 @@ export const createApp = (deps) => {
     const removeMealItem = (mealIdx, itemIdx, removedItem) => {
       upd(w => {
         const meals = [...(w.tracker[activeDay].meals || [])];
-        meals[mealIdx] = { ...meals[mealIdx], items: (meals[mealIdx].items || []).filter((_, i) => i !== itemIdx) };
+        const nextItems = (meals[mealIdx].items || []).filter((_, i) => i !== itemIdx);
+        meals[mealIdx] = { ...meals[mealIdx], items: nextItems };
         return { ...w, tracker: { ...w.tracker, [activeDay]: { ...w.tracker[activeDay], meals } } };
       });
       if(removedItem) restoreRemovedItemStock(removedItem);
@@ -646,9 +755,33 @@ export const createApp = (deps) => {
           ${view === 'tasks' && html`<${ProductivityView} session=${session} />`}
           ${view === 'week' && html`<${WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />`}
           ${view === 'progress' && html`<${ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />`}
-          ${view === 'recipes' && html`<${RecipesView} session=${session} />`}
-          ${view === 'study' && html`<${StudyView} session=${session} />`}
-          ${view === 'health' && html`<${HealthView} session=${session} todayMeds=${tracker.meds||{}} previousDayMeds=${prevDayTracker.meds||{}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} onSyncDailyMeds=${(partial, dk) => upd(w => {const dayIdx = new Date(dk+'T12:00:00').getDay(); const dayKey = String(dayIdx); const td = w.tracker[dayKey] || newDay(); return {...w, tracker: {...w.tracker, [dayKey]: {...td, meds: {...(td.meds||{}), ...partial}}}}})} onOpenDay=${d => {const dayIdx = new Date(d+'T12:00:00').getDay(); setActiveDay(String(dayIdx)); setView('today');}} />`}
+          ${view === 'recipes' && html`<${RecipesView} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />`}
+          ${view === 'study' && html`<${StudyView} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />`}
+          ${view === 'health' && html`<${HealthView} 
+            session=${session} 
+            todayMeds=${tracker.meds||{}} 
+            previousDayMeds=${prevDayTracker.meds||{}} 
+            weekTracker=${wd.tracker||{}} 
+            healthWeekKey=${currentWk} 
+            bodyWeight=${wd.bodyWeight||''} 
+            onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} 
+            onSyncDailyMeds=${async (partial, dK) => {
+              const { weekKey, dayIdx } = getWeekAndDayFromDateKey(dK);
+              setAllWeeks(prev => {
+                const wk = prev[weekKey] || newWeek(weekKey);
+                const dayFound = wk.tracker[dayIdx] || newDay();
+                const nextDay = { ...dayFound, meds: { ...(dayFound.meds || {}), ...partial }, _updatedAt: new Date().toISOString() };
+                lsDaySave(dK, nextDay);
+                saveDayRemote(supabase, dK, nextDay, session, dayFound._revision);
+                return { ...prev, [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: nextDay } } };
+              });
+            }} 
+            onOpenDay=${d => {
+              const { dayIdx } = getWeekAndDayFromDateKey(d);
+              setActiveDay(dayIdx);
+              setView('today');
+            }} 
+          />`}
           ${view === 'books' && html`<${BooksView} session=${session} />`}
           ${view === 'notif' && html`<${NotifView} session=${session} />`}
           ${view === 'routines' && html`

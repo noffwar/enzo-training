@@ -593,6 +593,281 @@ export const createHealthView = ({
         setNotice(summary);
         setTimeout(() => setNotice(''), 7000);
       };
+      const panelContent = loading ? html`
+        <p style="margin:0;color:#94A3B8;font-size:12px;">Cargando salud...</p>
+      ` : html`
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <${SectionAccordion}
+            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#F59E0B;display:inline-block;"></span>`}
+            title="Inventario y peso"
+            isOpen=${healthSectionOpen.inventory}
+            onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, inventory: !prev.inventory }))}
+          >
+          <div style="padding:12px;display:flex;flex-direction:column;gap:12px;">
+          ${low ? html`
+            <div style="padding:10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);margin-bottom:10px;">
+              <p style="margin:0;font-size:12px;color:#FCA5A5;font-weight:700;">Reponer: alguno de los stocks esta en 2 o menos.</p>
+            </div>
+          ` : null}
+          <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;margin-bottom:10px;">
+            <p style="margin:0 0 8px;font-size:10px;text-transform:uppercase;color:#94A3B8;">Peso corporal</p>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <input 
+                type="number" 
+                step="0.1"
+                placeholder="0.0" 
+                value=${bodyWeight}
+                onInput=${e => onBodyWeight(e.target.value)}
+                style="width:80px;padding:8px;border-radius:8px;border:1px solid #1E2D45;background:rgba(10,15,30,0.6);color:#E2E8F0;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;"
+              />
+              <span style="font-size:13px;color:#94A3B8;font-weight:600;">kg</span>
+              <p style="margin:0 0 0 auto;font-size:11px;color:#64748b;">Mantené tu registro semanal al día.</p>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            ${[
+              ['roaccutan', 'Roaccutan', stock.roaccutan],
+              ['minoxidil_finasteride', 'Minoxidil + Finast.', stock.minoxidil_finasteride]
+            ].map(([key, label, count]) => html`
+              <div style="padding:12px;border-radius:10px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">${label}</p>
+                <p style="margin:0 0 6px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:${count <= 2 ? '#FCA5A5' : '#E2E8F0'};">${count}</p>
+                <p style="margin:0 0 10px;font-size:11px;color:#64748b;">Blindex: ${Math.ceil(count / 10)} de 10 unidades</p>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <button onClick=${()=>adjustStock(key, -1)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">-1</button>
+                  <button onClick=${()=>adjustStock(key, -10)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.12);color:#FCD34D;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">- Blindex</button>
+                  <button onClick=${()=>adjustStock(key, +10)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">+ Blindex</button>
+                </div>
+              </div>
+            `)}
+          </div>
+          </div>
+          <//>
+
+          <${SectionAccordion}
+            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#10B981;display:inline-block;"></span>`}
+            title="Tomas del dia"
+            isOpen=${healthSectionOpen.takes}
+            onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, takes: !prev.takes }))}
+          >
+          <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
+              <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Tomas del dia</p>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;">${stock.last_taken_at ? new Date(stock.last_taken_at).toLocaleString('es-AR') : 'Sin registro'}</span>
+            </div>
+            <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Roaccutan va al mediodia. Minoxidil y Finasteride van con la cena. Si las tomas entre 00:00 y 06:00, cuentan para el dia anterior. Los botones de stock son solo ajustes de inventario; para marcar tomas reales usa los botones de registrar.</p>
+            ${todayHealthIssues.length > 0 ? html`
+              <div style="margin:0 0 10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);">
+                <p style="margin:0;font-size:12px;color:#FDE68A;">${todayHealthIssues.join(' · ')}</p>
+              </div>
+            ` : null}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+               <${HealthStatusCard} title="Estado mediodia" status=${statusMeta.roaccutan}/>
+               <${HealthStatusCard} title="Estado cena" status=${statusMeta.dinner}/>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#F59E0B;">Mediodia</p>
+                <p style="margin:0 0 8px;font-size:12px;color:#CBD5E1;">Roaccutan</p>
+                <p style="margin:0 0 8px;font-size:10px;color:#64748b;">Ultimo registro: ${stock.last_roaccutan_at ? new Date(stock.last_roaccutan_at).toLocaleString('es-AR') : 'Sin registro'}</p>
+                <button
+                  onClick=${registerRoaccutanTake}
+                  disabled=${saving || !!todayMedsState.roacuttan}
+                  style=${`padding:8px 12px;border-radius:8px;border:none;background:${todayMedsState.roacuttan?'#334155':'#F59E0B'};color:${todayMedsState.roacuttan?'#CBD5E1':'#041018'};font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${saving || todayMedsState.roacuttan?'not-allowed':'pointer'};letter-spacing:0.05em;opacity:${saving || todayMedsState.roacuttan?'0.8':'1'};`}>
+                  ${saving ? 'GUARDANDO...' : todayMedsState.roacuttan ? 'YA REGISTRADO' : 'REGISTRAR ROACCUTAN'}
+                </button>
+              </div>
+              <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#10B981;">Cena</p>
+                <p style="margin:0 0 8px;font-size:12px;color:#CBD5E1;">Minoxidil + Finasteride</p>
+                <p style="margin:0 0 8px;font-size:10px;color:#64748b;">Ultimo registro: ${stock.last_dinner_meds_at ? new Date(stock.last_dinner_meds_at).toLocaleString('es-AR') : 'Sin registro'}</p>
+                <button
+                  onClick=${registerDinnerTake}
+                  disabled=${saving || dinnerDone}
+                  style=${`padding:8px 12px;border-radius:8px;border:none;background:${dinnerDone?'#334155':'#10B981'};color:${dinnerDone?'#CBD5E1':'#041018'};font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${saving || dinnerDone?'not-allowed':'pointer'};letter-spacing:0.05em;opacity:${saving || dinnerDone?'0.8':'1'};`}>
+                  ${saving ? 'GUARDANDO...' : dinnerDone ? `YA REGISTRADO (${dinnerTarget.label.toUpperCase()})` : 'REGISTRAR MEDS CENA'}
+                </button>
+              </div>
+            </div>
+          </div>
+          <//>
+
+          <${SectionAccordion}
+            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#6366F1;display:inline-block;"></span>`}
+            title="Control semanal"
+            isOpen=${healthSectionOpen.weekly}
+            onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, weekly: !prev.weekly }))}
+          >
+          <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+            <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
+              <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Semana</p>
+              <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${weekRealTakes.length}</p>
+              <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Tomas reales</p>
+              </div>
+              <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
+                <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Roaccutan</p>
+                <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#FCD34D;">${weekRoaccutanTakes}</p>
+                <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
+              </div>
+              <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
+                <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Cena</p>
+              <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#86EFAC;">${weekDinnerTakes}</p>
+              <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin:-2px 0 10px;">
+            <button
+              onClick=${showWeeklyMedsRecap}
+              style="padding:6px 10px;border-radius:999px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+              RECUENTO SEMANAL
+            </button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+            ${[
+              { label:'Adherencia Roaccutan', pct:roaccutanAdherencePct, detail:`${weekRoaccutanTakes}/7 dias` },
+              { label:'Adherencia Cena', pct:dinnerAdherencePct, detail:`${weekDinnerTakes}/7 dias` }
+            ].map(({label,pct,detail}) => html`
+              <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+                <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                  <div>
+                    <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">${label}</p>
+                    <p style="margin:3px 0 0;font-size:10px;color:#94A3B8;">${detail}</p>
+                  </div>
+                  <p style=${`margin:0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:${adherenceColor(pct)};`}>${pct}%</p>
+                </div>
+                <div style="width:100%;height:6px;background:#1E2D45;border-radius:999px;overflow:hidden;">
+                  <div style=${`width:${pct}%;height:100%;background:${adherenceColor(pct)};border-radius:999px;transition:width 0.4s ease;`}></div>
+                </div>
+              </div>
+            `)}
+          </div>
+          <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+              <div>
+                <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Stock esperado vs real</p>
+                <p style="margin:4px 0 0;font-size:10px;color:#94A3B8;">Solo semana visible. Ignora semanas anteriores para simplificar el control.</p>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+                ${hasStockMismatch ? html`
+                  <button
+                    onClick=${reconcileExpectedStock}
+                    style="padding:5px 9px;border-radius:999px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                    RECONCILIAR STOCK
+                  </button>
+                ` : null}
+                <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${weekStartKey} · ${weekEndKey}</span>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              ${stockConsistency.map(({label,actual,expected,opening,takesDelta,drift,breakdown}) => html`
+                <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${drift===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
+                  <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                    <div>
+                      <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
+                      <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Real: ${actual} · Esperado: ${expected}</p>
+                    </div>
+                    <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${drift===0?'#86EFAC':'#FCD34D'};`}>
+                      ${drift===0 ? 'OK' : drift > 0 ? `+${drift}` : String(drift)}
+                    </span>
+                  </div>
+                  <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">Inicio: ${opening} · Tomas/checks: ${takesDelta > 0 ? '+' : ''}${takesDelta}</p>
+                  <p style="margin:6px 0 0;font-size:10px;color:${drift===0?'#64748B':'#FCD34D'};">
+                    ${drift===0 ? 'Sin diferencia manual en esta semana.' : `La diferencia viene de ajustes o reposiciones netas: ${drift > 0 ? '+' : ''}${drift}.`}
+                  </p>
+                  <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">
+                    ${[
+                      breakdown?.restock ? `Reposiciones ${breakdown.restock > 0 ? '+' : ''}${breakdown.restock}` : '',
+                      breakdown?.manual ? `Ajustes ${breakdown.manual > 0 ? '+' : ''}${breakdown.manual}` : '',
+                      breakdown?.checks ? `Checks ${breakdown.checks > 0 ? '+' : ''}${breakdown.checks}` : ''
+                    ].filter(Boolean).join(' · ') || 'Sin movimientos manuales ni checks registrados en la semana.'}
+                  </p>
+                </div>
+              `)}
+            </div>
+          </div>
+          </div>
+          <//>
+          <${SectionAccordion}
+            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#10B981;display:inline-block;"></span>`}
+            title="Consistencia Checks"
+            isOpen=${false}
+            onToggle=${() => {}}
+          >
+          <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
+              <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Control de consistencia</p>
+              ${hasWeekMismatch ? html`
+                <button
+                  onClick=${reconcileWeekChecks}
+                  style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.35);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                  RECONCILIAR
+                </button>
+              ` : null}
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+              ${weekConsistency.map(({label,checks,takes,diff}) => html`
+                <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${diff===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
+                  <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+                    <div>
+                      <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
+                      <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} · Tomas: ${takes}</p>
+                    </div>
+                    <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
+                      ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
+                    </span>
+                  </div>
+                  <p style="margin:6px 0 0;font-size:10px;color:${diff===0?'#64748B':'#FCD34D'};">
+                    ${diff===0 ? 'Checks y tomas reales coinciden.' : diff > 0 ? 'Hay mas checks que tomas reales registradas.' : 'Hay mas tomas reales que checks marcados.'}
+                  </p>
+                </div>
+              `)}
+            </div>
+            ${weekDiagnostics.length > 0 ? html`
+              <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                ${weekDiagnostics.map(issue => html`
+                  <div style="padding:8px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.22);display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                    <span style="font-size:11px;color:#FCD34D;font-weight:700;min-width:38px;">${issue.label}</span>
+                    <span style="flex:1;font-size:11px;color:#CBD5E1;">${issue.text}</span>
+                    ${typeof onOpenDay === 'function' ? html`
+                      <button
+                        onClick=${()=>onOpenDay(issue.dateKey)}
+                        style="padding:5px 8px;border-radius:999px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#C7D2FE;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                        IR AL DIA
+                      </button>
+                    ` : null}
+                  </div>
+                `)}
+              </div>
+            ` : null}
+          </div>
+          <//>
+
+          <${SectionAccordion}
+            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#A855F7;display:inline-block;"></span>`}
+            title="Historial y auditoria"
+            isOpen=${healthSectionOpen.history}
+            onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, history: !prev.history }))}
+          >
+          <div style="padding:12px;display:flex;flex-direction:column;gap:12px;">
+            <p style="margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Historial reciente</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+              <${SegmentedPillGroup}
+                options=${HEALTH_HISTORY_FILTERS}
+                value=${historyFilter}
+                onChange=${setHistoryFilter}
+                size="10px"
+              />
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${historyEntries.length === 0 ? html`
+                <p style="margin:0;color:#64748b;font-size:12px;">todavía no hay movimientos guardados.</p>
+              ` : historyEntries.map(({ entry, meta }) => html`<${HealthHistoryRow} key=${entry.at} entry=${entry} meta=${meta} editingHistoryAt=${editingHistoryAt} onEdit=${editHistoryEntry} onDelete=${deleteHistoryEntry} />`)}
+            </div>
+          </div>
+          <//>
+        </div>
+      `;
 
       return html`
         <div class="fade-up" style="display:flex;flex-direction:column;gap:12px;">
@@ -606,273 +881,19 @@ export const createHealthView = ({
                 <button onClick=${exportHealthData} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.12);color:#FCD34D;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                   EXPORTAR
                 </button>
-                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadHealth}>
+                <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadHealth} disabled=${loading}>
                   <${ISync} s=${16}/>
                 </button>
               </div>
             </div>
-            ${notice && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#FCD34D;font-size:12px;">${notice}</div>`}
-            ${error && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}
-            ${loading ? html`
-              <p style="margin:0;color:#94A3B8;font-size:12px;">Cargando salud...</p>
-            ` : html`
-              <div style="display:flex;flex-direction:column;gap:12px;">
-                <${SectionAccordion}
-                  icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#F59E0B;display:inline-block;"></span>`}
-                  title="Inventario y peso"
-                  isOpen=${healthSectionOpen.inventory}
-                  onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, inventory: !prev.inventory }))}
-                >
-                ${low && html`
-                  <div style="padding:10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);margin-bottom:10px;">
-                    <p style="margin:0;font-size:12px;color:#FCA5A5;font-weight:700;">Reponer: alguno de los stocks esta en 2 o menos.</p>
-                  </div>
-                `}
-                <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                  <div>
-                    <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Peso corporal (semana)</p>
-                    <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Registralo aca una vez por semana.</p>
-                  </div>
-                  <div style="display:flex;align-items:center;gap:6px;">
-                    <input type="number" step="0.1" placeholder="kg"
-                      value=${bodyWeight || ''}
-                      onInput=${e=>onBodyWeight && onBodyWeight(e.target.value)}
-                      style="width:86px;background:#0F1729;border:1px solid #2A3F5F;border-radius:8px;padding:7px 10px;font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;text-align:center;"/>
-                    ${(bodyWeight || '') && html`<span style="font-size:13px;color:#10B981;font-weight:700;">kg</span>`}
-                  </div>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                  ${[
-                    ['roaccutan', 'Roaccutan', roaccutanCount],
-                    ['minoxidil_finasteride', 'Minoxidil / Finasteride', minoxCount]
-                  ].map(([key, label, count]) => html`
-                    <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid ${count <= 2 ? 'rgba(239,68,68,0.3)' : '#1E2D45'};">
-                      <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">${label}</p>
-                      <p style="margin:0 0 6px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:${count <= 2 ? '#FCA5A5' : '#E2E8F0'};">${count}</p>
-                      <p style="margin:0 0 10px;font-size:11px;color:#64748b;">Blindex: ${Math.ceil(count / 10)} de 10 unidades</p>
-                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                        <button onClick=${()=>adjustStock(key, -1)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.12);color:#FCA5A5;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">-1</button>
-                        <button onClick=${()=>adjustStock(key, -10)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.12);color:#FCD34D;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">- Blindex</button>
-                        <button onClick=${()=>adjustStock(key, +10)} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;">+ Blindex</button>
-                      </div>
-                    </div>
-                  `)}
-                </div>
-                <//>
-
-                <${SectionAccordion}
-                  icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#10B981;display:inline-block;"></span>`}
-                  title="Tomas del dia"
-                  isOpen=${healthSectionOpen.takes}
-                  onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, takes: !prev.takes }))}
-                >
-                <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;">
-                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Tomas del dia</p>
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#94A3B8;">${stock.last_taken_at ? new Date(stock.last_taken_at).toLocaleString('es-AR') : 'Sin registro'}</span>
-                  </div>
-                  <p style="margin:0 0 10px;font-size:12px;color:#64748b;">Roaccutan va al mediodia. Minoxidil y Finasteride van con la cena. Si las tomas entre 00:00 y 06:00, cuentan para el dia anterior. Los botones de stock son solo ajustes de inventario; para marcar tomas reales usa los botones de registrar.</p>
-                  ${todayHealthIssues.length > 0 && html`
-                    <div style="margin:0 0 10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);">
-                      <p style="margin:0;font-size:12px;color:#FDE68A;">${todayHealthIssues.join(' · ')}</p>
-                    </div>
-                  `}
-                    <${HealthStatusCard} title="Estado mediodia" status=${statusMeta.roaccutan}/>
-                    <${HealthStatusCard} title="Estado cena" status=${statusMeta.dinner}/>
-                  </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
-                      <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#F59E0B;">Mediodia</p>
-                      <p style="margin:0 0 8px;font-size:12px;color:#CBD5E1;">Roaccutan</p>
-                      <p style="margin:0 0 8px;font-size:10px;color:#64748b;">Ultimo registro: ${stock.last_roaccutan_at ? new Date(stock.last_roaccutan_at).toLocaleString('es-AR') : 'Sin registro'}</p>
-                      <button
-                        onClick=${registerRoaccutanTake}
-                        disabled=${saving || !!todayMedsState.roacuttan}
-                        style=${`padding:8px 12px;border-radius:8px;border:none;background:${todayMedsState.roacuttan?'#334155':'#F59E0B'};color:${todayMedsState.roacuttan?'#CBD5E1':'#041018'};font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${saving || todayMedsState.roacuttan?'not-allowed':'pointer'};letter-spacing:0.05em;opacity:${saving || todayMedsState.roacuttan?'0.8':'1'};`}>
-                        ${saving ? 'GUARDANDO...' : todayMedsState.roacuttan ? 'YA REGISTRADO' : 'REGISTRAR ROACCUTAN'}
-                      </button>
-                    </div>
-                    <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
-                      <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#10B981;">Cena</p>
-                      <p style="margin:0 0 8px;font-size:12px;color:#CBD5E1;">Minoxidil + Finasteride</p>
-                      <p style="margin:0 0 8px;font-size:10px;color:#64748b;">Ultimo registro: ${stock.last_dinner_meds_at ? new Date(stock.last_dinner_meds_at).toLocaleString('es-AR') : 'Sin registro'}</p>
-                      <button
-                        onClick=${registerDinnerTake}
-                        disabled=${saving || dinnerDone}
-                        style=${`padding:8px 12px;border-radius:8px;border:none;background:${dinnerDone?'#334155':'#10B981'};color:${dinnerDone?'#CBD5E1':'#041018'};font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${saving || dinnerDone?'not-allowed':'pointer'};letter-spacing:0.05em;opacity:${saving || dinnerDone?'0.8':'1'};`}>
-                        ${saving ? 'GUARDANDO...' : dinnerDone ? `YA REGISTRADO (${dinnerTarget.label.toUpperCase()})` : 'REGISTRAR MEDS CENA'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <//>
-
-                <${SectionAccordion}
-                  icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#6366F1;display:inline-block;"></span>`}
-                  title="Control semanal"
-                  isOpen=${healthSectionOpen.weekly}
-                  onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, weekly: !prev.weekly }))}
-                >
-                <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
-                  <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
-                    <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Semana</p>
-                    <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#E2E8F0;">${weekRealTakes.length}</p>
-                    <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Tomas reales</p>
-                    </div>
-                    <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
-                      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Roaccutan</p>
-                      <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#FCD34D;">${weekRoaccutanTakes}</p>
-                      <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
-                    </div>
-                    <div style="padding:8px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;text-align:center;">
-                      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">Cena</p>
-                    <p style="margin:4px 0 0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:#86EFAC;">${weekDinnerTakes}</p>
-                    <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Esta semana</p>
-                  </div>
-                </div>
-                <div style="display:flex;justify-content:flex-end;gap:8px;margin:-2px 0 10px;">
-                  <button
-                    onClick=${showWeeklyMedsRecap}
-                    style="padding:6px 10px;border-radius:999px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                    RECUENTO SEMANAL
-                  </button>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-                  ${[
-                    { label:'Adherencia Roaccutan', pct:roaccutanAdherencePct, detail:`${weekRoaccutanTakes}/7 dias` },
-                    { label:'Adherencia Cena', pct:dinnerAdherencePct, detail:`${weekDinnerTakes}/7 dias` }
-                  ].map(({label,pct,detail}) => html`
-                    <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
-                      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:6px;">
-                        <div>
-                          <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;">${label}</p>
-                          <p style="margin:3px 0 0;font-size:10px;color:#94A3B8;">${detail}</p>
-                        </div>
-                        <p style=${`margin:0;font-size:18px;font-family:'JetBrains Mono',monospace;font-weight:700;color:${adherenceColor(pct)};`}>${pct}%</p>
-                      </div>
-                      <div style="width:100%;height:6px;background:#1E2D45;border-radius:999px;overflow:hidden;">
-                        <div style=${`width:${pct}%;height:100%;background:${adherenceColor(pct)};border-radius:999px;transition:width 0.4s ease;`}></div>
-                      </div>
-                    </div>
-                  `)}
-                </div>
-                <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;margin-bottom:10px;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
-                    <div>
-                      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Stock esperado vs real</p>
-                      <p style="margin:4px 0 0;font-size:10px;color:#94A3B8;">Solo semana visible. Ignora semanas anteriores para simplificar el control.</p>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-                      ${hasStockMismatch && html`
-                        <button
-                          onClick=${reconcileExpectedStock}
-                          style="padding:5px 9px;border-radius:999px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                          RECONCILIAR STOCK
-                        </button>
-                      `}
-                      <span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${weekStartKey} · ${weekEndKey}</span>
-                    </div>
-                  </div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    ${stockConsistency.map(({label,actual,expected,opening,takesDelta,drift,breakdown}) => html`
-                      <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${drift===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
-                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
-                          <div>
-                            <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
-                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Real: ${actual} · Esperado: ${expected}</p>
-                          </div>
-                          <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${drift===0?'#86EFAC':'#FCD34D'};`}>
-                            ${drift===0 ? 'OK' : drift > 0 ? `+${drift}` : String(drift)}
-                          </span>
-                        </div>
-                        <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">Inicio: ${opening} · Tomas/checks: ${takesDelta > 0 ? '+' : ''}${takesDelta}</p>
-                        <p style="margin:6px 0 0;font-size:10px;color:${drift===0?'#64748B':'#FCD34D'};">
-                          ${drift===0 ? 'Sin diferencia manual en esta semana.' : `La diferencia viene de ajustes o reposiciones netas: ${drift > 0 ? '+' : ''}${drift}.`}
-                        </p>
-                        <p style="margin:6px 0 0;font-size:10px;color:#94A3B8;">
-                          ${[
-                            breakdown?.restock ? `Reposiciones ${breakdown.restock > 0 ? '+' : ''}${breakdown.restock}` : '',
-                            breakdown?.manual ? `Ajustes ${breakdown.manual > 0 ? '+' : ''}${breakdown.manual}` : '',
-                            breakdown?.checks ? `Checks ${breakdown.checks > 0 ? '+' : ''}${breakdown.checks}` : ''
-                          ].filter(Boolean).join(' · ') || 'Sin movimientos manuales ni checks registrados en la semana.'}
-                        </p>
-                      </div>
-                    `)}
-                  </div>
-                </div>
-                <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;margin-bottom:10px;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">
-                    <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Control de consistencia</p>
-                    ${hasWeekMismatch && html`
-                      <button
-                        onClick=${reconcileWeekChecks}
-                        style="padding:6px 10px;border-radius:8px;border:1px solid rgba(56,189,248,0.35);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:11px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                        RECONCILIAR
-                      </button>
-                    `}
-                  </div>
-                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
-                    ${weekConsistency.map(({label,checks,takes,diff}) => html`
-                      <div style="padding:8px;border-radius:8px;background:rgba(15,23,41,0.75);border:1px solid ${diff===0?'rgba(16,185,129,0.25)':'rgba(245,158,11,0.28)'};">
-                        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
-                          <div>
-                            <p style="margin:0;font-size:10px;text-transform:uppercase;color:#94A3B8;">${label}</p>
-                            <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Checks: ${checks} · Tomas: ${takes}</p>
-                          </div>
-                          <span style=${`font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${diff===0?'#86EFAC':'#FCD34D'};`}>
-                            ${diff===0 ? 'OK' : diff > 0 ? `+${diff}` : String(diff)}
-                          </span>
-                        </div>
-                        <p style="margin:6px 0 0;font-size:10px;color:${diff===0?'#64748B':'#FCD34D'};">
-                          ${diff===0 ? 'Checks y tomas reales coinciden.' : diff > 0 ? 'Hay mas checks que tomas reales registradas.' : 'Hay mas tomas reales que checks marcados.'}
-                        </p>
-                      </div>
-                    `)}
-                  </div>
-                  ${weekDiagnostics.length > 0 && html`
-                    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
-                      ${weekDiagnostics.map(issue => html`
-                        <div style="padding:8px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.22);display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
-                          <span style="font-size:11px;color:#FCD34D;font-weight:700;min-width:38px;">${issue.label}</span>
-                          <span style="flex:1;font-size:11px;color:#CBD5E1;">${issue.text}</span>
-                          ${typeof onOpenDay === 'function' && html`
-                            <button
-                              onClick=${()=>onOpenDay(issue.dateKey)}
-                              style="padding:5px 8px;border-radius:999px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#C7D2FE;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                              IR AL DIA
-                            </button>
-                          `}
-                        </div>
-                      `)}
-                    </div>
-                  `}
-                </div>
-                <//>
-                <${SectionAccordion}
-                  icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#A855F7;display:inline-block;"></span>`}
-                  title="Historial y auditoria"
-                  isOpen=${healthSectionOpen.history}
-                  onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, history: !prev.history }))}
-                >
-                <p style="margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Historial reciente</p>
-                  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
-                    <${SegmentedPillGroup}
-                      options=${HEALTH_HISTORY_FILTERS}
-                      value=${historyFilter}
-                      onChange=${setHistoryFilter}
-                      size="10px"
-                    />
-                  </div>
-                  <div style="display:flex;flex-direction:column;gap:8px;">
-                    ${historyEntries.length === 0 ? html`
-                      <p style="margin:0;color:#64748b;font-size:12px;">todavía no hay movimientos guardados.</p>
-                    ` : historyEntries.map(({ entry, meta }) => html`<${HealthHistoryRow} entry=${entry} meta=${meta} editingHistoryAt=${editingHistoryAt} onEdit=${editHistoryEntry} onDelete=${deleteHistoryEntry} />`)}
-                  </div>
-                </div>
-                <//>
-              </div>
-            `}
+            ${notice ? html`
+              <div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);color:#FCD34D;font-size:12px;">${notice}</div>
+            ` : null}
+            ${error ? html`
+              <div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>
+            ` : null}
+            
+            ${panelContent}
           <//>
         </div>
       `;
