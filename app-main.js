@@ -577,6 +577,7 @@ export const createApp = (deps) => {
       && !isDeloadWeek(currentWk);
 
     const previousSnapshot = getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1);
+    const yesterdayFastMsg = getYesterdayFast(allWeeks, currentWk, activeDay);
     const navBadges = { study: moduleAlerts.study > 0 ? (moduleAlerts.study > 9 ? '9+' : String(moduleAlerts.study)) : '', health: moduleAlerts.health ? '!' : '', books: moduleAlerts.books ? '•' : '', recipes: moduleAlerts.recipes > 0 ? (moduleAlerts.recipes > 9 ? '9+' : String(moduleAlerts.recipes)) : '', notif: moduleAlerts.notif ? '!' : '' };
 
     return html`
