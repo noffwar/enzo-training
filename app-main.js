@@ -581,114 +581,76 @@ export const createApp = (deps) => {
     const navBadges = { study: moduleAlerts.study > 0 ? (moduleAlerts.study > 9 ? '9+' : String(moduleAlerts.study)) : '', health: moduleAlerts.health ? '!' : '', books: moduleAlerts.books ? '•' : '', recipes: moduleAlerts.recipes > 0 ? (moduleAlerts.recipes > 9 ? '9+' : String(moduleAlerts.recipes)) : '', notif: moduleAlerts.notif ? '!' : '' };
 
     return html`
-      <div style="max-width:480px;margin:0 auto;position:relative;min-height:100dvh;background:#05070A;display:flex;flex-direction:column;">
-        <header style="position:sticky;top:0;z-index:100;background:rgba(5,7,10,0.8);backdrop-filter:blur(12px);padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#10B981,#3B82F6);display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px rgba(16,185,129,0.3);">
-              <${IDumb} s=${20} c="#05070A"/>
-            </div>
-            <div>
-              <h1 style="margin:0;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;color:#fff;line-height:1;">ENZO <span style="color:#10B981;">TRAINING</span></h1>
-              <p style="margin:2px 0 0;font-size:10px;color:#64748b;font-weight:700;">${view === 'today' ? 'DIARIO NUTRICIONAL' : view.toUpperCase()}</p>
-            </div>
-          </div>
-          <button onClick=${() => navigateTo('notif')} style="padding:8px;border:none;background:transparent;color:#94A3B8;cursor:pointer;">
-             <${IBell} s=${20} />
-          </button>
-        </header>
-
-        <main style="flex:1;padding:16px;display:flex;flex-direction:column;gap:16px;padding-bottom:100px;">
-          ${view === 'today' && html`
-            <div style="display:flex;flex-direction:column;gap:12px;">
-              <!-- Navegación de Semana -->
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                <button class="btn-icon" style=${`background:#162035;border:1px solid #1E2D45;opacity:${isAtStart ? '0.3' : '1'};width:32px;height:32px;border-radius:8px;color:white;cursor:pointer;`} onClick=${()=>navWeek(-1)} disabled=${isAtStart}>
-                  <${IChevL} s=${16}/>
-                </button>
-                <div style="flex:1;text-align:center;">
-                  <p style="margin:0;font-size:13px;font-weight:700;color:white;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.03em;">${formatWeekLabel(currentWk)}</p>
-                  ${isCurrentWeekLocal(currentWk) && html`<span style="font-size:9px;font-family:'JetBrains Mono',monospace;color:#10B981;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">SEMANA ACTUAL</span>`}
-                </div>
-                <button class="btn-icon" style=${`background:#162035;border:1px solid #1E2D45;opacity:${isCurrentWeekLocal(currentWk) ? '0.3' : '1'};width:32px;height:32px;border-radius:8px;color:white;cursor:pointer;`} onClick=${()=>navWeek(1)} disabled=${isCurrentWeekLocal(currentWk)}>
-                  <${IChevR} s=${16}/>
+      <div style="min-height:100vh;background:#080D1A;display:flex;flex-direction:column;font-family:'Barlow',sans-serif;">
+        <header style="position:sticky;top:0;z-index:20;background:rgba(8,13,26,0.97);backdrop-filter:blur(20px);border-bottom:1px solid #1E2D45;padding-top:env(safe-area-inset-top, 0);">
+          <div style="max-width:640px;margin:0 auto;padding:16px 16px 12px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+              <h1 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:0.08em;color:#fff;">ENZO <span style="color:#10B981;">TRAINING</span></h1>
+              <div style="display:flex;gap:8px;">
+                <button onClick=${() => navigateTo('notif')} class="btn-icon" style="background:transparent;border-color:transparent;color:#64748b;">
+                  <${IBell} s=${18} />
                 </button>
               </div>
+            </div>
 
-              <!-- Tabs de Días -->
-              <div class="hide-scroll" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;">
-                ${DAYS.map(day => {
-                  const active = activeDay === day.key;
-                  const hasRoutine = routineAssignments[day.key] !== '';
-                  const sess = hasRoutine ? (wd.sessions[day.key] || []) : [];
-                  const done = sess.reduce((acc, ex) => acc + ex.sets.filter(set => set.completed).length, 0);
-                  const total = sess.reduce((acc, ex) => acc + ex.sets.length, 0);
-                  const dateKey = getDayDate(currentWk, parseInt(day.key, 10));
-                  const closed = isGymClosedDate(dateKey, HOLIDAYS_2026);
-                  return html`
-                    <button onClick=${()=>{ setActiveDay(day.key); setView('today'); }}
-                      style=${`flex:1;min-width:38px;padding:8px 4px;border-radius:10px;border:1px solid ${active ? (closed ? '#EF4444' : '#10B981') : (closed ? 'rgba(239,68,68,0.35)' : '#1E2D45')};background:${active ? (closed ? 'rgba(239,68,68,0.18)' : '#10B981') : (closed ? 'rgba(127,29,29,0.18)' : '#162035')};cursor:pointer;position:relative;transition:all 0.2s ease;`}>
-                      <p style=${`margin:0;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:${active ? 'white' : closed ? '#FCA5A5' : '#64748b'};`}>${day.abbr}</p>
-                      <p style=${`margin:0;font-size:9px;font-weight:500;color:${active ? 'rgba(255,255,255,0.75)' : closed ? '#FCA5A5' : '#475569'};`}>${day.label}</p>
-                      ${hasRoutine && !active && html`<div style="position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:#6366F1;"></div>`}
-                      ${closed && html`<div style="position:absolute;top:3px;left:3px;width:5px;height:5px;border-radius:50%;background:#EF4444;"></div>`}
-                      ${done > 0 && html`<div style="position:absolute;bottom:3px;right:3px;font-size:8px;font-family:'JetBrains Mono',monospace;color:#10B981;font-weight:800;">${done}</div>`}
+            ${view === 'today' && html`
+              <div style="display:flex;flex-direction:column;gap:12px;">
+                <!-- Semana y Split Control -->
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <button class="btn-icon" style="width:28px;height:28px;opacity:${isAtStart ? 0.3 : 1}" onClick=${()=>navWeek(-1)}>
+                      <${IChevL} s=${14}/>
                     </button>
-                  `;
-                })}
-              </div>
-
-              <div class="glass-card" style="padding:12px;display:flex;flex-direction:column;gap:10px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                    <span style="font-size:10px;text-transform:uppercase;color:#64748b;">Split semanal</span>
-                    <select class="inp" style="min-width:118px;font-size:12px;padding:8px 10px;background:#0F1729;border:1px solid #1E2D45;color:white;border-radius:8px;" value=${planMode} onChange=${e=>handlePlanModeChange(e.target.value)}>
-                      <option value="4">4 dias</option>
-                      <option value="5">5 dias</option>
-                    </select>
-                    ${isDeloadWeek(currentWk) && html`<span style="padding:2px 8px;border-radius:999px;font-size:10px;font-weight:800;background:rgba(245,158,11,0.12);color:#FCD34D;">DESCARGA - RIR 4-5</span>`}
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#cbd5e1;min-width:90px;text-align:center;">${formatWeekLabel(currentWk)}</span>
+                    <button class="btn-icon" style="width:28px;height:28px;opacity:${isCurrentWeekLocal(currentWk) ? 0.3 : 1}" onClick=${()=>navWeek(1)}>
+                      <${IChevR} s=${14}/>
+                    </button>
                   </div>
-                  <span style="font-size:11px;color:#94A3B8;">
-                    ${planMode === '4' ? 'Máximo 2 días seguidos. El tercero va descanso.' : 'Distribución de 5 días con los mismos ejercicios.'}
-                  </span>
-                </div>
-
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-                  <div>
-                    <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;letter-spacing:0.04em;color:white;">
-                      ${routineInfo?.fullName || `DÍA ${activeDay}: Descanso`}
-                    </h2>
-                    ${routineInfo?.description && html`<p style="margin:2px 0 0;font-size:13px;color:#6366F1;">${routineInfo.description}</p>`}
-                  </div>
-                  <select class="inp" style="min-width:120px;font-size:12px;padding:8px 10px;background:#1E2D45;border:1px solid #334155;color:white;border-radius:8px;" value=${routineId || ''} onChange=${e=>handleRoutineChange(e.target.value)}>
-                    <option value="">Descanso</option>
-                    ${selectableRoutines.map(r => html`<option value=${r.id}>${r.name}</option>`)}
+                  <select class="inp" style="width:auto;min-width:100px;font-size:11px;padding:4px 8px;height:28px;background:#162035;border-color:#1E2D45;" value=${planMode} onChange=${e=>handlePlanModeChange(e.target.value)}>
+                    <option value="4">Split 4 Días</option>
+                    <option value="5">Split 5 Días</option>
                   </select>
                 </div>
+
+                <!-- Tabs de Días -->
+                <div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;" class="hide-scroll">
+                  ${DAYS.map(day => {
+                    const active = activeDay === day.key;
+                    const dateKey = getDayDate(currentWk, parseInt(day.key, 10));
+                    const closed = isGymClosedDate(dateKey, HOLIDAYS_2026);
+                    const hasRoutine = routineAssignments[day.key] !== '';
+                    return html`
+                      <button onClick=${() => { setActiveDay(day.key); setView('today'); }}
+                        style=${`flex:1;min-width:42px;padding:6px 2px;border-radius:10px;border:1px solid ${active ? (closed ? '#EF4444' : '#10B981') : (closed ? 'rgba(239,68,68,0.3)' : '#1E2D45')};background:${active ? (closed ? 'rgba(239,68,68,0.2)' : '#10B981') : (closed ? 'rgba( 10,15,30,0.3 )' : '#162035')};cursor:pointer;position:relative;`}>
+                        <p style=${`margin:0;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:${active ? 'white' : closed ? '#FCA5A5' : '#64748b'};`}>${day.abbr}</p>
+                        ${hasRoutine && !active && html`<div style="position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:#6366F1;"></div>`}
+                      </button>
+                    `;
+                  })}
+                </div>
+              </div>
+            `}
+          </div>
+        </header>
+
+        <main style="max-width:640px;margin:0 auto;padding:16px 16px calc(88px + env(safe-area-inset-bottom, 12px));width:100%;">
+          ${view === 'today' && html`
+            <div style="display:flex;flex-direction:column;gap:16px;">
+              <!-- 1. Split Name -->
+              <div class="glass-card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;background:rgba(10,15,30,0.4);">
+                <div style="flex:1;">
+                  <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:white;">
+                    ${routineInfo?.fullName || `DÍA ${activeDay}: Descanso`}
+                  </h2>
+                  ${routineInfo?.description && html`<p style="margin:2px 0 0;font-size:12px;color:#6366F1;">${routineInfo.description}</p>`}
+                </div>
+                <select class="inp" style="width:auto;min-width:110px;font-size:11px;padding:6px 10px;background:#162035;border-color:#1E2D45;" value=${routineId || ''} onChange=${e=>handleRoutineChange(e.target.value)}>
+                  <option value="">Descanso</option>
+                  ${selectableRoutines.map(r => html`<option value=${r.id}>${r.name}</option>`)}
+                </select>
               </div>
 
-              ${(activeDayClosed || hitTwoConsecutiveRule || isDeloadWeek(currentWk)) && html`
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                  ${activeDayClosed && html`
-                    <div style="padding:10px 12px;border-radius:10px;background:rgba(127,29,29,0.18);border:1px solid rgba(239,68,68,0.35);">
-                      <p style="margin:0;font-size:12px;color:#FCA5A5;font-weight:700;">Gimnasio cerrado para este día.</p>
-                      <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">Si igual entrenaste, podés asignar la rutina manualmente desde el selector.</p>
-                    </div>
-                  `}
-                  ${hitTwoConsecutiveRule && html`
-                    <div style="padding:10px 12px;border-radius:10px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);">
-                      <p style="margin:0;font-size:12px;color:#FCD34D;font-weight:700;">Ya entrenaste 2 días seguidos: hoy toca descanso.</p>
-                      <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">La app te deja forzarlo manualmente, pero el split de 4 días recomienda frenar.</p>
-                    </div>
-                  `}
-                  ${isDeloadWeek(currentWk) && html`
-                    <div style="padding:10px 12px;border-radius:10px;background:rgba(99,102,241,0.10);border:1px solid rgba(99,102,241,0.26);">
-                      <p style="margin:0;font-size:12px;color:#C7D2FE;font-weight:700;">Semana de descarga activa.</p>
-                      <p style="margin:4px 0 0;font-size:11px;color:#CBD5E1;">La app reduce a 2 series por ejercicio y sube el objetivo a RIR 4-5.</p>
-                    </div>
-                  `}
-                </div>
-              `}
-
+              <!-- 2. StatCard -->
               <${TodayDashboard} 
                 session=${session} 
                 tracker=${tracker} 
@@ -700,6 +662,8 @@ export const createApp = (deps) => {
                 onOpenRecipes=${() => navigateTo('recipes')} 
                 onOpenNotif=${() => navigateTo('notif')} 
               />
+              
+              <!-- 3. HabitsPanel (Ayuno, Caminata, Comidas, Sueño) -->
               <${HabitsPanel} 
                 tracker=${tracker} 
                 selectedDateKey=${getDayDate(currentWk, parseInt(activeDay))} 
@@ -712,6 +676,7 @@ export const createApp = (deps) => {
                 onReplaceItem=${replaceMealItem}
               />
               
+              <!-- 4. Macros Restantes -->
               <div class="glass-card" style="padding:10px 12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
                 ${[
                   {label:'Prot restante', val:Math.max(0,Math.round(TARGETS.prot - dayTotals(tracker.meals||[]).prot))+'g', color:'#10B981'},
@@ -725,68 +690,40 @@ export const createApp = (deps) => {
                 `)}
               </div>
               
+              <!-- 5. Hydration -->
               <${WaterTracker}
                 val=${tracker.water || 0}
                 onChange=${v => updateHabit('water', v)}
                 roacuttan=${tracker.meds?.roacuttan || false}
               />
               
+              <!-- 6. IA Assistant -->
+              <${SmartCena}
+                currentProt=${dayTotals(tracker.meals || []).prot}
+                tracker=${tracker}
+              />
+
+              <!-- 7. Gym Routine -->
+              <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
+
+              <!-- Extra info (Review) -->
               <${NutritionReviewCard}
                 currentDateKey=${activeDateKey}
                 currentTracker=${tracker}
                 previousDateKey=${previousSnapshot.dateKey}
                 previousTracker=${previousSnapshot.tracker}
               />
-              
-              <${SmartCena}
-                currentProt=${dayTotals(tracker.meals || []).prot}
-                tracker=${tracker}
-              />
-
-              <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
-              
-              ${effectiveGymSession.length === 0 && !routineId && html`
-                <${Card}>
-                  <div style="text-align:center;padding:24px 0;">
-                    <p style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;color:#cbd5e1;margin:0;">Día de descanso</p>
-                    <p style="font-size:13px;color:#64748b;margin:4px 0 0;">Recuperá y registrá tus habitos arriba.</p>
-                  </div>
-                <//>
-              `}
             </div>
           `}
-          ${view === 'tasks' && html`<${ProductivityView} session=${session} />`}
-          ${view === 'week' && html`<${WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />`}
+
+          ${view === 'tasks'    && html`<${ProductivityView} session=${session} />`}
+          ${view === 'week'     && html`<${WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />`}
           ${view === 'progress' && html`<${ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />`}
-          ${view === 'recipes' && html`<${RecipesView} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />`}
-          ${view === 'study' && html`<${StudyView} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />`}
-          ${view === 'health' && html`<${HealthView} 
-            session=${session} 
-            todayMeds=${tracker.meds||{}} 
-            previousDayMeds=${previousSnapshot.tracker?.meds || {}} 
-            weekTracker=${wd.tracker||{}} 
-            healthWeekKey=${currentWk} 
-            bodyWeight=${wd.bodyWeight||''} 
-            onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} 
-            onSyncDailyMeds=${async (partial, dK) => {
-              const { weekKey, dayIdx } = getWeekAndDayFromDateKey(dK);
-              setAllWeeks(prev => {
-                const wk = prev[weekKey] || newWeek(weekKey);
-                const dayFound = wk.tracker[dayIdx] || newDay();
-                const nextDay = { ...dayFound, meds: { ...(dayFound.meds || {}), ...partial }, _updatedAt: new Date().toISOString() };
-                lsDaySave(dK, nextDay);
-                saveDayRemote(supabase, dK, nextDay, session, dayFound._revision);
-                return { ...prev, [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: nextDay } } };
-              });
-            }} 
-            onOpenDay=${d => {
-              const { dayIdx } = getWeekAndDayFromDateKey(d);
-              setActiveDay(dayIdx);
-              setView('today');
-            }} 
-          />`}
-          ${view === 'books' && html`<${BooksView} session=${session} />`}
-          ${view === 'notif' && html`<${NotifView} session=${session} />`}
+          ${view === 'recipes'  && html`<${RecipesView} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />`}
+          ${view === 'study'    && html`<${StudyView} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />`}
+          ${view === 'health' && html`<${HealthView} session=${session} todayMeds=${tracker.meds||{}} previousDayMeds=${previousSnapshot.tracker?.meds || {}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} onSyncDailyMeds=${async (partial, dK) => { const { weekKey, dayIdx } = getWeekAndDayFromDateKey(dK); setAllWeeks(prev => { const wk = prev[weekKey] || newWeek(weekKey); const dayFound = wk.tracker[dayIdx] || newDay(); const nextDay = { ...dayFound, meds: { ...(dayFound.meds || {}), ...partial }, _updatedAt: new Date().toISOString() }; lsDaySave(dK, nextDay); saveDayRemote(supabase, dK, nextDay, session, dayFound._revision); return { ...prev, [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: nextDay } } }; }); }} onOpenDay=${d => { const { dayIdx } = getWeekAndDayFromDateKey(d); setActiveDay(dayIdx); setView('today'); }} />`}
+          ${view === 'books'    && html`<${BooksView} session=${session} />`}
+          ${view === 'notif'    && html`<${NotifView} session=${session} />`}
           ${view === 'routines' && html`
             <div style="display:flex;flex-direction:column;gap:16px;">
               <${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines} />
@@ -795,31 +732,35 @@ export const createApp = (deps) => {
           `}
         </main>
 
-        <nav style="position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:rgba(10,15,30,0.95);backdrop-filter:blur(16px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom);overflow-x:auto;">
-           <div style="display:flex;min-width:max-content;padding:0 4px;">
-              ${[
-                {id:'today',    icon:html`<${IHome} s=${20}/>`, label:'HOY'},
-                {id:'week',     icon:html`<${ICal}  s=${20}/>`, label:'SEMANA'},
-                {id:'progress', icon:html`<${IBar}  s=${20}/>`, label:'PROGR'},
-                {id:'tasks',    icon:html`<${IList} s=${20}/>`, label:'TAREAS'},
-                {id:'study',    icon:html`<${ITarget} s=${20}/>`, label:'ESTUD'},
-                {id:'health',   icon:html`<${IBell} s=${20}/>`, label:'SALUD'},
-                {id:'books',    icon:html`<${IBook} s=${20}/>`, label:'OCIO'},
-                {id:'recipes',  icon:html`<${IActivity} s=${20}/>`, label:'RECET'},
-                {id:'notif',    icon:html`<${IClock} s=${20}/>`, label:'ALERTA'},
-                {id:'routines', icon:html`<${IEdit} s=${20}/>`, label:'RUTINA'},
-              ].map(tab => html`
-                <button onClick=${() => navigateTo(tab.id)} style=${`flex:none;width:56px;padding:12px 0;border:none;background:transparent;color:${view === tab.id ? '#10B981' : '#64748B'};cursor:pointer;display:flex;flex-direction:column;align-items:center;position:relative;`}>
-                   ${navBadges[tab.id] && html`
-                     <span style=${`position:absolute;top:6px;right:6px;min-width:${navBadges[tab.id].length > 1 ? '16px' : '12px'};height:12px;padding:0 3px;border-radius:999px;background:${tab.id==='health' ? '#EF4444' : '#F59E0B'};color:#fff;font-size:8px;font-weight:800;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center;line-height:1;`}>
-                       ${navBadges[tab.id]}
-                     </span>
-                   `}
-                   ${tab.icon}
-                   <span style="font-size:9px;margin-top:2px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.05em;">${tab.label}</span>
+        <nav class="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(8,13,26,0.98);backdrop-filter:blur(20px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom, 0);">
+          <div style="max-width:640px;margin:0 auto;display:flex;">
+            ${[
+              {id:'today',    label:'HOY',     icon:html`<${IHome} s=${18}/>`},
+              {id:'week',     label:'SEMANA',  icon:html`<${ICal}  s=${18}/>`},
+              {id:'progress', label:'PROGRESO',icon:html`<${IBar}  s=${18}/>`},
+              {id:'tasks',    label:'TAREAS',  icon:html`<${IList} s=${18}/>`},
+              {id:'study',    label:'ESTUDIO', icon:html`<${ITarget}s=${18}/>`},
+              {id:'health',   label:'SALUD',   icon:html`<${IBell} s=${18}/>`},
+              {id:'books',    label:'LIBROS',  icon:html`<${IBook} s=${18}/>`},
+              {id:'recipes',  label:'RECETAS', icon:html`<${IActivity} s=${18}/>`},
+              {id:'notif',    label:'ALERTAS', icon:html`<${IClock} s=${18}/>`},
+              {id:'routines', label:'RUTINAS', icon:html`<${IEdit} s=${18}/>`},
+            ].map(tab => {
+              const active = view === tab.id;
+              return html`
+                <button onClick=${() => navigateTo(tab.id)} style=${`flex:1;padding:12px 2px;border:none;background:transparent;color:${active ? '#10B981' : '#374151'};cursor:pointer;display:flex;flex-direction:column;align-items:center;position:relative;`}>
+                  ${navBadges[tab.id] && html`
+                    <span style=${`position:absolute;top:5px;right:5px;width:12px;height:12px;border-radius:50%;background:${tab.id==='health'?'#EF4444':'#F59E0B'};color:#fff;font-size:7px;font-weight:800;display:flex;align-items:center;justify-content:center;`}>
+                      ${navBadges[tab.id]}
+                    </span>
+                  `}
+                  ${tab.icon}
+                  <span style="font-size:8px;margin-top:4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.1em;">${tab.label}</span>
+                  ${active && html`<div class="nav-indicator"></div>`}
                 </button>
-              `)}
-           </div>
+              `;
+            })}
+          </div>
         </nav>
 
         ${(timerActive || timerLeft > 0) && html`<${FloatingTimer} left=${timerLeft} active=${timerActive} onToggle=${() => setTimerActive(a => !a)} onReset=${() => { setTimerLeft(0); setTimerActive(false); }} />`}

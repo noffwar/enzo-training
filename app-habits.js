@@ -448,102 +448,176 @@ export const createHabitsPanel = (deps) => {
     const medStatus = getMedicationStatusForView({ selectedDateKey, medsState: t.meds || {}, now: new Date() });
 
     return html`
-      <${SectionAccordion} icon="🎯" title="Hábitos y Nutrición" isOpen=${open} onToggle=${()=>setOpen(!open)}>
+      <${SectionAccordion} icon=${html`<${IActivity} s=${18} c="text-green" style="margin-right:8px;"/>`} title="Parámetros Diarios" isOpen=${open} onToggle=${()=>setOpen(!open)}>
         <div style="display:flex;flex-direction:column;gap:16px;">
-          ${yesterdayFastMsg && html`<p style="margin:0;font-size:12px;color:#F59E0B;font-weight:700;">${yesterdayFastMsg}</p>`}
-
-          <!-- Meds -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-            <div class="glass-card" style="padding:10px;border-color:rgba(239,68,68,0.2);">
-              <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;">Roacutan</p>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" checked=${!!t.meds?.roacuttan} onChange=${e=>onMed('roacuttan',e.target.checked)}/>
-                <span style=${`font-size:13px;font-weight:700;color:${t.meds?.roacuttan?'#FCA5A5':'#94A3B8'};`}>${medStatus.roaccutanLabel}</span>
-              </label>
+          ${yesterdayFastMsg && html`
+            <div class="glass-card" style="padding:10px 12px;background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.2);margin-bottom:4px;">
+              <p style="margin:0;font-size:12px;color:#A5B4FC;font-weight:700;display:flex;align-items:center;gap:6px;">
+                <${IClock} s=${14}/> ${yesterdayFastMsg}
+              </p>
             </div>
-            <div class="glass-card" style=${`padding:10px;border-color:${medStatus.dinnerRelevant?'rgba(99,102,241,0.3)':'#1E2D45'};opacity:${medStatus.dinnerRelevant?1:0.5};`}>
-              <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;">Cena Combo</p>
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                <input type="checkbox" checked=${!!t.meds?.finasteride} onChange=${e=>{ onMed('finasteride',e.target.checked); onMed('minoxidil',e.target.checked); }}/>
-                <span style=${`font-size:13px;font-weight:700;color:${t.meds?.finasteride?'#A5B4FC':'#94A3B8'};`}>${medStatus.dinnerLabel}</span>
-              </label>
+          `}
+
+          <!-- Nutricion & Cardio -->
+          <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Nutrición & Cardio</p>
+            
+            <${CheckRow} label="Ayuno realizado" checked=${t.fasted} onChange=${v=>onChange('fasted',v)}>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <${Inp} label="Inicio (HH:MM)" type="time" value=${t.fastStartTime} onChange=${v=>onChange('fastStartTime',v)}/>
+                <${Inp} label="Duración (hs)" value=${t.fastHours} onChange=${v=>onChange('fastHours',v)} placeholder="Ej: 16"/>
+              </div>
+              ${(() => {
+                const fs = getFastStats(t);
+                return fs.active && fs.startTime && html`<span class="badge" style="background:rgba(16,185,129,0.1);color:#10B981;font-size:10px;padding:4px 8px;border-radius:6px;font-weight:700;">PROGRESO: ${fs.pct}% (${fs.elapsed.toFixed(1)}hs)</span>`;
+              })()}
+            <//>
+
+            <${CheckRow} label="Mate / Café" checked=${t.mateOrCoffee} onChange=${v=>onChange('mateOrCoffee',v)}>
+              <${Inp} label="Hora" type="time" value=${t.mateOrCoffeeTime} onChange=${v=>onChange('mateOrCoffeeTime',v)}/>
+            <//>
+
+            <${CheckRow} label="Caminata" checked=${t.walked} onChange=${v=>onChange('walked',v)}>
+              <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;">
+                <${Inp} label="Pasos" value=${t.steps} onChange=${v=>onChange('steps',v)} placeholder="Ej: 10.000"/>
+                <${Inp} label="Inicio" type="time" value=${t.walkStartTime} onChange=${v=>onChange('walkStartTime',v)}/>
+                <${Inp} label="Fin" type="time" value=${t.walkEndTime} onChange=${v=>onChange('walkEndTime',v)}/>
+              </div>
+            <//>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.03);">
+              <div class="glass-card" style="padding:10px;border-color:rgba(239,68,68,0.2);background:rgba(10,15,30,0.5);">
+                <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;">Roacutan</p>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                  <input type="checkbox" checked=${!!t.meds?.roacuttan} onChange=${e=>onMed('roacuttan',e.target.checked)}/>
+                  <span style=${`font-size:13px;font-weight:700;color:${t.meds?.roacuttan?'#FCA5A5':'#94A3B8'};`}>${medStatus.roaccutanLabel}</span>
+                </label>
+              </div>
+              <div class="glass-card" style=${`padding:10px;border-color:${medStatus.dinnerRelevant?'rgba(99,102,241,0.3)':'#1E2D45'};background:rgba(10,15,30,0.5);opacity:${medStatus.dinnerRelevant?1:0.5};`}>
+                <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;">Cena Combo</p>
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                  <input type="checkbox" checked=${!!t.meds?.finasteride} onChange=${e=>{ onMed('finasteride',e.target.checked); onMed('minoxidil',e.target.checked); }}/>
+                  <span style=${`font-size:13px;font-weight:700;color:${t.meds?.finasteride?'#A5B4FC':'#94A3B8'};`}>${medStatus.dinnerLabel}</span>
+                </label>
+              </div>
             </div>
           </div>
 
-          <!-- Comidas -->
-          <div style="display:flex;flex-direction:column;gap:12px;">
-            ${[0,1,2].map(mIdx => {
-              const meal = t.meals?.[mIdx] || { items: [] };
-              return html`
-                <div class="glass-card" style="padding:12px;">
-                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                    <span style="font-size:12px;font-weight:700;color:#E2E8F0;">Comida ${mIdx+1}</span>
-                    <button onClick=${()=>saveMealAsRecipe(mIdx)} style="font-size:10px;background:transparent;border:1px solid #1E2D45;color:#64748B;padding:2px 6px;border-radius:4px;cursor:pointer;">
-                      ${recipeSaving[mIdx] ? '...' : 'Guardar Receta'}
-                    </button>
-                  </div>
-                  
-                  <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-                    ${(meal.items||[]).map((it, iIdx) => html`
-                      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
-                        <div style="flex:1;">
-                          <p style="margin:0;font-size:13px;color:#cbd5e1;">${it.name} ${it.qty?`· ${it.qty}`:''}</p>
-                          <p style="margin:2px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${it.cals}kcal · ${it.prot}P · ${it.carb}C · ${it.fat}G</p>
-                        </div>
-                        <div style="display:flex;gap:4px;">
-                          <button onClick=${() => {
-                            setEditingMealItem({ mealIndex: mIdx, itemIndex: iIdx });
-                            onMeal(mIdx, 'aiDraft', `${it.qty} ${it.name}`);
-                          }} style="background:transparent;border:none;color:#6366F1;font-size:16px;cursor:pointer;padding:0 8px;">✎</button>
-                          <button onClick=${()=>onRemoveItem(mIdx, iIdx)} style="background:transparent;border:none;color:#EF4444;font-size:16px;cursor:pointer;padding:0 8px;">×</button>
-                        </div>
-                      </div>
-                    `)}
-                  </div>
-
-                  ${mealSplitEditOpen[mIdx] && html`
-                    <textarea 
-                      value=${mealSplitDrafts[mIdx]}
-                      onInput=${e => setMealSplitDrafts(prev => { const n=[...prev]; n[mIdx]=e.target.value; return n; })}
-                      placeholder="Una fila por alimento..."
-                      style="width:100%;background:rgba(0,0,0,0.2);border:1px solid #6366F1;border-radius:6px;padding:8px 10px;color:#cbd5e1;font-size:13px;min-height:80px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;"
-                    />
-                  `}
-
-                  <div style="display:flex;gap:8px;margin-top:8px;">
-                    <input
-                      type="text"
-                      value=${meal.aiDraft || ''}
-                      onInput=${e => updateMealDraft(mIdx, e.target.value)}
-                      onKeyDown=${e => { if(e.key === 'Enter' && !aiLoading[mIdx]) analyzeMeal(mIdx); }}
-                      placeholder=${editingMealItem.mealIndex === mIdx ? "Editando ítem..." : "Añadir alimento..."}
-                      disabled=${aiLoading[mIdx]}
-                      style="flex:1;background:rgba(0,0,0,0.2);border:1px solid #1E2D45;border-radius:6px;padding:8px 10px;color:#cbd5e1;font-size:13px;"
-                    />
-                    <button
-                      onClick=${() => analyzeMeal(mIdx)}
-                      disabled=${aiLoading[mIdx] || !String(meal.aiDraft || '').trim()}
-                      style="background:#10B981;color:#0F1729;border:none;border-radius:6px;padding:0 16px;font-weight:700;font-size:12px;cursor:pointer;opacity:${aiLoading[mIdx]?0.5:1};"
-                    >
-                      ${aiLoading[mIdx] ? '...' : 'IA 🧠'}
-                    </button>
-                  </div>
-                  
-                  <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px;">
-                    ${savedRecipes.filter(r => {
-                      const draft = normalizeFoodText(meal.aiDraft || '');
-                      return !draft || normalizeFoodText(r.recipe_name).includes(draft);
-                    }).slice(0, 5).map(r => html`
-                      <button onClick=${() => updateMealDraft(mIdx, r.recipe_name)} style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);color:#A5B4FC;font-size:9px;padding:2px 6px;border-radius:4px;cursor:pointer;">
-                        + ${r.recipe_name}
+          <!-- Alimentacion -->
+          <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;">
+            <p style="margin:0 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Alimentación</p>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              ${[0,1,2].map(mIdx => {
+                const meal = t.meals?.[mIdx] || { items: [] };
+                const totals = mealTotals(meal);
+                return html`
+                  <div class="glass-card" style="padding:12px;background:rgba(22,32,53,0.6);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                      <span style="font-size:12px;font-weight:700;color:#6366F1;">Comida ${mIdx+1}</span>
+                      <button onClick=${()=>saveMealAsRecipe(mIdx)} style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:10px;background:transparent;border:1px solid #1E2D45;color:#64748B;padding:2px 8px;border-radius:6px;cursor:pointer;letter-spacing:0.05em;">
+                        ${recipeSaving[mIdx] ? '...' : 'RECETA'}
                       </button>
-                    `)}
-                  </div>
+                    </div>
+                    
+                    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+                      ${(meal.items||[]).map((it, iIdx) => html`
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+                          <div style="flex:1;">
+                            <p style="margin:0;font-size:13px;color:#cbd5e1;"><span style="color:#10B981;font-weight:700;">${it.qty}</span> ${it.name}</p>
+                            <p style="margin:2px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${it.cals}kcal · ${it.prot}P · ${it.carb}C · ${it.fat}G</p>
+                          </div>
+                          <div style="display:flex;gap:4px;">
+                            <button onClick=${() => {
+                              setEditingMealItem({ mealIndex: mIdx, itemIndex: iIdx });
+                              onMeal(mIdx, 'aiDraft', `${it.qty} ${it.name}`);
+                            }} style="background:transparent;border:none;color:#6366F1;font-size:14px;cursor:pointer;padding:0 8px;">✎</button>
+                            <button onClick=${()=>onRemoveItem(mIdx, iIdx)} style="background:transparent;border:none;color:#EF4444;font-size:14px;cursor:pointer;padding:0 8px;">×</button>
+                          </div>
+                        </div>
+                      `)}
+                    </div>
 
-                  ${aiError[mIdx] && html`<p style="color:#EF4444;font-size:11px;margin:8px 0 0;">Error: ${aiError[mIdx]}</p>`}
-                </div>
-              `;
-            })}
+                    ${mealSplitEditOpen[mIdx] && html`
+                      <textarea 
+                        value=${mealSplitDrafts[mIdx]}
+                        onInput=${e => setMealSplitDrafts(prev => { const n=[...prev]; n[mIdx]=e.target.value; return n; })}
+                        placeholder="Una fila por alimento..."
+                        style="width:100%;background:rgba(0,0,0,0.25);border:1px solid #6366F1;border-radius:6px;padding:8px 10px;color:#cbd5e1;font-size:13px;min-height:80px;margin-bottom:8px;font-family:'JetBrains Mono',monospace;"
+                      />
+                    `}
+
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                      <input
+                        type="text"
+                        value=${meal.aiDraft || ''}
+                        onInput=${e => updateMealDraft(mIdx, e.target.value)}
+                        onKeyDown=${e => { if(e.key === 'Enter' && !aiLoading[mIdx]) analyzeMeal(mIdx); }}
+                        placeholder=${editingMealItem.mealIndex === mIdx ? "Editando ítem..." : "Añadir alimento..."}
+                        disabled=${aiLoading[mIdx]}
+                        style="flex:1;background:rgba(0,0,0,0.3);border:1px solid #1E2D45;border-radius:8px;padding:10px 12px;color:#cbd5e1;font-size:13px;"
+                      />
+                      <button
+                        onClick=${() => analyzeMeal(mIdx)}
+                        disabled=${aiLoading[mIdx] || !String(meal.aiDraft || '').trim()}
+                        style="background:rgba(99,102,241,0.25);color:#A5B4FC;border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:0 18px;font-weight:800;font-family:'Barlow Condensed',sans-serif;font-size:13px;cursor:pointer;opacity:${aiLoading[mIdx]?0.5:1};letter-spacing:0.05em;"
+                      >
+                        ${aiLoading[mIdx] ? '...' : 'IA 🧠'}
+                      </button>
+                    </div>
+                    
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;">
+                      ${savedRecipes.filter(r => {
+                        const draft = normalizeFoodText(meal.aiDraft || '');
+                        return !draft || normalizeFoodText(r.recipe_name).includes(draft);
+                      }).slice(0, 5).map(r => html`
+                        <button onClick=${() => updateMealDraft(mIdx, r.recipe_name)} style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.35);color:#10B981;font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;padding:3px 8px;border-radius:6px;cursor:pointer;letter-spacing:0.03em;">
+                          + ${r.recipe_name}
+                        </button>
+                      `)}
+                    </div>
+
+                    <!-- Totales por Comida -->
+                    <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:6px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.03);">
+                      ${[
+                        {label:'Kcal', val:Math.round(totals.cals), color:'#F59E0B'},
+                        {label:'Prot', val:Math.round(totals.prot)+'g', color:'#10B981'},
+                        {label:'Carb', val:Math.round(totals.carb)+'g', color:'#6366F1'},
+                        {label:'Grasas',val:Math.round(totals.fat)+'g', color:'#EF4444'},
+                      ].map(stat => html`
+                        <div style="text-align:center;padding:6px 4px;background:rgba(10,15,30,0.4);border-radius:6px;border:1px solid rgba(255,255,255,0.02);">
+                          <p style="margin:0;font-size:8px;text-transform:uppercase;color:#64748b;letter-spacing:0.05em;">${stat.label}</p>
+                          <p style=${`margin:2px 0 0;font-size:11px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${stat.color};`}>${stat.val}</p>
+                        </div>
+                      `)}
+                    </div>
+
+                    ${aiError[mIdx] && html`<p style="color:#EF4444;font-size:11px;margin:8px 0 0;">Error: ${aiError[mIdx]}</p>`}
+                  </div>
+                `;
+              })}
+            </div>
+          </div>
+
+          <!-- Descanso -->
+          <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Descanso</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <${Inp} label="Dormí (hs)" value=${t.sleepHours} onChange=${v=>onChange('sleepHours',v)} placeholder="Ej: 7,5"/>
+              <${Inp} label="Despertares" value=${t.wakeups} onChange=${v=>onChange('wakeups',v)} placeholder="Veces"/>
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;margin-bottom:4px;">Calidad del sueño</label>
+              <select class="inp" value=${t.sleepQuality || ''} onChange=${e=>onChange('sleepQuality',e.target.value)} style="background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:8px 12px;color:white;width:100%;">
+                <option value="">Seleccionar...</option>
+                <option>Excelente</option>
+                <option>Bien</option>
+                <option>Regular</option>
+                <option>Mal</option>
+              </select>
+            </div>
+            <${CheckRow} label="Dormí siesta?" checked=${t.napped} onChange=${v=>onChange('napped',v)}>
+              <${Inp} label="Horas de siesta" value=${t.napHours} onChange=${v=>onChange('napHours',v)} placeholder="Ej: 1,5"/>
+            <//>
           </div>
         </div>
       <//>
