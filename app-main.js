@@ -112,13 +112,6 @@ export const createApp = (deps) => {
       }
     };
 
-    const upd = (fn_upd) => {
-      setAllWeeks(prev => {
-        const wk = prev[currentWk] || newWeek(currentWk);
-        return { ...prev, [currentWk]: fn_upd(wk) };
-      });
-    };
-
     const getWeekAndDayFromDateKey = (dateKey) => {
       const d = new Date(dateKey + 'T12:00:00');
       return { weekKey: getWeekKey(d), dayIdx: String(d.getDay()) };
