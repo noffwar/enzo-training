@@ -74,9 +74,10 @@ export const createGymPanel = (deps) => {
 
         <!-- Ejercicios -->
         ${session.map((ex,ei) => html`
-          <div style="border-radius:10px;overflow:hidden;border:1px solid #1E2D45;margin-bottom:10px;background:rgba(15,23,41,0.3);">
-            <div style="padding:8px 12px;background:rgba(22,32,53,0.7);border-left:3px solid #10B981;">
-              <p style="margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;color:white;letter-spacing:0.04em;text-transform:uppercase;">${ei+1}. ${ex.name}</p>
+          <div style="border-radius:12px;overflow:hidden;border:1px solid #1E2D45;margin-bottom:12px;background:rgba(15,23,41,0.5);box-shadow:0 4px 12px rgba(0,0,0,0.4);">
+            <div style="padding:10px 14px;background:rgba(22,32,53,0.85);border-left:4px solid #10B981;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <p style="margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:white;letter-spacing:0.05em;text-transform:uppercase;">${ei+1}. ${ex.name}</p>
               ${resolveMuscleInfo(ex.name) && html`
                 <p style="margin:2px 0 0;font-size:10px;color:#475569;font-weight:600;">
                   ${resolveMuscleInfo(ex.name).direct.join(', ')}
@@ -84,6 +85,7 @@ export const createGymPanel = (deps) => {
                 </p>
               `}
             </div>
+          </div>
             <div class="table-wrap" style="padding:4px;">
               <table style="width:100%;border-collapse:separate;border-spacing:0 4px;">
                 <thead>
@@ -106,8 +108,8 @@ export const createGymPanel = (deps) => {
                       <td><span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${set.restStr}</span></td>
                       <td style="text-align:center;padding:4px;">
                         <button onClick=${()=>onSetComplete(ei,si,set.restSecs)}
-                          style=${`width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;${set.completed?'background:#10B981;border:none;box-shadow:0 0 10px rgba(16,185,129,0.4);':'background:#162035;border:1px solid #1E2D45;color:#475569;'}`}>
-                          <${ICheck} s=${14} c=${set.completed?'#080D1A':'#475569'}/>
+                          style=${`width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;${set.completed?'background:#10B981;border:none;box-shadow:0 0 10px rgba(16,185,129,0.4);':'background:rgba(99,102,241,0.1);border:2px solid rgba(99,102,241,0.4);color:#A5B4FC;'}`}>
+                          <${ICheck} s=${14} c=${set.completed?'#080D1A':'#818CF8'}/>
                         </button>
                       </td>
                     </tr>

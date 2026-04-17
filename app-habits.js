@@ -460,7 +460,7 @@ export const createHabitsPanel = (deps) => {
 
           <!-- Nutricion & Cardio -->
           <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Nutrición & Cardio</p>
+            <p style="margin:0 0 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#F59E0B;border-bottom:1px solid rgba(245,158,11,0.15);padding-bottom:6px;">NUTRICIÓN & CARDIO</p>
             
             <${CheckRow} label="Ayuno realizado" checked=${t.fasted} onChange=${v=>onChange('fasted',v)}>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -505,7 +505,7 @@ export const createHabitsPanel = (deps) => {
 
           <!-- Alimentacion -->
           <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;">
-            <p style="margin:0 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;">Alimentación</p>
+            <p style="margin:0 0 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#10B981;border-bottom:1px solid rgba(16,185,129,0.15);padding-bottom:6px;">ALIMENTACIÓN</p>
             <div style="display:flex;flex-direction:column;gap:12px;">
               ${[0,1,2].map(mIdx => {
                 const meal = t.meals?.[mIdx] || { items: [] };
@@ -600,7 +600,7 @@ export const createHabitsPanel = (deps) => {
 
           <!-- Descanso -->
           <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
-            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">Descanso</p>
+            <p style="margin:0 0 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#6366F1;border-bottom:1px solid rgba(99,102,241,0.15);padding-bottom:6px;">DESCANSO</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <${Inp} label="Dormí (hs)" value=${t.sleepHours} onChange=${v=>onChange('sleepHours',v)} placeholder="Ej: 7,5"/>
               <${Inp} label="Despertares" value=${t.wakeups} onChange=${v=>onChange('wakeups',v)} placeholder="Veces"/>

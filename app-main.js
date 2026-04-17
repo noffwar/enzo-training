@@ -585,8 +585,13 @@ export const createApp = (deps) => {
       <div style="min-height:100vh;background:#080D1A;display:flex;flex-direction:column;font-family:'Barlow',sans-serif;">
         <header style="position:sticky;top:0;z-index:20;background:rgba(8,13,26,0.97);backdrop-filter:blur(20px);border-bottom:1px solid #1E2D45;padding-top:env(safe-area-inset-top, 0);">
           <div style="max-width:640px;margin:0 auto;padding:16px 16px 12px 16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-              <h1 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:0.08em;color:#fff;">ENZO <span style="color:#10B981;">TRAINING</span></h1>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#10B981,#6366F1);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 15px rgba(16,185,129,0.3);">
+                  <${IDumb} s=${24} c="#080D1A"/>
+                </div>
+                <h1 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;letter-spacing:0.1em;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.3);">ENZO <span style="color:#10B981;">TRAINING</span></h1>
+              </div>
               <div style="display:flex;gap:8px;">
                 <button onClick=${() => navigateTo('notif')} class="btn-icon" style="background:transparent;border-color:transparent;color:#64748b;">
                   <${IBell} s=${18} />
@@ -756,7 +761,7 @@ export const createApp = (deps) => {
                     </span>
                   `}
                   ${tab.icon}
-                  <span style="font-size:8px;margin-top:4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.1em;">${tab.label}</span>
+                  <span style="font-size:9px;margin-top:5px;font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.08em;color:inherit;">${tab.id === 'progress' ? 'PROGRESO' : tab.label}</span>
                   ${active && html`<div class="nav-indicator"></div>`}
                 </button>
               `;
