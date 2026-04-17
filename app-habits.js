@@ -471,7 +471,7 @@ export const createHabitsPanel = (deps) => {
                 const fs = getFastStats(t, selectedDateKey);
                 if (!fs.active || !fs.startTime) return null;
                 const hh = Math.floor(fs.elapsed);
-                const mm = Math.round((fs.elapsed - hh) * 60);
+                const mm = Math.floor((fs.elapsed * 60) % 60);
                 const timeStr = `${hh}h ${mm}m`;
                 const label = fs.isComplete 
                   ? html`<span style="display:flex;align-items:center;gap:4px;">¡META CUMPLIDA! <${ICheck} s=${12} c="#10B981"/> (${timeStr})</span>`
