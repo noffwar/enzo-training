@@ -669,22 +669,47 @@ export const isGymClosedDate = (dateStr = '', holidays = {}) =>
   isSundayDate(dateStr) || isHoliday2026(dateStr, holidays);
 
 // ── getFastStats: calcula estadísticas de ayuno intermitente ──
-export const getFastStats = (tracker) => {
-  if (!tracker || !tracker.fasted) return { active: false, startTime: '', hours: 0, remaining: 0, elapsed: 0, pct: 0 };
+export const getFastStats = (tracker, viewDateStr = '') => {
+  if (!tracker || !tracker.fasted) return { active: false, startTime: '', hours: 0, remaining: 0, elapsed: 0, pct: 0, isComplete: false };
   const startTime = tracker.fastStartTime || '';
   const hours = pn(tracker.fastHours) || 16;
-  if (!startTime) return { active: true, startTime: '', hours, remaining: hours, elapsed: 0, pct: 0 };
+  if (!startTime) return { active: true, startTime: '', hours, remaining: hours, elapsed: 0, pct: 0, isComplete: false };
+  
   const [sH, sM] = startTime.split(':').map(Number);
-  if (isNaN(sH)) return { active: true, startTime, hours, remaining: hours, elapsed: 0, pct: 0 };
+  if (isNaN(sH)) return { active: true, startTime, hours, remaining: hours, elapsed: 0, pct: 0, isComplete: false };
+
   const now = new Date();
-  const start = new Date(now);
+  const todayKey = localDateKey(now);
+  const isViewingPast = viewDateStr && viewDateStr < todayKey;
+  
+  // Reference date for "now"
+  let refDate = now;
+  if (isViewingPast) {
+    refDate = new Date(`${viewDateStr}T23:59:59`);
+  }
+
+  const start = new Date(refDate);
   start.setHours(sH, sM || 0, 0, 0);
-  if (start > now) start.setDate(start.getDate() - 1);
-  const elapsedMs = now - start;
+  
+  // Si el inicio es posterior a la referencia, asumimos que empezó el día anterior
+  if (start > refDate) {
+    start.setDate(start.getDate() - 1);
+  }
+
+  const elapsedMs = refDate - start;
   const elapsed = Math.max(0, elapsedMs / 3600000);
   const remaining = Math.max(0, hours - elapsed);
   const pctVal = Math.min(100, Math.round((elapsed / hours) * 100));
-  return { active: true, startTime, hours, remaining, elapsed, pct: pctVal };
+  
+  return { 
+    active: true, 
+    startTime, 
+    hours, 
+    remaining, 
+    elapsed, 
+    pct: pctVal, 
+    isComplete: elapsed >= hours 
+  };
 };
 
 

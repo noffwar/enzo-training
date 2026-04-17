@@ -467,9 +467,15 @@ export const createHabitsPanel = (deps) => {
                 <${Inp} label="Inicio (HH:MM)" type="time" value=${t.fastStartTime} onChange=${v=>onChange('fastStartTime',v)}/>
                 <${Inp} label="Duración (hs)" value=${t.fastHours} onChange=${v=>onChange('fastHours',v)} placeholder="Ej: 16"/>
               </div>
-              ${(() => {
-                const fs = getFastStats(t);
-                return fs.active && fs.startTime && html`<span class="badge" style="background:rgba(16,185,129,0.1);color:#10B981;font-size:10px;padding:4px 8px;border-radius:6px;font-weight:700;">PROGRESO: ${fs.pct}% (${fs.elapsed.toFixed(1)}hs)</span>`;
+                const fs = getFastStats(t, selectedDateKey);
+                if (!fs.active || !fs.startTime) return null;
+                const hh = Math.floor(fs.elapsed);
+                const mm = Math.round((fs.elapsed - hh) * 60);
+                const timeStr = `${hh}h ${mm}m`;
+                const label = fs.isComplete 
+                  ? html`<span style="display:flex;align-items:center;gap:4px;">¡META CUMPLIDA! <${ICheck} s=${12} c="#10B981"/> (${timeStr})</span>`
+                  : `PROGRESO: ${fs.pct}% (${timeStr})`;
+                return html`<span class="badge" style=${`background:${fs.isComplete ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.1)'};color:#10B981;font-size:10px;padding:4px 8px;border-radius:6px;font-weight:700;border:1px solid ${fs.isComplete ? 'rgba(16,185,129,0.3)' : 'transparent'};`}>${label}</span>`;
               })()}
             <//>
 
