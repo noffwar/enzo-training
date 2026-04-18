@@ -95,11 +95,6 @@ export const createApp = (deps) => {
     const upd = (fn) => setAllWeeks(prev => {
       const wk = { ...(prev[currentWk] || newWeek(currentWk)) };
       const nextWk = fn(wk);
-      const activeDate = getDayDate(currentWk, parseInt(activeDay, 10));
-      if (nextWk.tracker[activeDay]) {
-        saveDayRemote(supabase, activeDate, nextWk.tracker[activeDay], session, nextWk.tracker[activeDay]._revision);
-      }
-      saveWeeklyRemote(supabase, currentWk, nextWk.bodyWeight, nextWk.dayMapping, nextWk._revision, session);
       return { ...prev, [currentWk]: nextWk };
     });
 
@@ -283,37 +278,49 @@ export const createApp = (deps) => {
             if(dayChanged) {
               day.meals = nextMeals;
               wk.tracker[dayIdx] = day;
-              lsDaySave(getDayDate(wkKey, parseInt(dayIdx)), day);
+              const dk = getDayDate(wkKey, parseInt(dayIdx));
+              lsDaySave(dk, day);
+              saveDayRemote(supabase, dk, day, session, day._revision).catch(() => {});
             }
           });
           if(wkChanged) {
             next[wkKey] = wk;
-            saveWeeklyRemote(supabase, wkKey, wk.bodyWeight, wk.dayMapping, wk._revision, session);
+            saveWeeklyRemote(supabase, wkKey, wk.bodyWeight, wk.dayMapping, wk._revision, session).catch(() => {});
           }
         });
         return changed ? next : prev;
       });
     };
 
-    const syncMedsInventoryFromToggle = async (med, val, targetDateKey) => {
+    const syncMedsInventoryFromToggle = async (med, prevMeds = {}, nextMeds = {}, targetDateKey) => {
       try {
+        const deltaRoaccutan = (med === 'roacuttan') ? (nextMeds.roacuttan ? -1 : 1) : 0;
+        
+        let deltaCombo = 0;
         const isDinnerMed = med === 'finasteride' || med === 'minoxidil';
-        const deltaRoaccutan = (med === 'roacuttan') ? (val ? -1 : 1) : 0;
-        const deltaCombo = isDinnerMed ? (val ? -1 : 1) : 0;
+        if (isDinnerMed) {
+          const wasTakingAny = prevMeds.finasteride || prevMeds.minoxidil;
+          const isTakingAny = nextMeds.finasteride || nextMeds.minoxidil;
+          if (!wasTakingAny && isTakingAny) deltaCombo = -1;
+          else if (wasTakingAny && !isTakingAny) deltaCombo = 1;
+        }
+
+        if (deltaRoaccutan === 0 && deltaCombo === 0 && med !== 'roacuttan' && !isDinnerMed) return;
         
         const { data: invRow } = await supabase.from('app_inventory').select('data').eq('key', 'meds_stock').maybeSingle();
         const base = { ...MEDS_STOCK_DEFAULT, ...(invRow?.data || {}) };
         const nowIso = new Date().toISOString();
+        const nextVal = !!nextMeds[med];
         
         const nextPayload = {
           ...base,
           roaccutan: Math.max(0, pn(base.roaccutan) + deltaRoaccutan),
           minoxidil_finasteride: Math.max(0, pn(base.minoxidil_finasteride) + deltaCombo),
           _updatedAt: nowIso,
-          last_taken_at: val ? nowIso : base.last_taken_at,
-          last_roaccutan_at: (med === 'roacuttan' && val) ? nowIso : base.last_roaccutan_at,
-          last_dinner_meds_at: (isDinnerMed && val) ? nowIso : base.last_dinner_meds_at,
-          last_dinner_logical_date: (isDinnerMed && val) ? targetDateKey : base.last_dinner_logical_date
+          last_taken_at: nextVal ? nowIso : base.last_taken_at,
+          last_roaccutan_at: (med === 'roacuttan' && nextVal) ? nowIso : base.last_roaccutan_at,
+          last_dinner_meds_at: (isDinnerMed && nextVal) ? nowIso : base.last_dinner_meds_at,
+          last_dinner_logical_date: (isDinnerMed && nextVal) ? targetDateKey : base.last_dinner_logical_date
         };
 
         localStorage.setItem(MEDS_STOCK_KEY, JSON.stringify(nextPayload));
@@ -356,12 +363,13 @@ export const createApp = (deps) => {
           _updatedAt: new Date().toISOString()
         };
         lsDaySave(targetDateKey, nextDay);
+        saveDayRemote(supabase, targetDateKey, nextDay, session, day._revision).catch(() => {});
+        syncMedsInventoryFromToggle(field, day.meds || {}, nextDay.meds, targetDateKey);
         return { 
           ...prev, 
           [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: nextDay } } 
         };
       });
-      syncMedsInventoryFromToggle(field, value, targetDateKey);
     };
 
     const updateHabit = (field, value) => upd(w => {

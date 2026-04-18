@@ -275,9 +275,9 @@ export const createHabitsPanel = (deps) => {
     if(!raw) return [];
     const normalized = raw.replace(/\s+/g, ' ').trim();
     const normalizedForSplit = normalized
-      .replace(/\s+y\s+(?=(\d+|,|media|medio|una|un)\b)/ig, ' | ')
-      .replace(/,\s*(?=(\d+|,|media|medio|una|un)\b)/ig, ' | ')
-      .replace(/\s*\+\s*(?=(\d+|,|media|medio|una|un)\b)/ig, ' | ');
+      .replace(/\s+y\s+/ig, ' | ')
+      .replace(/,\s*/ig, ' | ')
+      .replace(/\s*\+\s*/ig, ' | ');
     const parts = normalizedForSplit.split(/\s*\|\s*/i).map(part => part.trim()).filter(Boolean);
     return parts.length > 1 ? parts : [normalized];
   };
@@ -342,7 +342,8 @@ export const createHabitsPanel = (deps) => {
           if(shouldUseLibrary) {
             const finalItem = { ...recipeHit };
             if(editingMealItem.mealIndex === mealIndex && editingMealItem.itemIndex >= 0) {
-              onReplaceItem(mealIndex, editingMealItem.itemIndex, finalItem);
+              const prevItem = t.meals?.[mealIndex]?.items?.[editingMealItem.itemIndex];
+              onReplaceItem(mealIndex, editingMealItem.itemIndex, finalItem, prevItem);
               setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
             } else {
               onAddItem(mealIndex, finalItem);
@@ -369,7 +370,8 @@ export const createHabitsPanel = (deps) => {
         };
         
         if(editingMealItem.mealIndex === mealIndex && editingMealItem.itemIndex >= 0) {
-          onReplaceItem(mealIndex, editingMealItem.itemIndex, nextItem);
+          const prevItem = t.meals?.[mealIndex]?.items?.[editingMealItem.itemIndex];
+          onReplaceItem(mealIndex, editingMealItem.itemIndex, nextItem, prevItem);
           setEditingMealItem({ mealIndex:-1, itemIndex:-1 });
         } else {
           onAddItem(mealIndex, nextItem);
@@ -411,8 +413,12 @@ export const createHabitsPanel = (deps) => {
       if(!item.recipe_id || !item.stock_trackable) return;
       setStockBusyKey(`${mealIdx}:${item.recipe_id}`);
       try {
-        const { data, error } = await supabase.from('user_recipes').select('stock_qty').eq('id', item.recipe_id).single();
+        const { data, error } = await supabase.from('user_recipes').select('stock_qty, stock_unit').eq('id', item.recipe_id).single();
         if(error) throw error;
+        if (data.stock_unit && item.stock_delta_unit && data.stock_unit !== item.stock_delta_unit) {
+          console.warn('[STOCK] Mismatch de unidad:', data.stock_unit, 'vs', item.stock_delta_unit);
+          return;
+        }
         const nextQty = Math.max(0, (parseFloat(data.stock_qty)||0) - pn(item.stock_delta));
         await supabase.from('user_recipes').update({ stock_qty: nextQty, updated_at: new Date().toISOString() }).eq('id', item.recipe_id);
         recipesRef.current = null;
