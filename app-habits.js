@@ -9,7 +9,7 @@ export const createHabitsPanel = (deps) => {
     pn, fn, ft, dayTotals, getMedicationStatusForView, getFastStats,
     Card, SectionAccordion, Inp, CheckRow,
     ProteinProgress, WaterTracker, SmartCena, NutritionReviewCard,
-    IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity,
+    IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock,
     supabase, DEVICE_ID, fetchJsonWithTimeout, TARGETS, HOME_FOODS,
     localDateKey, getDayDate, getWeekKey, isValidDateValue, mealTotals
   } = deps;

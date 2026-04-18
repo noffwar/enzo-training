@@ -214,6 +214,26 @@ export const createApp = (deps) => {
       const h = setInterval(refreshModuleAlerts, 60000 * 5); // cada 5 min
       return () => clearInterval(h);
     }, [refreshModuleAlerts]);
+    
+    // Timer Countdown Logic
+    useEffect(() => {
+      if(!timerActive || timerLeft <= 0) {
+        if(timerRef.current) clearInterval(timerRef.current);
+        return;
+      }
+      timerRef.current = setInterval(() => {
+        setTimerLeft(prev => {
+          if(prev <= 1) {
+            clearInterval(timerRef.current);
+            setTimerActive(false);
+            if(audioRef.current) audioRef.current.play().catch(()=>{});
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => { if(timerRef.current) clearInterval(timerRef.current); };
+    }, [timerActive, timerLeft === 0]);
 
     const normalizeRecipeKeyApp = (text='') => {
       const s = String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
