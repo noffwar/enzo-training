@@ -44,72 +44,72 @@ export const createGymPanel = (deps) => {
           </div>
         </div>
 
-        <div style="display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;margin-bottom:12px;">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div style="display:flex;flex-direction:column;gap:12px;padding:12px;border-radius:12px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;margin-bottom:16px;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
             ${[
               { label:'Series', value:`${completedSets}/${totalSets}`, color:'#10B981' },
-              { label:'Ejercicios', value:`${completedExercises}/${session.length}`, color:'#6366F1' },
+              { label:'Ejercicios', value:`${completedExercises}/${safeSession.length}`, color:'#6366F1' },
               { label:'Progreso', value:`${progressPct}%`, color:'#F59E0B' }
             ].map(stat => html`
-              <div style="padding:8px 6px;border-radius:8px;background:#0F1729;border:1px solid #1E2D45;text-align:center;">
-                <p style="margin:0;font-size:9px;text-transform:uppercase;color:#64748b;letter-spacing:0.05em;">${stat.label}</p>
-                <p style="margin:2px 0 0;font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${stat.color};">${stat.value}</p>
+              <div style="padding:10px 8px;border-radius:10px;background:#0F1729;border:1px solid #1E2D45;text-align:center;">
+                <p style="margin:0;font-size:9px;text-transform:uppercase;color:#64748b;letter-spacing:0.06em;font-weight:700;">${stat.label}</p>
+                <p style="margin:4px 0 0;font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${stat.color};">${stat.value}</p>
               </div>
             `)}
           </div>
-          <div style="height:6px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;">
-            <div style=${`width:${progressPct}%;height:100%;background:linear-gradient(90deg,#10B981,#6366F1);transition:width 0.3s ease;`}></div>
+          <div style="height:8px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;">
+            <div style=${`width:${progressPct}%;height:100%;background:linear-gradient(90deg,#10B981,#6366F1);transition:width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);`}></div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;">
             <button onClick=${()=>onCompleteSession&&onCompleteSession()}
-              style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);color:#10B981;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;text-transform:uppercase;">
-              COMPLETAR SESION
+              style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);color:#10B981;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;">
+              COMPLETAR SESIÓN
             </button>
             <button onClick=${()=>onResetSessionChecks&&onResetSessionChecks()}
-              style="padding:7px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.08);color:#EF4444;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;text-transform:uppercase;">
+              style="padding:10px 16px;border-radius:10px;border:1px solid rgba(239,68,68,0.2);background:rgba(239,68,68,0.08);color:#EF4444;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;">
               REINICIAR
             </button>
           </div>
         </div>
 
         <!-- Ejercicios -->
-        ${(Array.isArray(session) ? session : []).map((ex,ei) => html`
-          <div style="border-radius:12px;overflow:hidden;border:1px solid #1E2D45;margin-bottom:12px;background:rgba(15,23,41,0.5);box-shadow:0 4px 12px rgba(0,0,0,0.4);">
-            <div style="padding:10px 14px;background:rgba(22,32,53,0.85);border-left:4px solid #10B981;display:flex;justify-content:space-between;align-items:center;">
+        ${safeSession.map((ex,ei) => html`
+          <div style="border-radius:12px;overflow:hidden;border:1px solid #1E2D45;margin-bottom:14px;background:rgba(15,23,41,0.5);box-shadow:0 6px 16px rgba(0,0,0,0.4);">
+            <div style="padding:10px 16px;background:rgba(22,32,53,0.7);border-left:3px solid #10B981;display:flex;justify-content:space-between;align-items:center;">
               <div>
-                <p style="margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:white;letter-spacing:0.05em;text-transform:uppercase;">${ei+1}. ${ex.name}</p>
+                <p style="margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:white;letter-spacing:0.04em;text-transform:uppercase;">${ei+1}. ${ex.name}</p>
               ${resolveMuscleInfo(ex.name) && html`
-                <p style="margin:2px 0 0;font-size:10px;color:#475569;font-weight:600;">
+                <p style="margin:3px 0 0;font-size:10px;color:#475569;font-weight:700;letter-spacing:0.02em;">
                   ${resolveMuscleInfo(ex.name).direct.join(', ')}
                   ${resolveMuscleInfo(ex.name).indirect.length>0 ? ' · '+resolveMuscleInfo(ex.name).indirect.join(', ') : ''}
                 </p>
               `}
             </div>
           </div>
-            <div class="table-wrap" style="padding:4px;">
+            <div class="table-wrap" style="padding:4px 8px 8px 8px;">
               <table style="width:100%;border-collapse:separate;border-spacing:0 4px;">
                 <thead>
                   <tr>
-                    <th style="padding:4px;text-align:center;width:28px;font-size:9px;color:#475569;text-transform:uppercase;">#</th>
-                    <th style="padding:4px;font-size:9px;color:#475569;text-transform:uppercase;text-align:left;">Reps</th>
-                    <th style="padding:4px;font-size:9px;color:#475569;text-transform:uppercase;text-align:left;">Peso</th>
-                    <th style="padding:4px;font-size:9px;color:#475569;text-transform:uppercase;text-align:left;">RIR</th>
-                    <th style="padding:4px;font-size:9px;color:#475569;text-transform:uppercase;text-align:left;">Pausa</th>
-                    <th style="padding:4px;text-align:center;width:40px;font-size:9px;color:#475569;text-transform:uppercase;">✓</th>
+                    <th style="padding:6px 4px;text-align:center;width:30px;font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:0.05em;">#</th>
+                    <th style="padding:6px 4px;font-size:9px;color:#475569;text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Reps</th>
+                    <th style="padding:6px 4px;font-size:9px;color:#475569;text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Peso</th>
+                    <th style="padding:6px 4px;font-size:9px;color:#475569;text-transform:uppercase;text-align:left;letter-spacing:0.05em;">RIR</th>
+                    <th style="padding:6px 4px;font-size:9px;color:#475569;text-transform:uppercase;text-align:left;letter-spacing:0.05em;">Pausa</th>
+                    <th style="padding:6px 4px;text-align:center;width:44px;font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:0.05em;">✓</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${(Array.isArray(ex.sets) ? ex.sets : []).map((set,si) => html`
-                    <tr style=${`background:${set.completed?'rgba(16,185,129,0.05)':'transparent'};`}>
+                    <tr style=${`background:${set.completed?'rgba(16,185,129,0.06)':'transparent'};`}>
                       <td style="text-align:center;font-size:11px;font-family:'JetBrains Mono',monospace;color:#475569;">${si+1}</td>
-                      <td><input class="inp-xs" style="width:100%;max-width:45px;background:#0F1729;border-color:#1E2D45;border-radius:6px;font-family:'JetBrains Mono',monospace;" value=${set.reps} onInput=${e=>onInput(ei,si,'reps',e.target.value)}/></td>
-                      <td><input class="inp-xs" style="width:100%;max-width:55px;background:#0F1729;border-color:#1E2D45;border-radius:6px;font-family:'JetBrains Mono',monospace;" value=${set.weight} onInput=${e=>onInput(ei,si,'weight',e.target.value)}/></td>
-                      <td><span class=${`tag-rir ${set.rir.includes('Fallo')?'fallo':''}`} style="font-size:10px;">${set.rir}</span></td>
+                      <td><input class="inp-xs" style="width:100%;max-width:48px;background:#0F1729;border-color:#1E2D45;border-radius:6px;" value=${set.reps} onInput=${e=>onInput(ei,si,'reps',e.target.value)}/></td>
+                      <td><input class="inp-xs" style="width:100%;max-width:58px;background:#0F1729;border-color:#1E2D45;border-radius:6px;" value=${set.weight} onInput=${e=>onInput(ei,si,'weight',e.target.value)}/></td>
+                      <td><span class=${`tag-rir ${String(set.rir).includes('Fallo')?'fallo':''}`} style="font-size:10px;">${set.rir}</span></td>
                       <td><span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${set.restStr}</span></td>
                       <td style="text-align:center;padding:4px;">
                         <button onClick=${()=>onSetComplete(ei,si,set.restSecs)}
-                          style=${`width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;${set.completed?'background:#10B981;border:none;box-shadow:0 0 10px rgba(16,185,129,0.4);':'background:rgba(99,102,241,0.1);border:2px solid rgba(99,102,241,0.4);color:#A5B4FC;'}`}>
-                          <${ICheck} s=${14} c=${set.completed?'#080D1A':'#818CF8'}/>
+                          style=${`width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;${set.completed?'background:#10B981;border:none;box-shadow:0 0 12px rgba(16,185,129,0.5);':'background:#162035;border:1px solid #1E2D45;color:#64748b;'}`}>
+                          <${ICheck} s=${14} c=${set.completed?'#080D1A':'#475569'}/>
                         </button>
                       </td>
                     </tr>

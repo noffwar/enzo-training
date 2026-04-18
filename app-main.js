@@ -623,13 +623,13 @@ export const createApp = (deps) => {
               <div style="display:flex;flex-direction:column;gap:12px;">
                 <!-- Semana y Split Control -->
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                  <div style="display:flex;align-items:center;gap:6px;">
-                    <button class="btn-icon" style="width:28px;height:28px;opacity:${isAtStart ? 0.3 : 1}" onClick=${()=>navWeek(-1)}>
-                      <${IChevL} s=${14}/>
+                  <div style="display:flex;align-items:center;background:rgba(22,32,53,0.4);border:1px solid #1E2D45;border-radius:12px;padding:2px 6px;">
+                    <button class="btn-icon" style="width:28px;height:28px;background:transparent;border:none;opacity:${isAtStart ? 0.2 : 1}" onClick=${()=>navWeek(-1)}>
+                      <${IChevL} s=${14} c="#94A3B8"/>
                     </button>
-                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:#cbd5e1;min-width:90px;text-align:center;">${formatWeekLabel(currentWk)}</span>
-                    <button class="btn-icon" style="width:28px;height:28px;opacity:${isCurrentWeekLocal(currentWk) ? 0.3 : 1}" onClick=${()=>navWeek(1)}>
-                      <${IChevR} s=${14}/>
+                    <span style="font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:800;color:white;min-width:100px;text-align:center;letter-spacing:0.04em;text-transform:uppercase;">${formatWeekLabel(currentWk)}</span>
+                    <button class="btn-icon" style="width:28px;height:28px;background:transparent;border:none;opacity:${isCurrentWeekLocal(currentWk) ? 0.2 : 1}" onClick=${()=>navWeek(1)}>
+                      <${IChevR} s=${14} c="#94A3B8"/>
                     </button>
                   </div>
                   <select class="inp" style="width:auto;min-width:100px;font-size:11px;padding:4px 8px;height:28px;background:#162035;border-color:#1E2D45;" value=${planMode} onChange=${e=>handlePlanModeChange(e.target.value)}>
@@ -639,17 +639,30 @@ export const createApp = (deps) => {
                 </div>
 
                 <!-- Tabs de Días -->
-                <div style="display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;" class="hide-scroll">
+                <div style="display:flex;gap:6px;padding-bottom:2px;" class="hide-scroll">
                   ${DAYS.map(day => {
                     const active = activeDay === day.key;
                     const dateKey = getDayDate(currentWk, parseInt(day.key, 10));
+                    const numDay = dateKey.split('-')[2];
                     const closed = isGymClosedDate(dateKey, HOLIDAYS_2026);
                     const hasRoutine = routineAssignments[day.key] !== '';
+                    
+                    const borderColor = active 
+                      ? (closed ? '#EF4444' : '#10B981') 
+                      : (closed ? 'rgba(239,68,68,0.2)' : '#1E2D45');
+                    
+                    const bg = active 
+                      ? (closed ? 'rgba(239,68,68,0.25)' : 'linear-gradient(180deg, #10B981 0%, #059669 100%)') 
+                      : (closed ? 'transparent' : 'rgba(22,32,53,0.3)');
+
                     return html`
                       <button onClick=${() => { setActiveDay(day.key); setView('today'); }}
-                        style=${`flex:1;min-width:42px;padding:6px 2px;border-radius:10px;border:1px solid ${active ? (closed ? '#EF4444' : '#10B981') : (closed ? 'rgba(239,68,68,0.3)' : '#1E2D45')};background:${active ? (closed ? 'rgba(239,68,68,0.2)' : '#10B981') : (closed ? 'rgba( 10,15,30,0.3 )' : '#162035')};cursor:pointer;position:relative;`}>
-                        <p style=${`margin:0;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:${active ? 'white' : closed ? '#FCA5A5' : '#64748b'};`}>${day.abbr}</p>
-                        ${hasRoutine && !active && html`<div style="position:absolute;top:3px;right:3px;width:4px;height:4px;border-radius:50%;background:#6366F1;"></div>`}
+                        style=${`flex:1;min-width:44px;padding:8px 2px;border-radius:12px;border:1px solid ${borderColor};background:${bg};cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;transition:all 0.2s;box-shadow:${active ? '0 4px 12px rgba(16,185,129,0.2)' : 'none'};`}>
+                        <span style=${`font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:800;color:${active ? 'rgba(255,255,255,0.8)' : closed ? '#FCA5A5' : '#64748b'};text-transform:uppercase;letter-spacing:0.05em;`}>${day.abbr}</span>
+                        <span style=${`font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:${active ? 'white' : closed ? '#EF4444' : '#cbd5e1'};margin-top:-2px;`}>${numDay}</span>
+                        ${hasRoutine && html`
+                          <div style=${`width:4px;height:4px;border-radius:50%;background:${active ? 'white' : '#6366F1'};margin-top:2px;`}></div>
+                        `}
                       </button>
                     `;
                   })}
@@ -723,22 +736,23 @@ export const createApp = (deps) => {
                 roacuttan=${tracker.meds?.roacuttan || false}
               />
               
-              <!-- 6. IA Assistant -->
-              <${SmartCena}
-                currentProt=${dayTotals(tracker.meals || []).prot}
-                tracker=${tracker}
-              />
-
-              <!-- 7. Gym Routine -->
-              <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
-
-              <!-- Extra info (Review) -->
+              <!-- 6. Micros y Sugerencias -->
               <${NutritionReviewCard}
                 currentDateKey=${activeDateKey}
                 currentTracker=${tracker}
                 previousDateKey=${previousSnapshot.dateKey}
                 previousTracker=${previousSnapshot.tracker}
               />
+
+              <!-- 7. IA Assistant -->
+              <${SmartCena}
+                currentProt=${dayTotals(tracker.meals || []).prot}
+                tracker=${tracker}
+              />
+
+              <!-- 8. Gym Routine -->
+              <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
+
             </div>
           `}
 
