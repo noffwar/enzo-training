@@ -33,7 +33,9 @@ export const createApp = (deps) => {
     createProgressViews, createTimerView, createNotifView, createGymPanel, createLoginView, createRoutineEditor,
     createTodayDashboard,
     // Habits
-    createHabitsPanel
+    createHabitsPanel,
+    // Sync UI
+    SyncStatusIndicator, ConflictNotifier
   } = deps;
 
   // Initialize modularized views
@@ -56,6 +58,7 @@ export const createApp = (deps) => {
     const [authLoading, setAuthLoading] = useState(true);
     const [outboxCount, setOutboxCount] = useState(0);
     const [syncLog, setSyncLog] = useState({ lastSync: null, lastError: null });
+    const [syncStatus, setSyncStatus] = useState('synced'); // synced | syncing | conflict | offline
     const [view, setView] = useState(() => {
       const p = new URLSearchParams(window.location.search).get('view');
       return (p && ['today','week','progress','tasks','recipes','notif','routines','study','health','books'].includes(p)) ? p : 'today';
@@ -505,39 +508,52 @@ export const createApp = (deps) => {
       setAllWeeks(localAllWeeks);
       if(Object.keys(routinesCache).length > 0) setRoutineData(prev => ({ ...prev, ...routinesCache }));
 
+      const checkOutbox = async () => {
+        if(!window.idb) return;
+        try {
+          const db = await deps.openOutboxDB();
+          if(!db) return;
+          const items = await db.getAll('outbox');
+          const hasConflict = items.some(i => i.status === 'conflict');
+          const isSyncing = items.some(i => !i.status || i.status === 'queued');
+          if(hasConflict) setSyncStatus('conflict');
+          else if(isSyncing) setSyncStatus('syncing');
+          else if(!navigator.onLine) setSyncStatus('offline');
+          else setSyncStatus('synced');
+          setOutboxCount(items.length);
+        } catch(_) {}
+      };
+      
+      const interval = setInterval(checkOutbox, 3000);
+      checkOutbox();
+
       supabase.auth.getSession().then(async ({ data: { session: s } }) => {
         if(!s || s.user.email === 'guest@enzo.training') return;
         try {
           const bData = await bootstrapRemoteState(supabase, getWeekKey, addWeeks);
           const { weeklyCache: wc2, dailyCache: dc2, routinesCache: rc2 } = applyBootstrapToState(bData, weeklyCache, dailyCache);
-          setAllWeeks(buildAllWeeks(wc2, dc2, hydrate));
+          setAllWeeks(prev => ({ ...prev, ...buildAllWeeks(wc2, dc2, hydrate) }));
           bootstrapAppliedRef.current = true;
           if(Object.keys(rc2).length > 0) setRoutineData(prev => ({ ...prev, ...rc2 }));
           setSyncLog(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString('es-AR') }));
         } catch(e) { console.warn('[App] Bootstrap Error:', e); setSyncLog(prev => ({ ...prev, lastError: e.message?.slice(0,60) })); }
       });
+      return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
       if(Object.keys(allWeeks).length === 0) return;
-      Object.entries(allWeeks).forEach(([wkKey, wkData]) => {
-        if(!isDateKey(wkKey)) return;
-        lsWeekSave(wkKey, { dayMapping: wkData.dayMapping, bodyWeight: wkData.bodyWeight||'' });
-        Object.entries(wkData.tracker||{}).forEach(([dayIdx, dayData]) => {
-          lsDaySave(getDayDate(wkKey, parseInt(dayIdx)), { ...dayData, _session: wkData.sessions?.[dayIdx] || null });
-        });
-      });
-      if(bootstrapAppliedRef.current) {
-        bootstrapAppliedRef.current = false;
-        const wkData = allWeeks[currentWk];
-        if(wkData) {
-          prevWeeklyRef.current = JSON.stringify({ bw: wkData.bodyWeight, dm: wkData.dayMapping });
-          prevTrackerRef.current = JSON.stringify(wkData.tracker?.[activeDayRef.current]);
-        }
-        return;
-      }
+      
       const wkData = allWeeks[currentWk];
       if(!wkData) return;
+
+      if(bootstrapAppliedRef.current) {
+        bootstrapAppliedRef.current = false;
+        prevWeeklyRef.current = JSON.stringify({ bw: wkData.bodyWeight, dm: wkData.dayMapping });
+        prevTrackerRef.current = JSON.stringify(wkData.tracker?.[activeDayRef.current]);
+        return;
+      }
+
       const dayStr = activeDayRef.current;
       const weeklyStr = JSON.stringify({ bw: wkData.bodyWeight, dm: wkData.dayMapping });
       if(weeklyStr !== prevWeeklyRef.current) {
@@ -555,6 +571,20 @@ export const createApp = (deps) => {
           saveDayRemote(supabase, dKey, wkData.tracker?.[dayStr], session, wkData.tracker?.[dayStr]?._revision||null);
         }, 1500);
       }
+    }, [allWeeks[currentWk]]);
+
+    useEffect(() => {
+      if(Object.keys(allWeeks).length === 0) return;
+      const t = setTimeout(() => {
+        Object.entries(allWeeks).forEach(([wkKey, wkData]) => {
+          if(!isDateKey(wkKey)) return;
+          lsWeekSave(wkKey, { dayMapping: wkData.dayMapping, bodyWeight: wkData.bodyWeight||'', _revision: wkData._revision, _updatedAt: wkData._updatedAt });
+          Object.entries(wkData.tracker||{}).forEach(([dayIdx, dayData]) => {
+            lsDaySave(getDayDate(wkKey, parseInt(dayIdx)), { ...dayData, _session: wkData.sessions?.[dayIdx] || null });
+          });
+        });
+      }, 500);
+      return () => clearTimeout(t);
     }, [allWeeks]);
 
     useEffect(() => ensureSession(currentWk, activeDay), [currentWk, activeDay, routineData, allWeeks[currentWk]?.dayMapping]);
@@ -568,11 +598,22 @@ export const createApp = (deps) => {
       try { localStorage.setItem('enzo_routines_v1', JSON.stringify(updated)); } catch (_) {}
     };
 
-    const navWeek = (dir) => {
+    const navWeek = async (dir) => {
       const nextWeek = addWeeks(currentWk, dir);
       if (isBeforeStart(nextWeek)) return;
       setCurrentWk(nextWeek);
-      setAllWeeks(prev => prev[nextWeek] ? prev : { ...prev, [nextWeek]: newWeek(nextWeek) });
+      if(!allWeeks[nextWeek]) {
+        // Fallback placeholder
+        setAllWeeks(prev => ({ ...prev, [nextWeek]: newWeek(nextWeek) }));
+        // Try fetch specifically this week if not in memory
+        try {
+          const { data, error } = await supabase.rpc('get_bootstrap_state', { p_from: nextWeek });
+          if(!error && data) {
+            const { weeklyCache: wc, dailyCache: dc } = applyBootstrapToState(data, {}, {});
+            setAllWeeks(prev => ({ ...prev, ...buildAllWeeks(wc, dc, hydrate) }));
+          }
+        } catch(_) {}
+      }
     };
 
     const isAtStart = currentWk <= START_WEEK;
@@ -620,12 +661,15 @@ export const createApp = (deps) => {
                 </div>
                 <h1 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;letter-spacing:0.1em;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.3);">ENZO <span style="color:#10B981;">TRAINING</span></h1>
               </div>
-              <div style="display:flex;gap:8px;">
+              <div style="display:flex;gap:8px;align-items:center;">
+                <${SyncStatusIndicator} status=${syncStatus} count=${outboxCount} onClick=${() => deps.flushOutbox(supabase, stripRoutineMeta)} />
                 <button onClick=${() => navigateTo('notif')} class="btn-icon" style="background:transparent;border-color:transparent;color:#64748b;">
                   <${IBell} s=${18} />
                 </button>
               </div>
             </div>
+
+            ${syncStatus === 'conflict' && html`<${ConflictNotifier} onResolve=${() => deps.flushOutbox(supabase, stripRoutineMeta)} />`}
 
             ${view === 'today' && html`
               <div style="display:flex;flex-direction:column;gap:12px;">

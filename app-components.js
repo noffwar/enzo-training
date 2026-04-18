@@ -305,53 +305,39 @@ export const createAppComponents = ({
   `;
 
   const TaskViewCard = ({ task, subtasks, doneSubtasks, priorityAccent, onEdit, onDone, onArchive, onDelete, onToggleSubtask, calendarHref, onMail, mailLoading }) => html`
-    <div style=${`padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;box-shadow:inset 3px 0 0 ${priorityAccent};`}>
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-        <div style="flex:1;">
-          <p style="margin:0;font-size:14px;color:#E2E8F0;font-weight:700;">${task.title}</p>
-          ${task.details && task.details !== task.title && html`<p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">${task.details}</p>`}
-          ${subtasks.length > 0 && html`
-            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
-              ${subtasks.map((subtask, idx) => html`
-                <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#CBD5E1;cursor:pointer;">
-                  <input type="checkbox" checked=${!!subtask.done} onChange=${()=>onToggleSubtask(idx)} />
-                  <span style=${`line-height:1.35;${subtask.done ? 'text-decoration:line-through;color:#64748B;' : ''}`}>${subtask.text}</span>
-                </label>
-              `)}
-            </div>
-          `}
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-            <${TaskBadgeChip} label=${(task.priority || 'normal').toUpperCase()} color=${priorityColor(task.priority)} />
-            <${TaskBadgeChip} label=${categoryMeta(task.category || 'personal').label.toUpperCase()} color=${categoryMeta(task.category || 'personal').color} />
-            ${(task.recurrence || 'none') !== 'none' && html`<${TaskBadgeChip} label=${recurrenceLabel(task.recurrence).toUpperCase()} color="#7DD3FC" />`}
-            ${subtasks.length > 0 && html`<${TaskBadgeChip} label=${`${doneSubtasks}/${subtasks.length} SUB`} color="#CBD5E1" />`}
-            <${TaskBadgeChip} label=${formatTaskDate(task.due_at)} color="#64748b" />
-          </div>
-        </div>
-        <div style="display:flex;gap:6px;">
-          <${TaskActionButton} className="btn-icon" onClick=${onEdit} label="E" />
-          <button class="btn-icon" style="background:#162035;border:1px solid rgba(16,185,129,0.35);" onClick=${onDone}>
-            <${BoundICheck} s=${16} c="text-green"/>
-          </button>
-          <${TaskActionButton} className="btn-icon" onClick=${onArchive} label="A" />
-          <${TaskActionButton} className="btn-icon" onClick=${onDelete} label="X" />
-        </div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
-        <a href=${calendarHref} target="_blank" rel="noreferrer"
-          style="padding:6px 10px;border-radius:8px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);color:#818CF8;font-size:11px;font-weight:700;text-decoration:none;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;">
-          CALENDARIO
-        </a>
-        <${TaskActionButton}
-          onClick=${onMail}
-          label=${mailLoading ? 'ENVIANDO...' : 'MAIL'}
-          border="rgba(245,158,11,0.35)"
-          background="rgba(245,158,11,0.12)"
-          color="#FBBF24"
-        />
-      </div>
     </div>
   `;
+
+  const SyncStatusIndicator = ({ status, count, onClick }) => {
+    const config = {
+      synced: { color: '#10B981', label: 'Sincronizado', icon: BoundICheck },
+      syncing: { color: '#6366F1', label: 'Sincronizando...', icon: BoundISync, animate: true },
+      conflict: { color: '#EF4444', label: 'Conflicto', icon: BoundIBell },
+      offline: { color: '#64748B', label: 'Sin conexión', icon: BoundIHome }
+    }[status] || { color: '#64748B', label: status, icon: BoundIHome };
+
+    return html`
+      <div onClick=${onClick} style=${`display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(15,23,41,0.6);border:1px solid ${config.color}33;cursor:pointer;transition:all 0.2s;`}>
+        <span style=${`width:6px;height:6px;border-radius:50%;background:${config.color};box-shadow:0 0 8px ${config.color};`}></span>
+        <span style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;">${config.label}${count > 0 ? ` (${count})` : ''}</span>
+      </div>
+    `;
+  };
+
+  const ConflictNotifier = ({ onResolve }) => html`
+    <div style="margin:12px;padding:12px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;animation:pulse 2s infinite;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;">⚠️</span>
+        <div>
+          <p style="margin:0;font-size:13px;font-weight:700;color:#FCA5A5;">Conflicto de sincronización</p>
+          <p style="margin:1px 0 0;font-size:11px;color:#F87171;">Se detectaron cambios simultáneos en la nube.</p>
+        </div>
+      </div>
+      <button onClick=${onResolve} style="padding:6px 12px;border-radius:8px;border:none;background:#EF4444;color:white;font-size:11px;font-weight:700;cursor:pointer;">RESOLVER</button>
+    </div>
+  `;
+
+  // ─── ProteinProgress with closure html ───
 
   // ─── ProteinProgress with closure html ───
   const BoundProteinProgress = ({current, TARGETS: targets, fn}) => {
@@ -632,7 +618,9 @@ export const createAppComponents = ({
     TaskActionButton,
     TaskViewCard,
     SmartCena,
-    NutritionReviewCard
+    NutritionReviewCard,
+    SyncStatusIndicator,
+    ConflictNotifier
   };
 
 }; // End createAppComponents

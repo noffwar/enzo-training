@@ -277,7 +277,8 @@ export const flushOutbox = async (supabase, stripRoutineMeta) => {
 
         if(data?.status === 'conflict') {
           metaSet('last_conflict', { entity_key: item.entity_key, server: data.server, at: new Date().toISOString() });
-          await db.delete('outbox', item.entity_key);
+          // Mark as conflict but don't delete yet to allow user resolution
+          await db.put('outbox', { ...item, status: 'conflict', server_data: data.server, updated_at: Date.now() });
         } else {
           if(item.entity_type === 'daily_log') {
             const local = lsDayLoad(item.entity_id) || {};
@@ -307,8 +308,9 @@ export const flushOutbox = async (supabase, stripRoutineMeta) => {
       } catch(e) {
         if(!navigator.onLine) break;
         item.retries = (item.retries||0) + 1;
-        if(item.retries >= 5) await db.delete('outbox', item.entity_key);
-        else await db.put('outbox', item);
+        if(item.retries >= 10) {
+          await db.put('outbox', { ...item, status: 'failed', error: e.message, updated_at: Date.now() });
+        } else await db.put('outbox', item);
       }
     }
     metaSet('last_sync', new Date().toISOString());
