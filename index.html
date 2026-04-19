@@ -13,9 +13,30 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/react-is/umd/react-is.production.min.js"></script>
+  <!-- React Shim for Recharts - MUST be synchronous and BEFORE Recharts -->
+  <script>
+    (function() {
+      const sym = typeof Symbol === 'function' && Symbol.for ? Symbol.for : (x) => x;
+      const FR = sym('react.forward_ref');
+      const MM = sym('react.memo');
+      window.ReactIs = { 
+        ForwardRef: FR, Memo: MM, 
+        isFragment: (x) => x && x.type === sym('react.fragment'),
+        isMemo: (x) => x && x.type === MM,
+        isForwardRef: (x) => x && x.type === FR
+      };
+      window.React = { 
+        createElement: function() { return null; }, // Placeholder until Preact loads
+        Fragment: sym('react.fragment'),
+        forwardRef: function(f) { return { $$typeof: FR, render: f }; },
+        memo: function(c) { return { $$typeof: MM, type: c }; },
+        isValidElement: function() { return true; },
+        Children: { map: (c, f) => (Array.isArray(c) ? c : [c]).map(f), count: (c) => (Array.isArray(c) ? c.length : 1) },
+        Component: class {}, useState: () => [], useEffect: () => {}, useCallback: (f) => f, useMemo: (f) => f(), useRef: () => ({})
+      };
+      window.ReactDOM = { render: function() {} };
+    })();
+  </script>
   <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
 
   <style>
@@ -140,17 +161,14 @@
         
         createApp(viewDeps);
 
-        // Polyfill for Recharts/React deps
-        window.ReactIs = { ForwardRef: Symbol.for('react.forward_ref'), Memo: Symbol.for('react.memo'), isFragment: () => false };
-        window.React = { 
-          createElement: h, Fragment: 'span',
-          useState, useEffect, useCallback, useRef, useMemo,
-          forwardRef: (f) => f,
-          memo: (c) => c,
-          Component: class {}, 
-          isValidElement: () => true,
-          Children: { map: (c, f) => (Array.isArray(c) ? c : [c]).map(f), count: (c) => (Array.isArray(c) ? c.length : 1) }
-        };
+        // Finalize Recharts/React shim with live Preact refs
+        window.React.createElement = h;
+        window.React.useState = useState;
+        window.React.useEffect = useEffect;
+        window.React.useCallback = useCallback;
+        window.React.useRef = useRef;
+        window.React.useMemo = useMemo;
+        window.ReactDOM.render = render;
 
         console.log('[App] Initial dependencies:', viewDeps);
 
