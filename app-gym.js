@@ -79,6 +79,7 @@ export const createGymPanel = (deps) => {
         </div>
 
         <!-- Ejercicios -->
+        ${safeSession.map((ex,ei) => html`
           <div style="border-radius:10px;overflow:hidden;border:1px solid #1E2D45;margin-bottom:12px;background:rgba(15,23,41,0.6);box-shadow:0 4px 12px rgba(0,0,0,0.3);">
             <div style="padding:8px 12px;background:rgba(22,32,53,0.7);border-left:3px solid #10B981;display:flex;justify-content:space-between;align-items:center;">
               <div>
