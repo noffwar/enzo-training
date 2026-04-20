@@ -727,7 +727,7 @@ export const createApp = (deps) => {
         <main style="max-width:640px;margin:0 auto;padding:16px 16px calc(88px + env(safe-area-inset-bottom, 12px));width:100%;">
           ${view === 'today' && html`
             <div style="display:flex;flex-direction:column;gap:16px;">
-              <!-- 1. Split Name -->
+              <!-- 1. Split Name & Selector -->
               <div class="glass-card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;background:rgba(10,15,30,0.4);">
                 <div style="flex:1;">
                   <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:white;">
@@ -741,7 +741,7 @@ export const createApp = (deps) => {
                 </select>
               </div>
 
-              <!-- 2. StatCard -->
+              <!-- 2. Today Dashboard (Compact) -->
               <${TodayDashboard} 
                 session=${session} 
                 tracker=${tracker} 
@@ -802,9 +802,17 @@ export const createApp = (deps) => {
                 tracker=${tracker}
               />
 
-              <!-- 8. Gym Routine -->
-              <${GymPanel} session=${effectiveGymSession} tracker=${tracker} onSetComplete=${handleSetComplete} onInput=${handleSetInput} onHabit=${(f,v) => upd(w => ({...w,tracker:{...w.tracker,[activeDay]:{...w.tracker[activeDay],[f]:v}}}))} onApplyOverload=${handleApplyOverload} onCompleteSession=${handleCompleteSession} onResetSessionChecks=${handleResetSessionChecks} />
-
+              <!-- 8. Gym Routine (Al final como tracker dedicado) -->
+              <${GymPanel} 
+                session=${effectiveGymSession} 
+                tracker=${tracker} 
+                onSetComplete=${handleSetComplete} 
+                onInput=${handleSetInput} 
+                onHabit=${(f,v) => updateHabit(f,v)} 
+                onApplyOverload=${handleApplyOverload} 
+                onCompleteSession=${handleCompleteSession} 
+                onResetSessionChecks=${handleResetSessionChecks} 
+              />
             </div>
           `}
 

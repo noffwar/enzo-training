@@ -466,37 +466,41 @@ export const createHabitsPanel = (deps) => {
 
           <!-- Nutricion & Cardio -->
           <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
-            <p style="margin:0 0 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#F59E0B;border-bottom:1px solid rgba(245,158,11,0.15);padding-bottom:6px;">NUTRICIÓN & CARDIO</p>
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">NUTRICIÓN & CARDIO</p>
             
-            <${CheckRow} label="Ayuno realizado" checked=${t.fasted} onChange=${v=>onChange('fasted',v)}>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                <${Inp} label="Inicio (HH:MM)" type="time" value=${t.fastStartTime} onChange=${v=>onChange('fastStartTime',v)}/>
-                <${Inp} label="Duración (hs)" value=${t.fastHours} onChange=${v=>onChange('fastHours',v)} placeholder="Ej: 16"/>
-              </div>
-              ${(() => {
-                const fs = getFastStats(t, selectedDateKey);
-                if (!fs.active || !fs.startTime) return null;
-                const hh = Math.floor(fs.elapsed);
-                const mm = Math.floor((fs.elapsed * 60) % 60);
-                const timeStr = `${hh}h ${mm}m`;
-                const label = fs.isComplete 
-                  ? html`<span style="display:flex;align-items:center;gap:4px;">¡META CUMPLIDA! <${ICheck} s=${12} c="#10B981"/> (${timeStr})</span>`
-                  : `PROGRESO: ${fs.pct}% (${timeStr})`;
-                return html`<span class="badge" style=${`background:${fs.isComplete ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.1)'};color:#10B981;font-size:10px;padding:4px 8px;border-radius:6px;font-weight:700;border:1px solid ${fs.isComplete ? 'rgba(16,185,129,0.3)' : 'transparent'};`}>${label}</span>`;
-              })()}
-            <//>
+            ${(() => {
+              const fs = getFastStats(t, selectedDateKey);
+              return html`
+                <${CheckRow} label="Ayuno realizado" checked=${t.fasted} onChange=${v=>onChange('fasted',v)}>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <${Inp} label="Inicio (HH:MM)" type="time" value=${t.fastStartTime} onChange=${v=>onChange('fastStartTime',v)}/>
+                    <${Inp} label="Duración (hs)" value=${t.fastHours} onChange=${v=>onChange('fastHours',v)} placeholder="Ej: 16"/>
+                  </div>
+                  ${fs.active && fs.startTime && html`
+                    <span class="badge" style=${`background:${fs.isComplete ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.08)'};color:#10B981;font-size:10px;padding:4px 8px;border-radius:6px;font-weight:700;border:1px solid ${fs.isComplete ? 'rgba(16,185,129,0.25)' : 'transparent'};`}>
+                      ${fs.isComplete ? html`¡META CUMPLIDA! <${ICheck} s=${10} c="#10B981"/>` : `PROGRESO: ${fs.pct}%`} (${Math.floor(fs.elapsed)}h ${Math.floor((fs.elapsed * 60) % 60)}m)
+                    </span>
+                  `}
+                <//>
 
-            <${CheckRow} label="Mate / Café" checked=${t.mateOrCoffee} onChange=${v=>onChange('mateOrCoffee',v)}>
-              <${Inp} label="Hora" type="time" value=${t.mateOrCoffeeTime} onChange=${v=>onChange('mateOrCoffeeTime',v)}/>
-            <//>
+                <${CheckRow} label="Mate / Café" checked=${t.mateOrCoffee} onChange=${v=>onChange('mateOrCoffee',v)}>
+                  <${Inp} label="Hora" type="time" value=${t.mateOrCoffeeTime} onChange=${v=>onChange('mateOrCoffeeTime',v)}/>
+                <//>
 
-            <${CheckRow} label="Caminata" checked=${t.walked} onChange=${v=>onChange('walked',v)}>
-              <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;">
-                <${Inp} label="Pasos" value=${t.steps} onChange=${v=>onChange('steps',v)} placeholder="Ej: 10.000"/>
-                <${Inp} label="Inicio" type="time" value=${t.walkStartTime} onChange=${v=>onChange('walkStartTime',v)}/>
-                <${Inp} label="Fin" type="time" value=${t.walkEndTime} onChange=${v=>onChange('walkEndTime',v)}/>
-              </div>
-            <//>
+                <${CheckRow} label="Caminata" checked=${t.walked} onChange=${v=>onChange('walked',v)}>
+                  <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;">
+                    <${Inp} label="Pasos" value=${t.steps} onChange=${v=>onChange('steps',v)} placeholder="Ej: 10.000"/>
+                    <${Inp} label="Inicio" type="time" value=${t.walkStartTime} onChange=${v=>onChange('walkStartTime',v)}/>
+                    <${Inp} label="Fin" type="time" value=${t.walkEndTime} onChange=${v=>onChange('walkEndTime',v)}/>
+                  </div>
+                  ${fs.walkStr && html`
+                    <span class="badge" style=${`background:${fs.isFasted?'rgba(16,185,129,0.12)':'rgba(245,158,11,0.12)'};color:${fs.isFasted?'#10B981':'#F59E0B'};font-size:10px;padding:4px 8px;border-radius:6px;font-weight:700;`}>
+                      ${fs.walkStr}
+                    </span>
+                  `}
+                <//>
+              `;
+            })()}
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.03);">
               <div class="glass-card" style="padding:10px;border-color:rgba(239,68,68,0.2);background:rgba(10,15,30,0.5);">
@@ -613,7 +617,7 @@ export const createHabitsPanel = (deps) => {
 
           <!-- Descanso -->
           <div style="padding:12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;display:flex;flex-direction:column;gap:10px;">
-            <p style="margin:0 0 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:#6366F1;border-bottom:1px solid rgba(99,102,241,0.15);padding-bottom:6px;">DESCANSO</p>
+            <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;">DESCANSO</p>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <${Inp} label="Dormí (hs)" value=${t.sleepHours} onChange=${v=>onChange('sleepHours',v)} placeholder="Ej: 7,5"/>
               <${Inp} label="Despertares" value=${t.wakeups} onChange=${v=>onChange('wakeups',v)} placeholder="Veces"/>
