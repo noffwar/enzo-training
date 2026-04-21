@@ -22,7 +22,9 @@ export const createTodayDashboard = ({
   getWeekKey,
   localDateKey,
   lsDayLoad,
-  TARGETS
+  TARGETS,
+  mealTotals,
+  dayTotals
 }) => {
   return function TodayDashboard({
     session,
