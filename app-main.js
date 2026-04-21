@@ -66,7 +66,7 @@ export const createApp = (deps) => {
         let component;
         if(viewName === 'routines') {
           component = module.createGymPanel(deps);
-        } else if(viewName === 'progress') {
+        } else if(viewName === 'progress' || viewName === 'week') {
           component = module.createProgressViews(deps);
         } else if(module[factoryKey]) {
           component = module[factoryKey](deps);
@@ -966,7 +966,7 @@ export const createApp = (deps) => {
           `}
 
           ${view === 'tasks'    && (loadedViews.tasks ? html`<${loadedViews.tasks} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Tareas...</div>`)}
-          ${view === 'week'     && (loadedViews.progress ? html`<${loadedViews.progress.WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Semana...</div>`)}
+          ${view === 'week'     && ((loadedViews.progress || loadedViews.week) ? html`<${(loadedViews.progress || loadedViews.week).WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Semana...</div>`)}
           ${view === 'progress' && (loadedViews.progress ? html`<${loadedViews.progress.ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Progreso...</div>`)}
           ${view === 'recipes'  && (loadedViews.recipes ? html`<${loadedViews.recipes} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Recetas...</div>`)}
           ${view === 'study'    && (loadedViews.study ? html`<${loadedViews.study} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Estudio...</div>`)}
@@ -998,7 +998,7 @@ export const createApp = (deps) => {
               {id:'week',     label:'SEMANA',  icon:html`<${ICal}  s=${18}/>`},
               {id:'progress', label:'PROGRESO',icon:html`<${IBar}  s=${18}/>`},
               {id:'tasks',    label:'TAREAS',  icon:html`<${IList} s=${18}/>`},
-              {id:'study',    label:'ESTUDIO', icon:html`<${ITarget}s=${18}/>`},
+              {id:'study',    label:'ESTUDIO', icon:html`<${ITarget} s=${18}/>`},
               {id:'health',   label:'SALUD',   icon:html`<${IBell} s=${18}/>`},
               {id:'books',    label:'LIBROS',  icon:html`<${IBook} s=${18}/>`},
               {id:'recipes',  label:'RECETAS', icon:html`<${IActivity} s=${18}/>`},
