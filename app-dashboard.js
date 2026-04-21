@@ -366,48 +366,50 @@ export const createTodayDashboard = ({
     }, [loading, tracker, TARGETS]);
 
     return html`
-      <div class="glass-card stagger-in" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
-        ${dailyInsight && html`
-          <div style="padding:12px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;gap:12px;align-items:center;margin-bottom:4px;animation: glow-pulse 4s infinite;">
-            <div style="font-size:24px;">${dailyInsight.icon}</div>
-            <div style="flex:1;">
-              <p style=${`margin:0;font-size:10px;font-weight:800;text-transform:uppercase;color:${dailyInsight.color};letter-spacing:0.05em;`}>${dailyInsight.title}</p>
-              <p style="margin:2px 0 0;font-size:13px;color:#cbd5e1;line-height:1.4;">${dailyInsight.text}</p>
-            </div>
+      <div class="stagger-in" style="display:flex;flex-direction:column;gap:10px;padding-bottom:20px;">
+        
+        <!-- Header & Insight -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;">
+          <div style="display:flex;flex-direction:column;">
+            <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:0.04em;color:white;text-transform:uppercase;">Resumen del Día</h2>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--text-dim);">${dailyInsight?.text || 'Todo al día. Gran trabajo.'}</p>
           </div>
-          <style>
-            @keyframes glow-pulse {
-              0% { border-color: rgba(255,255,255,0.05); box-shadow: 0 0 0 rgba(255,255,255,0); }
-              50% { border-color: ${dailyInsight.color}44; box-shadow: 0 0 10px ${dailyInsight.color}11; }
-              100% { border-color: rgba(255,255,255,0.05); box-shadow: 0 0 0 rgba(255,255,255,0); }
-            }
-          </style>
-        `}
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
-          <div>
-            <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;letter-spacing:0.04em;color:white;text-transform:uppercase;">Tablero Principal</h2>
-            <p style="margin:2px 0 0;font-size:13px;color:#94A3B8;">Lo importante del día, en un vistazo.</p>
-          </div>
-          <button onClick=${onOpenTasks} class="tap-effect"
-            style="padding:10px 14px;border-radius:12px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.1);color:#A5B4FC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
-            VER TAREAS
-          </button>
+          ${dailyInsight && html`
+            <div style="font-size:28px;filter:drop-shadow(0 0 8px ${dailyInsight.color}66);">${dailyInsight.icon}</div>
+          `}
         </div>
 
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center;">
+        <!-- KPI Grid -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
           ${[
-            { label:'Pend.', val: summary.pending, color:'#10B981' },
+            { label:'Pend', val: summary.pending, color:'#10B981' },
             { label:'Hoy', val: summary.dueToday, color:'#EF4444' },
             { label:'Ideas', val: summary.notes, color:'#F59E0B' },
             { label:'Alta', val: summary.high, color:'#38BDF8' }
-          ].map(item => html`<${DashboardStatCard} label=${item.label} value=${loading ? '...' : item.val} color=${item.color} />`)}
+          ].map(item => html`
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 4px;text-align:center;">
+              <p style="margin:0;font-size:18px;font-weight:800;color:${item.color};font-family:'Barlow Condensed',sans-serif;">${loading ? '-' : item.val}</p>
+              <p style="margin:2px 0 0;font-size:10px;color:var(--text-dim);text-transform:uppercase;font-weight:700;letter-spacing:0.05em;">${item.label}</p>
+            </div>
+          `)}
         </div>
 
-        ${fastingProgress && html`<${FastingProgressBar} ...${fastingProgress} />`}
+        <!-- Foco y Tareas -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <button onClick=${onOpenTasks} class="tap-effect" style="text-align:left;padding:12px;background:var(--surface);border:1px solid rgba(99,102,241,0.2);border-radius:14px;cursor:pointer;">
+            <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#A5B4FC;font-weight:800;letter-spacing:0.08em;font-family:'Barlow Condensed',sans-serif;">Siguiente Foco</p>
+            <p style="margin:0;font-size:14px;font-weight:700;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${loading ? '...' : (summary.nextTask?.title || 'Libre')}</p>
+          </button>
+          
+          <button onClick=${onOpenHealth} class="tap-effect" style="text-align:left;padding:12px;background:var(--surface);border:1px solid rgba(16,185,129,0.2);border-radius:14px;cursor:pointer;">
+            <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:#86EFAC;font-weight:800;letter-spacing:0.08em;font-family:'Barlow Condensed',sans-serif;">Estado Salud</p>
+            <p style="margin:0;font-size:14px;font-weight:700;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${loading ? '...' : medDashboardStatus.label}</p>
+          </button>
+        </div>
 
+        <!-- Macros vs Ayer -->
         ${comparison && html`
-          <div style="padding:16px;border-radius:20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;gap:12px;position:relative;">
-            <div style="position:absolute;inset:0;background:radial-gradient(circle at top right, rgba(99,102,241,0.05), transparent 70%);border-radius:20px;pointer-events:none;"></div>
+          <div style="display:flex;gap:8px;">
             ${['prot', 'kcal', 'water'].map(k => {
               const item = comparison[k];
               const isPos = item.diff > 0;
@@ -415,141 +417,85 @@ export const createTodayDashboard = ({
                             k === 'kcal' ? (isPos ? '#FCA5A5' : '#10B981') : 
                             (isPos ? '#38BDF8' : '#94A3B8');
               return html`
-                <div style="flex:1;text-align:center;">
-                  <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;">${item.label}</p>
-                  <p style=${`margin:4px 0 0;font-size:18px;font-weight:800;color:${color};font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;`}>
+                <div style="flex:1;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px;text-align:center;">
+                  <p style="margin:0;font-size:10px;color:var(--text-dim);text-transform:uppercase;font-weight:700;">${item.label}</p>
+                  <p style="margin:2px 0 0;font-size:14px;font-weight:800;color:${color};font-family:'Barlow Condensed',sans-serif;">
                     ${isPos ? '+' : ''}${Math.round(item.diff)}${k==='water'?'ml':'g'}
                   </p>
-                  <p style="margin:2px 0 0;font-size:10px;color:#475569;font-weight:600;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;">vs ayer</p>
                 </div>
               `;
             })}
           </div>
         `}
 
-        <div style="padding:14px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;font-family:'Barlow Condensed',sans-serif;font-weight:700;">Acciones rápidas</p>
-            <p style="margin:2px 0 0;font-size:15px;color:#E2E8F0;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;">Copiar comidas de ayer</p>
+        ${fastingProgress && html`<${FastingProgressBar} ...${fastingProgress} />`}
+
+        <!-- Modulos Rapidos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div onClick=${onOpenStudy} class="tap-effect" style="padding:10px 12px;background:var(--surface);border:1px solid rgba(245,158,11,0.2);border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <p style="margin:0;font-size:11px;color:#FCD34D;font-weight:800;text-transform:uppercase;">Estudio</p>
+              <p style="margin:2px 0 0;font-size:12px;color:var(--text-main);">${loading ? '...' : `${summary.studyDone}/${summary.studySubjects} temas`}</p>
+            </div>
+            <span style="color:#FCD34D;font-size:16px;">📚</span>
           </div>
-          <button onClick=${onCloneMeal} class="tap-effect"
-            style="padding:8px 16px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.08);color:#86EFAC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">COPIAR</button>
+
+          <div onClick=${onOpenBooks} class="tap-effect" style="padding:10px 12px;background:var(--surface);border:1px solid rgba(56,189,248,0.2);border-radius:12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+            <div style="overflow:hidden;">
+              <p style="margin:0;font-size:11px;color:#7DD3FC;font-weight:800;text-transform:uppercase;">Lectura</p>
+              <p style="margin:2px 0 0;font-size:12px;color:var(--text-main);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${summary.book?.title || 'Sin libro'}</p>
+            </div>
+            <span style="color:#7DD3FC;font-size:16px;">📖</span>
+          </div>
         </div>
 
-        ${chartsReady && weightHistory.length > 1 && html`
-          <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Tendencia de peso</p>
-              <p style="margin:0;font-size:13px;font-weight:700;color:#38BDF8;">${weightHistory[weightHistory.length-1].val} kg</p>
+        <!-- Weather & Backup -->
+        <div style="display:flex;gap:8px;">
+          <div style="flex:1;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;">
+            <p style="margin:0 0 4px;font-size:10px;text-transform:uppercase;color:var(--text-dim);font-weight:800;letter-spacing:0.1em;font-family:'Barlow Condensed',sans-serif;">San Rafael</p>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:20px;font-weight:800;color:white;font-family:'Barlow Condensed',sans-serif;">${weather.loading ? '...' : (weather.data?.temp_current || '--')}°</span>
+              <span style="font-size:11px;color:var(--text-dim);">${weather.loading ? '' : weather.data ? `Máx ${weather.data.temp_next24_max}°` : ''}</span>
             </div>
-            <div style="height:40px;width:100%;">
+            <p style="margin:4px 0 0;font-size:10px;color:${weatherGymAdvice.color};font-weight:700;">${weatherGymAdvice.label}</p>
+          </div>
+          
+          ${summary.backupDue && html`
+            <div onClick=${onOpenNotif} class="tap-effect" style="flex:1;padding:12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:14px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;">
+              <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;color:#FCD34D;font-weight:800;">Alerta Backup</p>
+              <p style="margin:0;font-size:11px;color:var(--text-main);">${summary.backupLabel}</p>
+            </div>
+          `}
+        </div>
+
+        <!-- Trend Chart -->
+        ${chartsReady && weightHistory.length > 1 && html`
+          <div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <p style="margin:0;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Tendencia Peso</p>
+              <p style="margin:0;font-size:12px;font-weight:700;color:#38BDF8;">${weightHistory[weightHistory.length-1].val} kg</p>
+            </div>
+            <div style="height:35px;width:100%;">
               <${window.Recharts.ResponsiveContainer}>
                 <${window.Recharts.LineChart} data=${weightHistory}>
                   <${window.Recharts.Line} type="monotone" dataKey="val" stroke="#38BDF8" strokeWidth=${2} dot=${false} isAnimationActive=${false} />
                   <${window.Recharts.YAxis} domain=${['dataMin - 1', 'dataMax + 1']} hide />
-                </${window.Recharts.LineChart}>
+                </</window.Recharts.LineChart}>
               </${window.Recharts.ResponsiveContainer}>
             </div>
           </div>
         `}
 
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-          <${DashboardActionCard}
-            onClick=${onOpenStudy}
-            title="Estudio"
-            value=${loading ? '...' : summary.studyPending}
-            detail=${`Pendientes de ${summary.studySubjects} materias - ${summary.studyDone} hechos`}
-            border="rgba(99,102,241,0.25)"
-            background="rgba(99,102,241,0.08)"
-            accent="#A5B4FC"
-          />
-          <${DashboardActionCard}
-            onClick=${onOpenBooks}
-            title="Libro actual"
-            value=${summary.book?.title || 'Sin libro'}
-            detail=${`Pág ${pn(summary.book?.current_page)} / ${pn(summary.book?.total_pages)} - ${summary.bookPct}%`}
-            border="rgba(245,158,11,0.25)"
-            background="rgba(245,158,11,0.08)"
-            accent="#FCD34D"
-          />
-          <${DashboardActionCard}
-            onClick=${onOpenHealth}
-            title="Salud"
-            value=${`R ${pn(summary.meds?.roaccutan)} - M ${pn(summary.meds?.minoxidil_finasteride)}`}
-            detail=${summary.medsLow ? 'Reponer pronto' : medDashboardStatus.label}
-            border=${summary.medsLow ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.25)'}
-            background=${summary.medsLow ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)'}
-            accent=${summary.medsLow ? '#FCA5A5' : '#86EFAC'}
-          />
-          <${DashboardActionCard}
-            onClick=${onOpenRecipes}
-            title="Biblioteca"
-            value=${loading ? '...' : summary.pantryLow}
-            detail=${summary.pantryLow > 0 ? 'Items con stock bajo' : 'Sin alertas de stock'}
-            border=${summary.pantryLow > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(56,189,248,0.25)'}
-            background=${summary.pantryLow > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(56,189,248,0.08)'}
-            accent=${summary.pantryLow > 0 ? '#FCD34D' : '#7DD3FC'}
-          />
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr;gap:8px;">
-          <div style="text-align:left;padding:16px;border-radius:18px;border:1px solid rgba(56,189,248,0.1);background:rgba(56,189,248,0.02);position:relative;overflow:hidden;">
-            <div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle at center, rgba(56,189,248,0.1), transparent 70%);pointer-events:none;"></div>
-            <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#7DD3FC;font-weight:800;font-family:'Barlow Condensed',sans-serif;">Tiempo San Rafael</p>
-            <div style="display:flex;align-items:baseline;gap:8px;">
-              <span style="font-size:24px;font-weight:800;color:white;font-family:'Barlow Condensed',sans-serif;">${weather.loading ? '...' : (weather.data?.temp_current || '--')}°</span>
-              <span style="font-size:13px;color:#94A3B8;">${weather.loading ? 'Cargando...' : weather.data ? `máx ${weather.data.temp_next24_max}° / mín ${weather.data.temp_next24_min}°` : 'Sin datos'}</span>
-            </div>
-            <p style="margin:6px 0 0;font-size:12px;color:#cbd5e1;line-height:1.4;">
-              ${weather.data
-                ? `Humedad ${weather.data.humidity_min}-${weather.data.humidity_max}% · Ráfagas ${weather.data.wind_gusts} km/h · UV ${weather.data.uv_max}`
-                : (weather.error || 'Sin datos meteorológicos')}
-            </p>
-            <p style="margin:8px 0 0;font-size:12px;color:${weatherGymAdvice.color};font-weight:800;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:0.02em;">${weatherGymAdvice.label}</p>
-          </div>
-
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-            <button onClick=${onOpenHealth} class="tap-effect" style="text-align:left;padding:14px;border-radius:16px;border:1px solid rgba(16,185,129,0.15);background:rgba(16,185,129,0.05);cursor:pointer;">
-              <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#86EFAC;font-weight:800;font-family:'Barlow Condensed',sans-serif;">Próxima Meds</p>
-              <p style="margin:0;font-size:15px;font-weight:800;color:white;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;">${loading ? '...' : medDashboardStatus.label}</p>
-              <p style="margin:2px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (medDashboardStatus.detail || 'Sin detalles')}</p>
-            </button>
-
-            <button onClick=${onOpenTasks} class="tap-effect" style="text-align:left;padding:14px;border-radius:16px;border:1px solid rgba(99,102,241,0.15);background:rgba(99,102,241,0.05);cursor:pointer;">
-              <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#A5B4FC;font-weight:800;font-family:'Barlow Condensed',sans-serif;">Vencimiento</p>
-              <p style="margin:0;font-size:15px;font-weight:800;color:white;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${loading ? '...' : (summary.nextTask?.title || 'Nada urgente')}</p>
-              <p style="margin:2px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (summary.nextTask?.due_at ? formatTaskDate(summary.nextTask.due_at) : 'Sin tareas')}</p>
-            </button>
-          </div>
-        </div>
-
-        ${summary.backupDue && html`
-          <button onClick=${onOpenNotif} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.08);cursor:pointer;">
-            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#FCD34D;font-weight:700;">Backup recomendado</p>
-            <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">Hace backup desde ALERTAS</p>
-            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${summary.backupLabel || 'Pasaron mas de 72 horas sin backup manual.'}</p>
+        <!-- Bottom Actions -->
+        <div style="display:flex;gap:8px;">
+          <button onClick=${onCloneMeal} class="tap-effect" style="flex:1;padding:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:12px;color:#86EFAC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;cursor:pointer;">
+            COPIAR COMIDAS
           </button>
-        `}
-
-        <div style="padding:16px;border-radius:20px;background:rgba(10,15,30,0.6);border:1px solid rgba(255,255,255,0.08);position:relative;overflow:hidden;">
-          <div style="position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent);"></div>
-          <p style="margin:0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;font-family:'Barlow Condensed',sans-serif;font-weight:800;">Siguiente foco</p>
-          <p style="margin:6px 0 0;font-size:16px;color:white;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;">
-            ${loading ? 'Cargando...' : (summary.nextTask?.title || 'Nada urgente. Buen momento para ordenar ideas.')}
-          </p>
-          ${!loading && summary.nextTask?.due_at && html`
-            <p style="margin:4px 0 0;font-size:12px;color:#94A3B8;font-family:'JetBrains Mono',monospace;">
-              ${formatTaskDate(summary.nextTask.due_at)}
-            </p>
-          `}
-          ${!loading && summary.nextTask && html`
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
-              <button onClick=${()=>quickUpdateTask(summary.nextTask,'done')} class="tap-effect" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.08);color:#86EFAC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">HECHA</button>
-              <button onClick=${()=>quickUpdateTask(summary.nextTask,'archived')} class="tap-effect" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(148,163,184,0.3);background:rgba(148,163,184,0.08);color:#CBD5E1;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">ARCHIVAR</button>
-              <button onClick=${onOpenTasks} class="tap-effect" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.1);color:#A5B4FC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">ABRIR</button>
-            </div>
-          `}
+          <button onClick=${onOpenTasks} class="tap-effect" style="flex:1;padding:10px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:12px;color:#A5B4FC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;cursor:pointer;">
+            VER TAREAS
+          </button>
         </div>
+
       </div>
     `;
   };
