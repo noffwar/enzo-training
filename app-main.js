@@ -960,6 +960,7 @@ export const createApp = (deps) => {
                 onApplyOverload=${handleApplyOverload} 
                 onCompleteSession=${handleCompleteSession} 
                 onResetSessionChecks=${handleResetSessionChecks} 
+                allWeeks=${allWeeks}
               />
             </div>
           `}
