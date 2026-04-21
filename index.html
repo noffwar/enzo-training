@@ -167,7 +167,7 @@
   </script>
 
   <script type="module">
-    import { h, render } from 'https://esm.sh/preact';
+    import { h, render, createContext, Fragment } from 'https://esm.sh/preact';
     import { useState, useEffect, useCallback, useRef, useMemo } from 'https://esm.sh/preact/hooks';
     import htm from 'https://esm.sh/htm';
     const html = htm.bind(h);
@@ -212,7 +212,7 @@
         Object.assign(viewDeps, components);
 
         // Shim React for Recharts compatibility
-        window.React = { createElement: h, useState, useEffect, useCallback, useRef, useMemo };
+        window.React = { createElement: h, Fragment, createContext, useState, useEffect, useCallback, useRef, useMemo };
         window.ReactDOM = { render };
         
         window._loadRecharts = () => {
