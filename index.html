@@ -41,7 +41,7 @@
         isValidElement: function() { return true; },
         Children: { map: (c, f) => (Array.isArray(c) ? (c.length > 0 ? c.map(f) : []) : [c].map(f)), count: (c) => (Array.isArray(c) ? c.length : 1) },
         Component: class {}, PureComponent: class {}, 
-        useState: () => [], useEffect: () => {}, useLayoutEffect: () => {}, useCallback: (f) => f, useMemo: (f) => f(), useRef: () => ({ current: null })
+        useState: () => [], useEffect: () => {}, useLayoutEffect: () => {}, useCallback: (f) => f, useMemo: (f) => f(), useRef: () => ({ current: null }), useContext: () => ({})
       };
       window.ReactDOM = { render: function() {} };
     })();
@@ -219,7 +219,7 @@
 
   <script type="module">
     import { h, render, createContext, Fragment } from 'https://esm.sh/preact';
-    import { useState, useEffect, useCallback, useRef, useMemo } from 'https://esm.sh/preact/hooks';
+    import { useState, useEffect, useCallback, useRef, useMemo, useContext } from 'https://esm.sh/preact/hooks';
     import htm from 'https://esm.sh/htm';
     const html = htm.bind(h);
     import { createClient } from 'https://esm.sh/@supabase/supabase-js';
@@ -266,7 +266,8 @@
         // Shim React for Recharts compatibility
         window.React = { 
           createElement: h, Fragment, createContext, 
-          useState, useEffect, useCallback, useRef, useMemo,
+          useState, useEffect, useCallback, useRef, useMemo, useContext,
+          useLayoutEffect: useEffect,
           Component: class {}, PureComponent: class {},
           cloneElement: (e) => e, createRef: () => ({ current: null }),
           forwardRef: (renderFn) => function(props) { return renderFn(props, props?.ref || null); },
