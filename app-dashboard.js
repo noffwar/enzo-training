@@ -21,7 +21,8 @@ export const createTodayDashboard = ({
   FastingProgressBar,
   getWeekKey,
   localDateKey,
-  lsDayLoad
+  lsDayLoad,
+  TARGETS
 }) => {
   return function TodayDashboard({
     session,
