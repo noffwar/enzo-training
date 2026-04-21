@@ -1,4 +1,4 @@
-﻿export const createRecipesView = ({
+export const createRecipesView = ({
   html,
   useState,
   useEffect,
@@ -581,7 +581,7 @@
 
           ${showingLibrary && html`
           <${SectionAccordion}
-            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#10B981;display:inline-block;"></span>`}
+            icon=${html`<span style="width:12px;height:12px;border-radius:50%;background:#10B981;box-shadow:0 0 10px rgba(16,185,129,0.4);"></span>`}
             title="Recetas e ingredientes"
             isOpen=${recipesOpen}
             onToggle=${()=>setRecipesOpen(v=>!v)}
@@ -701,7 +701,7 @@
 
           ${showingSweets && html`
           <${SectionAccordion}
-            icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#F59E0B;display:inline-block;"></span>`}
+            icon=${html`<span style="width:12px;height:12px;border-radius:50%;background:#F59E0B;box-shadow:0 0 10px rgba(245,158,11,0.4);"></span>`}
             title="Dulces y Salsas"
             isOpen=${sweetsOpen}
             onToggle=${()=>setSweetsOpen(v=>!v)}

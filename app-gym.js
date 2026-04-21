@@ -2,14 +2,70 @@
 
 export const createGymPanel = (deps) => {
   const {
-    html, useState, useRef, IClock, IDumb, ICheck, SectionAccordion,
-    fn, pn, ft, resolveMuscleInfo, isGymClosedDate, getDayDate
+    html, useState, useMemo, useRef, IClock, IDumb, ICheck, SectionAccordion,
+    fn, pn, ft, resolveMuscleInfo, isGymClosedDate, getDayDate, canonicalMuscleName, getWeekKey, localDateKey
   } = deps;
+
+  const MuscleReadinessCard = ({ allWeeks }) => {
+    const readiness = useMemo(() => {
+      const muscleFatigue = {};
+      const now = new Date();
+      const DAYS_TO_LOOK_BACK = 5;
+
+      for (let i = 0; i < DAYS_TO_LOOK_BACK; i++) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const wkKey = getWeekKey(d);
+        const dayIdx = String(d.getDay());
+        const session = allWeeks[wkKey]?.sessions?.[dayIdx];
+        
+        if (Array.isArray(session)) {
+          session.forEach(ex => {
+            const info = resolveMuscleInfo(ex.name);
+            if (info) {
+              const weight = (DAYS_TO_LOOK_BACK - i) / DAYS_TO_LOOK_BACK;
+              [...info.direct, ...info.indirect].forEach(m => {
+                const name = canonicalMuscleName(m);
+                muscleFatigue[name] = (muscleFatigue[name] || 0) + (info.direct.includes(m) ? 1.0 : 0.5) * weight;
+              });
+            }
+          });
+        }
+      }
+
+      const muscles = ["Pecho", "Espalda", "Hombros", "Piernas", "Biceps", "Triceps", "Core"];
+      return muscles.map(m => {
+        const fatigue = muscleFatigue[m] || 0;
+        let status = "Fresco";
+        let color = "#10B981";
+        if (fatigue > 2.5) { status = "Fatigado"; color = "#EF4444"; }
+        else if (fatigue > 1.2) { status = "Recuperando"; color = "#F59E0B"; }
+        return { name: m, status, color, fatigue };
+      });
+    }, [allWeeks]);
+
+    return html`
+      <div class="glass-card" style="padding:12px;margin-bottom:16px;background:rgba(10,15,30,0.4);">
+        <p style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#94A3B8;">Estado de Recuperación</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(80px, 1fr));gap:8px;">
+          ${readiness.map(m => html`
+            <div style="padding:8px;border-radius:8px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.03);text-align:center;">
+              <p style="margin:0;font-size:10px;color:#cbd5e1;font-weight:600;">${m.name}</p>
+              <div style="height:4px;width:100%;background:#1E2D45;border-radius:2px;margin:6px 0;overflow:hidden;">
+                <div style=${`width:${Math.min(100, m.fatigue * 25)}%;height:100%;background:${m.color};`}></div>
+              </div>
+              <p style=${`margin:0;font-size:8px;font-weight:800;text-transform:uppercase;color:${m.color};`}>${m.status}</p>
+            </div>
+          `)}
+        </div>
+      </div>
+    `;
+  };
   
-  const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload, onCompleteSession, onResetSessionChecks}) => {
+  const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload, onCompleteSession, onResetSessionChecks, allWeeks}) => {
     const [open,setOpen] = useState(true);
     if(!session||session.length===0) return html`
-      <${SectionAccordion} icon=${html`<${IDumb} s=${18} style="margin-right:8px;color:#10B981;"/>`} title="Rutina Gimnasio" isOpen=${true} onToggle=${()=>{}}>
+      <${SectionAccordion} icon=${html`<${IDumb} s=${20} c="text-green"/>`} title="Rutina Gimnasio" isOpen=${true} onToggle=${()=>{}}>
         <div style="padding:16px;text-align:center;color:#64748B;font-size:12px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;border-radius:10px;margin-bottom:10px;font-family:'Barlow',sans-serif;">
           No hay rutina asignada para hoy.
         </div>
@@ -28,12 +84,13 @@ export const createGymPanel = (deps) => {
 
     return html`
       <${SectionAccordion} 
-        icon=${html`<${IDumb} s=${18} style="margin-right:8px;color:#10B981;"/>`} 
+        icon=${html`<${IDumb} s=${20} c="text-green"/>`} 
         title="Rutina Gimnasio" 
         isOpen=${open} 
         onToggle=${()=>setOpen(!open)}
-        headerStyle="border-bottom:1px solid #1E2D45;background:rgba(15,23,41,0.85);"
       >
+        <${MuscleReadinessCard} allWeeks=${allWeeks} />
+
         <!-- Horarios sesión -->
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:10px;background:rgba(10,15,30,0.5);border:1px solid #1E2D45;margin-bottom:12px;">
           <div style="display:flex;align-items:center;gap:10px;">
@@ -67,7 +124,7 @@ export const createGymPanel = (deps) => {
             <div style=${`width:${progressPct}%;height:100%;background:linear-gradient(90deg,#10B981,#6366F1);transition:width 0.4s ease;`}></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;">
-            <button onClick=${()=>onCompleteSession&&onCompleteSession()}
+            <button onClick=${()=>{ window.haptic('success'); onCompleteSession && onCompleteSession(); }}
               style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#10B981;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;">
               COMPLETAR SESIÓN
             </button>
@@ -112,7 +169,7 @@ export const createGymPanel = (deps) => {
                       <td><span class=${`tag-rir ${String(set.rir).includes('Fallo')?'fallo':''}`} style="font-size:10px;font-family:'JetBrains Mono',monospace;">${set.rir}</span></td>
                       <td><span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${set.restStr}</span></td>
                       <td style="text-align:center;padding:2px;">
-                        <button onClick=${()=>onSetComplete(ei,si,set.restSecs)}
+                        <button onClick=${()=>{ window.haptic(set.completed ? 'light' : 'medium'); onSetComplete(ei,si,set.restSecs); }}
                           style=${`width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;${set.completed?'background:#10B981;border:none;box-shadow:0 0 10px rgba(16,185,129,0.4);':'background:#162035;border:1px solid #1E2D45;color:#64748b;'}`}>
                           <${ICheck} s=${14} c=${set.completed?'#080D1A':'rgba(148,163,184,0.35)'}/>
                         </button>

@@ -470,7 +470,7 @@ export const createHabitsPanel = (deps) => {
     const medStatus = getMedicationStatusForView({ selectedDateKey, medsState: t.meds || {}, now: new Date() });
 
     return html`
-      <${SectionAccordion} icon=${html`<${IActivity} s=${18} c="text-green" style="margin-right:8px;"/>`} title="Parámetros Diarios" isOpen=${open} onToggle=${()=>setOpen(!open)}>
+      <${SectionAccordion} icon=${html`<${IActivity} s=${20} c="text-green"/>`} title="Parámetros Diarios" isOpen=${open} onToggle=${()=>setOpen(!open)}>
         <div style="display:flex;flex-direction:column;gap:16px;">
           ${yesterdayFastMsg && html`
             <div class="glass-card" style="padding:10px 12px;background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.2);margin-bottom:4px;">

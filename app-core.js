@@ -698,23 +698,10 @@ export const serializeMeals = (tracker) => {
   }
 };
 
+
 // ── getPlanMode: devuelve '4' o '5' según el dayMapping de la semana ──
 export const getPlanMode = (weekData) =>
   String(weekData?.dayMapping?._planMode || '4');
-
-export const isHoliday2026 = (dateStr = '', holidays = {}) =>
-  dateStr.startsWith('2026-') && !!holidays[dateStr];
-
-export const getHolidayLabel = (dateStr = '', holidays = {}) =>
-  holidays[dateStr] || '';
-
-export const isSundayDate = (dateStr = '') => {
-  if (!dateStr) return false;
-  return new Date(`${dateStr}T12:00:00`).getDay() === 0;
-};
-
-export const isGymClosedDate = (dateStr = '', holidays = {}) =>
-  isSundayDate(dateStr) || isHoliday2026(dateStr, holidays);
 
 // ── getFastStats: calcula estadísticas de ayuno intermitente ──
 export const getFastStats = (tracker, viewDateStr = '') => {
@@ -730,7 +717,6 @@ export const getFastStats = (tracker, viewDateStr = '') => {
   const todayKey = localDateKey(now);
   const isViewingPast = viewDateStr && viewDateStr < todayKey;
   
-  // Reference date for "now"
   let refDate = now;
   if (isViewingPast) {
     refDate = new Date(`${viewDateStr}T23:59:59`);
@@ -739,7 +725,6 @@ export const getFastStats = (tracker, viewDateStr = '') => {
   const start = new Date(refDate);
   start.setHours(sH, sM || 0, 0, 0);
   
-  // Si el inicio es posterior a la referencia, asumimos que empezó el día anterior
   if (start > refDate) {
     start.setDate(start.getDate() - 1);
   }
@@ -760,8 +745,6 @@ export const getFastStats = (tracker, viewDateStr = '') => {
   };
 };
 
-
-// ── localStorage helpers para tasks y thoughts ──
 const TASK_ALERTS_KEY = 'enzo_task_alerts_v1';
 const THOUGHT_DRAFTS_KEY = 'enzo_thought_drafts_v1';
 const THOUGHT_THREADS_KEY = 'enzo_thought_threads_v1';
@@ -793,14 +776,11 @@ export const saveThoughtThreads = (threads) => {
   catch (_) {}
 };
 
-
 export const decrementRecipeStock = async (supabase, recipeId, qty = 1) => {
   try {
     const { data: r } = await supabase.from('user_recipes').select('stock_qty').eq('id', recipeId).single();
     if(!r) return;
-    const current = parseFloat(r.stock_qty) || 0;
-    if(current <= 0) return;
-    await supabase.from('user_recipes').update({ stock_qty: Math.max(0, current - qty) }).eq('id', recipeId);
-    safeDispatch('enzo-recipes-changed', {});
-  } catch(e) { console.warn('[Recipes] stock decrement error:', e.message); }
+    const newQty = Math.max(0, (r.stock_qty || 0) - qty);
+    await supabase.from('user_recipes').update({ stock_qty: newQty }).eq('id', recipeId);
+  } catch(e) { console.warn('[Stock] error decrementing:', e.message); }
 };

@@ -31,11 +31,12 @@ export const Card = ({html, children, style=''}) => html`<div class="glass-card"
 
 export const SectionAccordion = ({html, icon, title, isOpen, onToggle, children}) => html`
   <div class="glass-card" style="overflow:hidden;">
-    <button class="section-toggle" onClick=${onToggle}>
-      <span style="display:flex;align-items:center;gap:8px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.05em;">
-        ${icon}${title}
+    <button class="section-toggle" onClick=${onToggle} style=${`border-bottom: ${isOpen ? '1px solid var(--border)' : 'none'};`}>
+      <span style="display:flex;align-items:center;gap:12px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:white;">
+        <span style="display:flex;filter: drop-shadow(0 0 5px rgba(255,255,255,0.1));">${icon}</span>
+        ${title}
       </span>
-      <${IChevD} html=${html} s=${18} c=${`chev ${isOpen?'open':''}`}/>
+      <${IChevD} html=${html} s=${20} c=${`chev ${isOpen?'open':''}`}/>
     </button>
     ${isOpen && html`
       <div style="padding:16px;border-top:1px solid #1E2D45;">
@@ -115,11 +116,12 @@ export const createAppComponents = ({
 
   const BoundSectionAccordion = ({icon, title, isOpen, onToggle, children}) => html`
     <div class="glass-card" style="overflow:hidden;">
-      <button class="section-toggle" onClick=${onToggle}>
-        <span style="display:flex;align-items:center;gap:8px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.05em;">
-          ${icon}${title}
+      <button class="section-toggle" onClick=${onToggle} style=${`border-bottom: ${isOpen ? '1px solid var(--border)' : 'none'};`}>
+        <span style="display:flex;align-items:center;gap:12px;font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;letter-spacing:0.04em;text-transform:uppercase;color:white;">
+          <span style="display:flex;filter: drop-shadow(0 0 5px rgba(255,255,255,0.1));">${icon}</span>
+          ${title}
         </span>
-        <${BoundIChevD} s=${18} c=${`chev ${isOpen?'open':''}`}/>
+        <${BoundIChevD} s=${20} c=${`chev ${isOpen?'open':''}`}/>
       </button>
       ${isOpen && html`
         <div style="padding:16px;border-top:1px solid #1E2D45;">

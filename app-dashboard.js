@@ -328,8 +328,58 @@ export const createTodayDashboard = ({
       return history.filter(h => h.val > 0).slice(-7);
     }, [allWeeks]);
 
+    const dailyInsight = useMemo(() => {
+      if(loading) return null;
+      const hours = new Date().getHours();
+      const totals = tracker?.meals ? mealTotals(tracker.meals) : { cals:0, prot:0, carb:0, fat:0 };
+      const water = tracker?.water || 0;
+      
+      if (hours < 11) {
+        return {
+          title: "Foco de la Mañana",
+          text: water < 500 ? "Empezá con 500ml de agua para activar. ¿Ya tomaste el Roacutan?" : "Hidratación inicial OK. Si hoy toca gym, asegurate de tener la comida pre-entreno lista.",
+          icon: "☀️", color: "#FCD34D"
+        };
+      }
+      if (hours >= 11 && hours < 16) {
+        return {
+          title: "Estado Nutricional",
+          text: totals.prot < 60 ? "Venís bajo en proteína. Priorizá una fuente sólida en el almuerzo." : "Proteína en buen camino. Mantené el ritmo de agua.",
+          icon: "🥩", color: "#10B981"
+        };
+      }
+      if (hours >= 16 && hours < 21) {
+        return {
+          title: "Cierre del Día",
+          text: totals.cals > TARGETS.kcal * 0.8 ? "Casi llegás al objetivo calórico. La cena debería ser liviana y alta en micro-nutrientes." : "¿Falta entrenar? Si ya lo hiciste, asegurate de cargar los macros de la merienda.",
+          icon: "🌙", color: "#6366F1"
+        };
+      }
+      return {
+        title: "Preparación Mañana",
+        text: "Día casi terminado. Registrá el sueño y prepará la ropa del gym para mañana. ¡Gran trabajo!",
+        icon: "✨", color: "#A5B4FC"
+      };
+    }, [loading, tracker, TARGETS]);
+
     return html`
-      <div class="glass-card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+      <div class="glass-card stagger-in" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+        ${dailyInsight && html`
+          <div style="padding:12px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;gap:12px;align-items:center;margin-bottom:4px;animation: glow-pulse 4s infinite;">
+            <div style="font-size:24px;">${dailyInsight.icon}</div>
+            <div style="flex:1;">
+              <p style=${`margin:0;font-size:10px;font-weight:800;text-transform:uppercase;color:${dailyInsight.color};letter-spacing:0.05em;`}>${dailyInsight.title}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:#cbd5e1;line-height:1.4;">${dailyInsight.text}</p>
+            </div>
+          </div>
+          <style>
+            @keyframes glow-pulse {
+              0% { border-color: rgba(255,255,255,0.05); box-shadow: 0 0 0 rgba(255,255,255,0); }
+              50% { border-color: ${dailyInsight.color}44; box-shadow: 0 0 10px ${dailyInsight.color}11; }
+              100% { border-color: rgba(255,255,255,0.05); box-shadow: 0 0 0 rgba(255,255,255,0); }
+            }
+          </style>
+        `}
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div>
             <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;font-weight:700;">Tablero principal</p>
