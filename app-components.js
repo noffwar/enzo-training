@@ -273,17 +273,18 @@ export const createAppComponents = ({
   `;
 
   const DashboardStatCard = ({ label, value, color }) => html`
-    <div style="padding:10px 8px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
-      <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;">${label}</p>
-      <p style=${`margin:4px 0 0;font-size:17px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${color};`}>${value}</p>
+    <div style="padding:12px 8px;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;align-items:center;transition:transform 0.2s;position:relative;overflow:hidden;" class="tap-effect">
+      <div style=${`position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg, transparent, ${color}, transparent);opacity:0.5;`}></div>
+      <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.05em;">${label}</p>
+      <p style=${`margin:4px 0 0;font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:${color};line-height:1;`}>${value}</p>
     </div>
   `;
 
   const DashboardActionCard = ({ onClick, title, value, detail, border, background, accent }) => html`
-    <button onClick=${onClick} style=${`text-align:left;padding:10px 12px;border-radius:10px;border:1px solid ${border};background:${background};cursor:pointer;`}>
-      <p style=${`margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:${accent};font-weight:700;`}>${title}</p>
-      <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${value}</p>
-      <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${detail}</p>
+    <button onClick=${onClick} style=${`text-align:left;padding:14px;border-radius:16px;border:1px solid ${border};background:${background};cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all 0.2s;`} class="tap-effect">
+      <p style=${`margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:${accent};font-weight:800;font-family:'Barlow Condensed',sans-serif;`}>${title}</p>
+      <p style="margin:0;font-size:16px;font-weight:800;color:white;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;line-height:1.2;">${value}</p>
+      <p style="margin:2px 0 0;font-size:11px;color:#94A3B8;line-height:1.3;">${detail}</p>
     </button>
   `;
 
