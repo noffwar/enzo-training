@@ -40,9 +40,10 @@ export const createApp = (deps) => {
     viewLoaders
   } = deps;
 
+  const { GymPanel } = createGymPanel(deps);
   const TodayDashboard = createTodayDashboard(deps);
-  const { HabitsPanel, getYesterdayFast, getRelativeDaySnapshot } = createHabitsPanel(deps);
   const LoginView = createLoginView(deps);
+  const { HabitsPanel, getYesterdayFast, getRelativeDaySnapshot } = createHabitsPanel(deps);
 
   return function App() {
     const [view, setView] = useState(() => {
