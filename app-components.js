@@ -308,6 +308,48 @@ export const createAppComponents = ({
   `;
 
   const TaskViewCard = ({ task, subtasks, doneSubtasks, priorityAccent, onEdit, onDone, onArchive, onDelete, onToggleSubtask, calendarHref, onMail, mailLoading }) => html`
+    <div style="padding:12px;border-radius:12px;background:rgba(15,23,41,0.8);border:1px solid rgba(255,255,255,0.05);margin-bottom:12px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;">
+      <div style=${`position:absolute;top:0;left:0;bottom:0;width:3px;background:${priorityAccent};`}></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding-left:6px;">
+        <div style="flex:1;">
+          <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;line-height:1.3;">${task.title}</p>
+          ${task.due_date && html`<p style="margin:4px 0 0;font-size:11px;color:${priorityAccent};font-family:'JetBrains Mono',monospace;">Vence: ${task.due_date}</p>`}
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onClick=${onEdit} style="padding:4px 8px;border-radius:6px;border:1px solid #1E2D45;background:rgba(255,255,255,0.05);color:#94A3B8;font-size:10px;font-weight:700;cursor:pointer;">EDITAR</button>
+          <button onClick=${onDone} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.1);color:#10B981;font-size:10px;font-weight:700;cursor:pointer;">LISTO</button>
+        </div>
+      </div>
+      
+      ${(subtasks && subtasks.length > 0) ? html`
+        <div style="display:flex;flex-direction:column;gap:6px;padding-left:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:10px;color:#64748b;text-transform:uppercase;">Subtareas (${doneSubtasks}/${subtasks.length})</span>
+            <div style="flex:1;height:4px;background:#1E2D45;border-radius:2px;margin-left:8px;overflow:hidden;">
+              <div style=${`width:${(doneSubtasks/subtasks.length)*100}%;height:100%;background:${priorityAccent};transition:width 0.3s;`}></div>
+            </div>
+          </div>
+          ${subtasks.map((st, i) => html`
+            <div style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;" onClick=${() => onToggleSubtask(i)}>
+              <div style=${`width:14px;height:14px;border-radius:4px;border:1px solid ${st.completed ? priorityAccent : '#475569'};background:${st.completed ? priorityAccent : 'transparent'};display:flex;align-items:center;justify-content:center;margin-top:2px;`}>
+                ${st.completed ? html`<span style="color:#080D1A;font-size:10px;">✓</span>` : null}
+              </div>
+              <span style=${`font-size:12px;color:${st.completed ? '#64748b' : '#cbd5e1'};text-decoration:${st.completed ? 'line-through' : 'none'};line-height:1.4;flex:1;`}>${st.text}</span>
+            </div>
+          `)}
+        </div>
+      ` : null}
+      
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);margin-top:4px;padding-left:6px;">
+        <div style="display:flex;gap:6px;">
+          ${calendarHref ? html`<a href=${calendarHref} target="_blank" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.1);color:#818CF8;font-size:10px;font-weight:700;text-decoration:none;">CALENDARIO</a>` : null}
+          ${onMail ? html`<button onClick=${onMail} disabled=${mailLoading} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.1);color:#FBBF24;font-size:10px;font-weight:700;cursor:pointer;opacity:${mailLoading?0.5:1};">${mailLoading ? 'ENVIANDO...' : 'EMAIL'}</button>` : null}
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button onClick=${onArchive} style="padding:4px 8px;border-radius:6px;border:1px solid #1E2D45;background:transparent;color:#94A3B8;font-size:10px;font-weight:700;cursor:pointer;">ARCHIVAR</button>
+          <button onClick=${onDelete} style="padding:4px 8px;border-radius:6px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);color:#FCA5A5;font-size:10px;font-weight:700;cursor:pointer;">BORRAR</button>
+        </div>
+      </div>
     </div>
   `;
 
