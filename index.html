@@ -26,13 +26,14 @@
         isForwardRef: (x) => x && x.type === FR
       };
       window.React = { 
-        createElement: function() { return null; }, // Placeholder until Preact loads
+        createElement: function() { return null; },
+        createContext: function() { return { Provider: function() { return null; }, Consumer: function() { return null; } }; },
         Fragment: sym('react.fragment'),
         forwardRef: function(f) { return { $$typeof: FR, render: f }; },
         memo: function(c) { return { $$typeof: MM, type: c }; },
         isValidElement: function() { return true; },
-        Children: { map: (c, f) => (Array.isArray(c) ? c : [c]).map(f), count: (c) => (Array.isArray(c) ? c.length : 1) },
-        Component: class {}, useState: () => [], useEffect: () => {}, useCallback: (f) => f, useMemo: (f) => f(), useRef: () => ({})
+        Children: { map: (c, f) => (Array.isArray(c) ? c.length > 0 ? c.map(f) : [] : [c].map(f)), count: (c) => (Array.isArray(c) ? c.length : 1) },
+        Component: class {}, useState: () => [], useEffect: () => {}, useLayoutEffect: () => {}, useCallback: (f) => f, useMemo: (f) => f(), useRef: () => ({})
       };
       window.ReactDOM = { render: function() {} };
     })();
