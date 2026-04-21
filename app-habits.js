@@ -340,7 +340,11 @@ export const createHabitsPanel = (deps) => {
       rec.onstart = () => setVoiceActive(mealIndex);
       rec.onresult = (e) => {
         const text = e.results[0][0].transcript;
-        updateMealDraft(mealIndex, text);
+        const currentDraft = t.meals?.[mealIndex]?.aiDraft || '';
+        const newText = (currentDraft ? `${currentDraft} ${text}` : text).trim();
+        updateMealDraft(mealIndex, newText);
+        // Autodisparar la IA
+        analyzeMeal(mealIndex, newText);
       };
       rec.onend = () => setVoiceActive(-1);
       rec.onerror = () => setVoiceActive(-1);
@@ -397,8 +401,8 @@ export const createHabitsPanel = (deps) => {
       }
     };
 
-    const analyzeMeal = async (mealIndex) => {
-      const text = String(t.meals?.[mealIndex]?.aiDraft || '').trim();
+    const analyzeMeal = async (mealIndex, forcedText = null) => {
+      const text = forcedText !== null ? forcedText : String(t.meals?.[mealIndex]?.aiDraft || '').trim();
       if(!text) return;
 
       const parts = splitMealDraftParts(text).map(cleanMealPartPrefix).filter(Boolean);
@@ -423,6 +427,47 @@ export const createHabitsPanel = (deps) => {
       } finally {
         setAiLoading(prev => { const n=[...prev]; n[mealIndex]=false; return n; });
       }
+    };
+
+    const startListening = (mIdx) => {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("El dictado por voz no está soportado en tu navegador actual. Usa Chrome o Safari.");
+        return;
+      }
+      
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'es-AR';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setListeningIdx(mIdx);
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        const currentText = t.meals?.[mIdx]?.aiDraft || '';
+        const newText = (currentText ? `${currentText} ${transcript}` : transcript).trim();
+        updateMealDraft(mIdx, newText);
+        setListeningIdx(null);
+        // Automatically submit the dictated text
+        analyzeMeal(mIdx, newText);
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        if(event.error !== 'no-speech') {
+          alert(`Error al escuchar: ${event.error}`);
+        }
+        setListeningIdx(null);
+      };
+
+      recognition.onend = () => {
+        setListeningIdx(null);
+      };
+
+      recognition.start();
     };
 
     const discountItemStock = async (mealIdx, item) => {
@@ -600,8 +645,14 @@ export const createHabitsPanel = (deps) => {
                         />
                         <button 
                           onClick=${() => startVoice(mIdx)}
-                          style=${`position:absolute;right:8px;background:transparent;border:none;cursor:pointer;padding:4px;color:${voiceActive===mIdx?'#EF4444':'#64748b'};transition:all 0.2s;`}>
-                          ${voiceActive === mIdx ? '🔴' : '🎤'}
+                          title="Dictar y procesar con IA"
+                          disabled=${aiLoading[mIdx]}
+                          style=${`position:absolute;right:8px;background:transparent;border:none;cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:${voiceActive===mIdx?'#EF4444':'#64748b'};transition:all 0.2s;${voiceActive===mIdx?'animation:pulse 1.5s infinite;background:rgba(239,68,68,0.2);':''}`}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" x2="12" y1="19" y2="22"/>
+                          </svg>
                         </button>
                       </div>
                       <button
