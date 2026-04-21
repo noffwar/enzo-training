@@ -11,7 +11,7 @@ export const createHabitsPanel = (deps) => {
     ProteinProgress, WaterTracker, SmartCena, NutritionReviewCard,
     IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock,
     supabase, DEVICE_ID, fetchJsonWithTimeout, TARGETS, HOME_FOODS,
-    localDateKey, getDayDate, getWeekKey, isValidDateValue, mealTotals
+    localDateKey, getDayDate, getWeekKey, isValidDateValue, mealTotals, decrementRecipeStock
   } = deps;
 
   // --- Helpers Locales (Legacy Restoration) ---
@@ -304,6 +304,7 @@ export const createHabitsPanel = (deps) => {
     const [stockBusyKey, setStockBusyKey] = useState('');
     const [recipeMsg, setRecipeMsg] = useState(['','','']);
     const [recipeSaving, setRecipeSaving] = useState([false,false,false]);
+    const [voiceActive, setVoiceActive] = useState(-1);
 
     const recipesRef = useRef(null);
 
@@ -329,6 +330,21 @@ export const createHabitsPanel = (deps) => {
     const updateMealDraft = (mealIndex, text) => {
       onMeal(mealIndex, 'aiDraft', text);
       setMealSplitEditOpen(prev => { const n=[...prev]; n[mealIndex]=false; return n; });
+    };
+
+    const startVoice = (mealIndex) => {
+      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if(!Recognition) return alert('Tu navegador no soporta reconocimiento de voz.');
+      const rec = new Recognition();
+      rec.lang = 'es-AR';
+      rec.onstart = () => setVoiceActive(mealIndex);
+      rec.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        updateMealDraft(mealIndex, text);
+      };
+      rec.onend = () => setVoiceActive(-1);
+      rec.onerror = () => setVoiceActive(-1);
+      rec.start();
     };
 
     const analyzeSingleMealEntry = async (mealIndex, text) => {
@@ -543,7 +559,15 @@ export const createHabitsPanel = (deps) => {
                             <p style="margin:0;font-size:13px;color:#cbd5e1;"><span style="color:#10B981;font-weight:700;">${it.qty}</span> ${it.name}</p>
                             <p style="margin:2px 0 0;font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;">${it.cals}kcal · ${it.prot}P · ${it.carb}C · ${it.fat}G</p>
                           </div>
-                          <div style="display:flex;gap:4px;">
+                          <div style="display:flex;gap:4px;align-items:center;">
+                            ${it.stock_trackable && html`
+                              <button onClick=${() => discountItemStock(mIdx, it)} 
+                                disabled=${stockBusyKey === `${mIdx}:${it.recipe_id}`}
+                                title="Descontar stock"
+                                style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);color:#FBBF24;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;cursor:pointer;">
+                                ${stockBusyKey === `${mIdx}:${it.recipe_id}` ? '...' : '📦 STOCK'}
+                              </button>
+                            `}
                             <button onClick=${() => {
                               setEditingMealItem({ mealIndex: mIdx, itemIndex: iIdx });
                               onMeal(mIdx, 'aiDraft', `${it.qty} ${it.name}`);
@@ -563,16 +587,23 @@ export const createHabitsPanel = (deps) => {
                       />
                     `}
 
-                    <div style="display:flex;gap:8px;margin-top:8px;">
-                      <input
-                        type="text"
-                        value=${meal.aiDraft || ''}
-                        onInput=${e => updateMealDraft(mIdx, e.target.value)}
-                        onKeyDown=${e => { if(e.key === 'Enter' && !aiLoading[mIdx]) analyzeMeal(mIdx); }}
-                        placeholder=${editingMealItem.mealIndex === mIdx ? "Editando ítem..." : "Añadir alimento..."}
-                        disabled=${aiLoading[mIdx]}
-                        style="flex:1;background:rgba(0,0,0,0.3);border:1px solid #1E2D45;border-radius:8px;padding:10px 12px;color:#cbd5e1;font-size:13px;"
-                      />
+                    <div style="display:flex;gap:8px;margin-top:8px;position:relative;">
+                      <div style="flex:1;position:relative;display:flex;align-items:center;">
+                        <input
+                          type="text"
+                          value=${meal.aiDraft || ''}
+                          onInput=${e => updateMealDraft(mIdx, e.target.value)}
+                          onKeyDown=${e => { if(e.key === 'Enter' && !aiLoading[mIdx]) analyzeMeal(mIdx); }}
+                          placeholder=${editingMealItem.mealIndex === mIdx ? "Editando ítem..." : "Añadir alimento..."}
+                          disabled=${aiLoading[mIdx]}
+                          style="width:100%;background:rgba(0,0,0,0.3);border:1px solid #1E2D45;border-radius:12px;padding:10px 40px 10px 12px;color:#cbd5e1;font-size:14px;"
+                        />
+                        <button 
+                          onClick=${() => startVoice(mIdx)}
+                          style=${`position:absolute;right:8px;background:transparent;border:none;cursor:pointer;padding:4px;color:${voiceActive===mIdx?'#EF4444':'#64748b'};transition:all 0.2s;`}>
+                          ${voiceActive === mIdx ? '🔴' : '🎤'}
+                        </button>
+                      </div>
                       <button
                         onClick=${() => analyzeMeal(mIdx)}
                         disabled=${aiLoading[mIdx] || !String(meal.aiDraft || '').trim()}

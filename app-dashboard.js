@@ -17,7 +17,11 @@ export const createTodayDashboard = ({
   formatTaskDate,
   DashboardStatCard,
   DashboardActionCard,
-  DashboardTagChip
+  DashboardTagChip,
+  FastingProgressBar,
+  getWeekKey,
+  localDateKey,
+  lsDayLoad
 }) => {
   return function TodayDashboard({
     session,
@@ -28,7 +32,10 @@ export const createTodayDashboard = ({
     onOpenBooks,
     onOpenHealth,
     onOpenRecipes,
-    onOpenNotif
+    onOpenNotif,
+    onCloneMeal,
+    chartsReady,
+    allWeeks
   }) {
     const [summary, setSummary] = useState({
       pending:0, dueToday:0, notes:0, high:0, nextTask:null,
@@ -40,6 +47,8 @@ export const createTodayDashboard = ({
       backupLabel:''
     });
     const [loading, setLoading] = useState(true);
+    const [fastingProgress, setFastingProgress] = useState(null);
+    const [comparison, setComparison] = useState(null);
     const [weather, setWeather] = useState({ loading:true, data:null, error:'' });
 
     const weatherGymAdvice = useMemo(() => {
@@ -71,6 +80,39 @@ export const createTodayDashboard = ({
     const loadSummary = useCallback(async () => {
       setLoading(true);
       try {
+        // Calc Fasting
+        try {
+          const now = new Date();
+          const prevDt = new Date(now); prevDt.setDate(prevDt.getDate() - 1);
+          const prevTracker = lsDayLoad(localDateKey(prevDt)); 
+          if(prevTracker?.fasted && prevTracker.fastStartTime && prevTracker.fastHours) {
+            const [sH, sM] = prevTracker.fastStartTime.split(':').map(Number);
+            const dur = pn(prevTracker.fastHours);
+            if(!isNaN(sH) && dur > 0) {
+              const startDateTime = new Date(prevDt);
+              startDateTime.setHours(sH, sM, 0, 0);
+              const endDateTime = new Date(startDateTime.getTime() + (dur * 3600000));
+              if(endDateTime > now) {
+                const current = (now - startDateTime) / 3600000;
+                const finH = String(endDateTime.getHours()).padStart(2,'0');
+                const finM = String(endDateTime.getMinutes()).padStart(2,'0');
+                setFastingProgress({ current, total: dur, startTime: prevTracker.fastStartTime, endTime: `${finH}:${finM}` });
+              } else setFastingProgress(null);
+            } else setFastingProgress(null);
+          } else setFastingProgress(null);
+
+          // Comparison Logic
+          if(prevTracker) {
+            const yesterdayTotals = mealTotals(prevTracker.meals || []);
+            const todayTotals = mealTotals(tracker.meals || []);
+            setComparison({
+              kcal: { diff: todayTotals.cals - yesterdayTotals.cals, label: 'Kcal' },
+              prot: { diff: todayTotals.prot - yesterdayTotals.prot, label: 'Prot' },
+              water: { diff: (tracker.water || 0) - (prevTracker.water || 0), label: 'Agua' }
+            });
+          }
+        } catch(_) { setFastingProgress(null); }
+
         const [
           { data: taskRows, error: taskErr },
           { data: noteRows, error: noteErr },
@@ -226,6 +268,14 @@ export const createTodayDashboard = ({
 
     const loadWeather = useCallback(async () => {
       const cacheKey = 'enzo_weather_san_rafael';
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      
+      if(isLocal) {
+        setWeather({ loading:false, data:null, error:'Clima desactivado en local (Netlify functions requeridas)' });
+        localStorage.removeItem(cacheKey);
+        return;
+      }
+
       try {
         const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
         if(cached?.data && cached?.at && (Date.now() - cached.at) < 30 * 60 * 1000) {
@@ -233,6 +283,7 @@ export const createTodayDashboard = ({
           return;
         }
       } catch(_) {}
+
       setWeather(prev => ({ ...prev, loading:true, error:'' }));
       try {
         const { res, data } = await fetchJsonWithTimeout('/.netlify/functions/weather-san-rafael');
@@ -263,6 +314,20 @@ export const createTodayDashboard = ({
       return { label: v.dinnerDone ? 'Cena registrada para ese día' : 'Cena no corresponde ahora', detail: `Vista de ${v.viewDateKey}` };
     }, [tracker, selectedDateKey]);
 
+    const weightHistory = useMemo(() => {
+      const history = [];
+      const now = new Date();
+      for(let i=14; i>=0; i--) {
+        const d = new Date(now); d.setDate(d.getDate() - i);
+        const wk = getWeekKey(d);
+        const w = allWeeks[wk];
+        if(w?.bodyWeight) {
+          history.push({ val: parseFloat(String(w.bodyWeight).replace(',','.')) || 0, date: localDateKey(d) });
+        }
+      }
+      return history.filter(h => h.val > 0).slice(-7);
+    }, [allWeeks]);
+
     return html`
       <div class="glass-card" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -284,6 +349,54 @@ export const createTodayDashboard = ({
             { label:'Alta', val: summary.high, color:'#38BDF8' }
           ].map(item => html`<${DashboardStatCard} label=${item.label} value=${loading ? '...' : item.val} color=${item.color} />`)}
         </div>
+
+        ${fastingProgress && html`<${FastingProgressBar} ...${fastingProgress} />`}
+
+        ${comparison && html`
+          <div style="padding:12px;border-radius:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;gap:12px;">
+            ${['prot', 'kcal', 'water'].map(k => {
+              const item = comparison[k];
+              const isPos = item.diff > 0;
+              const color = k === 'prot' ? (isPos ? '#10B981' : '#FCA5A5') : 
+                            k === 'kcal' ? (isPos ? '#FCA5A5' : '#10B981') : 
+                            (isPos ? '#38BDF8' : '#94A3B8');
+              return html`
+                <div style="flex:1;text-align:center;">
+                  <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">${item.label}</p>
+                  <p style=${`margin:4px 0 0;font-size:13px;font-weight:700;color:${color};`}>
+                    ${isPos ? '+' : ''}${Math.round(item.diff)}${k==='water'?'ml':'g'}
+                  </p>
+                  <p style="margin:2px 0 0;font-size:9px;color:#475569;">vs ayer</p>
+                </div>
+              `;
+            })}
+          </div>
+        `}
+
+        <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Acciones rápidas</p>
+            <p style="margin:4px 0 0;font-size:13px;color:#E2E8F0;font-weight:700;">Copiar comidas de ayer</p>
+          </div>
+          <button onClick=${onCloneMeal} style="padding:6px 12px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">COPIAR</button>
+        </div>
+
+        ${chartsReady && weightHistory.length > 1 && html`
+          <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Tendencia de peso</p>
+              <p style="margin:0;font-size:13px;font-weight:700;color:#38BDF8;">${weightHistory[weightHistory.length-1].val} kg</p>
+            </div>
+            <div style="height:40px;width:100%;">
+              <${window.Recharts.ResponsiveContainer}>
+                <${window.Recharts.LineChart} data=${weightHistory}>
+                  <${window.Recharts.Line} type="monotone" dataKey="val" stroke="#38BDF8" strokeWidth=${2} dot=${false} isAnimationActive=${false} />
+                  <${window.Recharts.YAxis} domain=${['dataMin - 1', 'dataMax + 1']} hide />
+                </${window.Recharts.LineChart}>
+              </${window.Recharts.ResponsiveContainer}>
+            </div>
+          </div>
+        `}
 
         <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
           <${DashboardActionCard}

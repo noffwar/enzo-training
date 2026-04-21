@@ -1,3 +1,40 @@
+/**
+ * @typedef {Object} Day
+ * @property {string} [id]
+ * @property {string} [date]
+ * @property {Array} [meals]
+ * @property {Object} [meds]
+ * @property {boolean} [fasted]
+ * @property {string} [fastStartTime]
+ * @property {number} [fastHours]
+ * @property {number} [water]
+ * @property {boolean} [_dirty]
+ * @property {string} [_updatedAt]
+ * @property {string} [_revision]
+ */
+
+/**
+ * @typedef {Object} Week
+ * @property {string} id
+ * @property {number} [bodyWeight]
+ * @property {Object} [dayMapping]
+ * @property {Object} [tracker]
+ * @property {Object} [sessions]
+ * @property {string} [_updatedAt]
+ * @property {string} [_revision]
+ */
+
+/**
+ * @typedef {Object} Recipe
+ * @property {string} id
+ * @property {string} recipe_name
+ * @property {number} [stock_qty]
+ * @property {string} [stock_unit]
+ * @property {number} [low_stock_threshold]
+ * @property {Object} [macros]
+ * @property {Array} [ingredients]
+ */
+
 export const V3 = {
   WEEK:  'enzo_v3_week:',
   DAY:   'enzo_v3_day:',
@@ -238,6 +275,15 @@ export const openOutboxDB = () => window.idb?.openDB('enzo-sync-db-v3', 1, {
   }
 });
 
+export const getOutboxCount = async () => {
+  try {
+    const db = await openOutboxDB();
+    if (!db) return 0;
+    const keys = await db.getAllKeys('outbox');
+    return keys.length;
+  } catch(e) { return 0; }
+};
+
 export const enqueueOutboxOp = async ({ entity_type, entity_id, payload, base_revision }) => {
   try {
     const db = await openOutboxDB();
@@ -247,6 +293,7 @@ export const enqueueOutboxOp = async ({ entity_type, entity_id, payload, base_re
       entity_type, entity_id, payload, base_revision,
       queued_at: Date.now(), retries: 0, device_id: DEVICE_ID
     });
+    safeDispatch('enzo-outbox-changed', { count: await getOutboxCount() });
   } catch(e) { console.warn('[Outbox] enqueue error:', e.message); }
 };
 
@@ -314,6 +361,7 @@ export const flushOutbox = async (supabase, stripRoutineMeta) => {
       }
     }
     metaSet('last_sync', new Date().toISOString());
+    safeDispatch('enzo-outbox-changed', { count: await getOutboxCount() });
   } catch(e) {
     metaSet('last_error', e.message?.slice(0,100));
     console.warn('[Outbox] flush error:', e.message);
@@ -745,3 +793,14 @@ export const saveThoughtThreads = (threads) => {
   catch (_) {}
 };
 
+
+export const decrementRecipeStock = async (supabase, recipeId, qty = 1) => {
+  try {
+    const { data: r } = await supabase.from('user_recipes').select('stock_qty').eq('id', recipeId).single();
+    if(!r) return;
+    const current = parseFloat(r.stock_qty) || 0;
+    if(current <= 0) return;
+    await supabase.from('user_recipes').update({ stock_qty: Math.max(0, current - qty) }).eq('id', recipeId);
+    safeDispatch('enzo-recipes-changed', {});
+  } catch(e) { console.warn('[Recipes] stock decrement error:', e.message); }
+};

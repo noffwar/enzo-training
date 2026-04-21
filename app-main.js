@@ -35,27 +35,51 @@ export const createApp = (deps) => {
     // Habits
     createHabitsPanel,
     // Sync UI
-    SyncStatusIndicator, ConflictNotifier
+    SyncStatusIndicator, ConflictNotifier,
+    // Lazy Loaders
+    viewLoaders
   } = deps;
 
-  // Initialize modularized views
-  const ProductivityView = createProductivityView(deps);
-  const HealthView = createHealthView(deps);
-  const RecipesView = createRecipesView(deps);
-  const StudyView = createStudyView(deps);
-  const BooksView = createBooksView(deps);
-  const { WeekSummary, ProgressView } = createProgressViews(deps);
-  const FloatingTimer = createTimerView(deps);
-  const NotifView = createNotifView(deps);
-  const { GymPanel, RoutineManager } = createGymPanel(deps);
-  const LoginView = createLoginView(deps);
   const TodayDashboard = createTodayDashboard(deps);
   const { HabitsPanel, getYesterdayFast, getRelativeDaySnapshot } = createHabitsPanel(deps);
-  const RoutineEditor = createRoutineEditor(deps);
+  const LoginView = createLoginView(deps);
 
   return function App() {
     const [session, setSession] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
+    const [loadedViews, setLoadedViews] = useState({});
+    const [viewLoading, setViewLoading] = useState(false);
+
+    // Dynamic Loader
+    const ensureViewLoaded = useCallback(async (viewName) => {
+      if(loadedViews[viewName] || viewName === 'today' || !viewLoaders[viewName]) return;
+      setViewLoading(true);
+      try {
+        const module = await viewLoaders[viewName]();
+        const factoryKey = `create${viewName.charAt(0).toUpperCase()}${viewName.slice(1)}${viewName==='progress'?'Views':'View'}`;
+        // Exceptions for different naming patterns
+        let component;
+        if(viewName === 'routines') {
+          component = module.createGymPanel(deps);
+        } else if(viewName === 'progress') {
+          component = module.createProgressViews(deps);
+        } else if(module[factoryKey]) {
+          component = module[factoryKey](deps);
+        } else if(module.default) {
+          component = module.default(deps);
+        }
+        
+        if(component) {
+          setLoadedViews(prev => ({ ...prev, [viewName]: component }));
+        }
+      } catch(e) { console.error(`[Lazy] Failed to load ${viewName}:`, e); }
+      finally { setViewLoading(false); }
+    }, [loadedViews]);
+
+    useEffect(() => {
+      ensureViewLoaded(view);
+    }, [view, ensureViewLoaded]);
+
     const [outboxCount, setOutboxCount] = useState(0);
     const [syncLog, setSyncLog] = useState({ lastSync: null, lastError: null });
     const [syncStatus, setSyncStatus] = useState('synced'); // synced | syncing | conflict | offline
@@ -89,7 +113,26 @@ export const createApp = (deps) => {
     const [timerActive, setTimerActive] = useState(false);
     const [moduleAlerts, setModuleAlerts] = useState({ study:0, health:false, books:false, recipes:0, notif:false });
     const timerRef = useRef(null);
-    const audioRef = useRef(typeof Audio !== 'undefined' ? new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=') : null);
+    const audioRef = useRef(null); // Will initialize with a short beep if needed
+
+    // Timer Persistence Recovery
+    useEffect(() => {
+      const savedEnd = localStorage.getItem('enzo_timer_end');
+      if(savedEnd) {
+        const remaining = Math.round((parseInt(savedEnd) - Date.now()) / 1000);
+        if(remaining > 0) {
+          setTimerLeft(remaining);
+          setTimerActive(true);
+        } else {
+          localStorage.removeItem('enzo_timer_end');
+        }
+      }
+      
+      // Request Notification Permission
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }, []);
     const bootstrapAppliedRef = useRef(false);
     const saveTimerRef = useRef(null);
     const prevTrackerRef = useRef(null);
@@ -217,29 +260,65 @@ export const createApp = (deps) => {
     useEffect(() => {
       if(!timerActive || timerLeft <= 0) {
         if(timerRef.current) clearInterval(timerRef.current);
+        if(timerLeft <= 0) localStorage.removeItem('enzo_timer_end');
         return;
       }
+
+      // Ensure we have an end time in storage for persistence
+      if(!localStorage.getItem('enzo_timer_end')) {
+        localStorage.setItem('enzo_timer_end', (Date.now() + timerLeft * 1000).toString());
+      }
+
       timerRef.current = setInterval(() => {
-        setTimerLeft(prev => {
-          if(prev <= 1) {
-            clearInterval(timerRef.current);
-            setTimerActive(false);
-            if(audioRef.current) audioRef.current.play().catch(()=>{});
-            return 0;
+        const savedEnd = localStorage.getItem('enzo_timer_end');
+        if(!savedEnd) {
+          setTimerActive(false);
+          setTimerLeft(0);
+          return;
+        }
+
+        const remaining = Math.round((parseInt(savedEnd) - Date.now()) / 1000);
+        
+        if(remaining <= 0) {
+          clearInterval(timerRef.current);
+          setTimerActive(false);
+          setTimerLeft(0);
+          localStorage.removeItem('enzo_timer_end');
+
+          // Notify User
+          if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("¡Tiempo de descanso terminado!", {
+              body: "Es hora de tu siguiente serie.",
+              icon: "/icon-192.png",
+              silent: false // Browser might play its own sound which usually ducks music briefly instead of pausing
+            });
           }
-          return prev - 1;
-        });
+          
+          if ("vibrate" in navigator) {
+            navigator.vibrate([300, 100, 300]);
+          }
+
+          // Optional subtle beep that shouldn't pause music on most modern browsers
+          const beep = new Audio('data:audio/wav;base64,UklGRl9vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19v');
+          beep.volume = 0.2;
+          beep.play().catch(() => {});
+
+        } else {
+          setTimerLeft(remaining);
+        }
       }, 1000);
+
       return () => { if(timerRef.current) clearInterval(timerRef.current); };
-    }, [timerActive, timerLeft === 0]);
+    }, [timerActive]);
 
     const normalizeRecipeKeyApp = (text='') => {
       const s = String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
       return s.split(' ').filter(Boolean).map(w => (w.endsWith('es') && w.length > 4) ? w.slice(0, -2) : (w.endsWith('s') && w.length > 3) ? w.slice(0, -1) : w).join(' ');
     };
 
-    const recalculateMealsUsingRecipe = (recipe) => {
+    const recalculateMealsUsingRecipe = async (recipe) => {
       if(!recipe) return;
+      const modifiedDays = [];
       setAllWeeks(prev => {
         const next = { ...prev };
         let changed = false;
@@ -280,19 +359,25 @@ export const createApp = (deps) => {
             });
             if(dayChanged) {
               day.meals = nextMeals;
+              day._updatedAt = new Date().toISOString();
+              day._dirty = true;
               wk.tracker[dayIdx] = day;
               const dk = getDayDate(wkKey, parseInt(dayIdx));
-              lsDaySave(dk, day);
-              saveDayRemote(supabase, dk, day, session, day._revision).catch(() => {});
+              modifiedDays.push({ dk, day });
             }
           });
           if(wkChanged) {
             next[wkKey] = wk;
-            saveWeeklyRemote(supabase, wkKey, wk.bodyWeight, wk.dayMapping, wk._revision, session).catch(() => {});
           }
         });
         return changed ? next : prev;
       });
+
+      // Side effects
+      for(const { dk, day } of modifiedDays) {
+        lsDaySave(dk, day);
+        saveDayRemote(supabase, dk, day, session, day._revision).catch(() => {});
+      }
     };
 
     const syncMedsInventoryFromToggle = async (med, prevMeds = {}, nextMeds = {}, targetDateKey) => {
@@ -344,7 +429,22 @@ export const createApp = (deps) => {
     }, []);
 
 
-    const updateMed = (field, value) => {
+    const syncTodayMedsFromHealth = async (partial, dateKey) => {
+      const { weekKey, dayIdx } = getWeekAndDayFromDateKey(dateKey);
+      let dayToSave = null;
+      setAllWeeks(prev => {
+        const wk = prev[weekKey] || newWeek(weekKey);
+        const day = wk.tracker[dayIdx] || newDay();
+        dayToSave = { ...day, meds: { ...(day.meds || {}), ...partial }, _updatedAt: new Date().toISOString(), _dirty: true };
+        return { ...prev, [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: dayToSave } } };
+      });
+      if (dayToSave) {
+        lsDaySave(dateKey, dayToSave);
+        await saveDayRemote(supabase, dateKey, dayToSave, session, dayToSave._revision).catch(() => {});
+      }
+    };
+
+    const updateMed = async (field, value) => {
       const now = new Date();
       const selectedDate = getDayDate(currentWk, parseInt(activeDay, 10));
       const todayDate = localDateKey(now);
@@ -357,22 +457,33 @@ export const createApp = (deps) => {
         
       const { weekKey, dayIdx } = getWeekAndDayFromDateKey(targetDateKey);
 
+      let prevMeds = {};
+      let nextMeds = {};
+      let dayToSave = null;
+
       setAllWeeks(prev => {
         const wk = prev[weekKey] || newWeek(weekKey);
         const day = wk.tracker[dayIdx] || newDay();
-        const nextDay = {
+        prevMeds = day.meds || {};
+        nextMeds = { ...prevMeds, [field]: value };
+        
+        dayToSave = {
           ...day,
-          meds: { ...(day.meds || {}), [field]: value },
-          _updatedAt: new Date().toISOString()
+          meds: nextMeds,
+          _updatedAt: new Date().toISOString(),
+          _dirty: true
         };
-        lsDaySave(targetDateKey, nextDay);
-        saveDayRemote(supabase, targetDateKey, nextDay, session, day._revision).catch(() => {});
-        syncMedsInventoryFromToggle(field, day.meds || {}, nextDay.meds, targetDateKey);
         return { 
           ...prev, 
-          [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: nextDay } } 
+          [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: dayToSave } } 
         };
       });
+
+      if (dayToSave) {
+        lsDaySave(targetDateKey, dayToSave);
+        saveDayRemote(supabase, targetDateKey, dayToSave, session, dayToSave._revision).catch(() => {});
+        syncMedsInventoryFromToggle(field, prevMeds, nextMeds, targetDateKey);
+      }
     };
 
     const updateHabit = (field, value) => upd(w => {
@@ -431,7 +542,11 @@ export const createApp = (deps) => {
       const was = sets[si].completed;
       sets[si] = { ...sets[si], completed: !was };
       s[ei] = { ...s[ei], sets };
-      if(!was && restSecs > 0) { setTimerLeft(restSecs); setTimerActive(true); }
+      if(!was && restSecs > 0) { 
+        setTimerLeft(restSecs); 
+        setTimerActive(true); 
+        localStorage.setItem('enzo_timer_end', (Date.now() + restSecs * 1000).toString());
+      }
       return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
     });
 
@@ -526,6 +641,8 @@ export const createApp = (deps) => {
       
       const interval = setInterval(checkOutbox, 3000);
       checkOutbox();
+      const onOutboxChange = () => checkOutbox();
+      window.addEventListener('enzo-outbox-changed', onOutboxChange);
 
       supabase.auth.getSession().then(async ({ data: { session: s } }) => {
         if(!s || s.user.email === 'guest@enzo.training') return;
@@ -538,7 +655,10 @@ export const createApp = (deps) => {
           setSyncLog(prev => ({ ...prev, lastSync: new Date().toLocaleTimeString('es-AR') }));
         } catch(e) { console.warn('[App] Bootstrap Error:', e); setSyncLog(prev => ({ ...prev, lastError: e.message?.slice(0,60) })); }
       });
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('enzo-outbox-changed', onOutboxChange);
+      };
     }, []);
 
     useEffect(() => {
@@ -596,6 +716,30 @@ export const createApp = (deps) => {
         saveRoutineRemote(supabase, stripRoutineMeta, id, data, data?._revision || null, session).catch(() => {});
       });
       try { localStorage.setItem('enzo_routines_v1', JSON.stringify(updated)); } catch (_) {}
+    };
+
+    const cloneMealFromPreviousDay = async () => {
+      const { dateKey: prevDateKey, tracker: prevTracker } = getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1);
+      if(!prevTracker || !prevTracker.meals || prevTracker.meals.length === 0) {
+        alert('No hay comidas para copiar del día anterior.');
+        return;
+      }
+      if(!confirm('¿Copiar todas las comidas del día anterior?')) return;
+      
+      upd(w => {
+        const t = w.tracker[activeDay] || newDay();
+        return {
+          ...w,
+          tracker: {
+            ...w.tracker,
+            [activeDay]: {
+              ...t,
+              meals: JSON.parse(JSON.stringify(prevTracker.meals)).map(m => ({ ...m, lastBite: '' })),
+              _dirty: true
+            }
+          }
+        };
+      });
     };
 
     const navWeek = async (dir) => {
@@ -724,7 +868,7 @@ export const createApp = (deps) => {
           </div>
         </header>
 
-        <main style="max-width:640px;margin:0 auto;padding:16px 16px calc(88px + env(safe-area-inset-bottom, 12px));width:100%;">
+        <main key=${view} class="fade-up" style="max-width:640px;margin:0 auto;padding:16px 16px calc(88px + env(safe-area-inset-bottom, 12px));width:100%;">
           ${view === 'today' && html`
             <div style="display:flex;flex-direction:column;gap:16px;">
               <!-- 1. Split Name & Selector -->
@@ -752,6 +896,9 @@ export const createApp = (deps) => {
                 onOpenHealth=${() => navigateTo('health')} 
                 onOpenRecipes=${() => navigateTo('recipes')} 
                 onOpenNotif=${() => navigateTo('notif')} 
+                onCloneMeal=${cloneMealFromPreviousDay}
+                chartsReady=${chartsReady}
+                allWeeks=${allWeeks}
               />
               
               <!-- 3. HabitsPanel (Ayuno, Caminata, Comidas, Sueño) -->
@@ -816,20 +963,30 @@ export const createApp = (deps) => {
             </div>
           `}
 
-          ${view === 'tasks'    && html`<${ProductivityView} session=${session} />`}
-          ${view === 'week'     && html`<${WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />`}
-          ${view === 'progress' && html`<${ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />`}
-          ${view === 'recipes'  && html`<${RecipesView} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />`}
-          ${view === 'study'    && html`<${StudyView} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />`}
-          ${view === 'health' && html`<${HealthView} session=${session} todayMeds=${tracker.meds||{}} previousDayMeds=${previousSnapshot.tracker?.meds || {}} weekTracker=${wd.tracker||{}} healthWeekKey=${currentWk} bodyWeight=${wd.bodyWeight||''} onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} onSyncDailyMeds=${async (partial, dK) => { const { weekKey, dayIdx } = getWeekAndDayFromDateKey(dK); setAllWeeks(prev => { const wk = prev[weekKey] || newWeek(weekKey); const dayFound = wk.tracker[dayIdx] || newDay(); const nextDay = { ...dayFound, meds: { ...(dayFound.meds || {}), ...partial }, _updatedAt: new Date().toISOString() }; lsDaySave(dK, nextDay); saveDayRemote(supabase, dK, nextDay, session, dayFound._revision); return { ...prev, [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: nextDay } } }; }); }} onOpenDay=${d => { const { dayIdx } = getWeekAndDayFromDateKey(d); setActiveDay(dayIdx); setView('today'); }} />`}
-          ${view === 'books'    && html`<${BooksView} session=${session} />`}
-          ${view === 'notif'    && html`<${NotifView} session=${session} />`}
-          ${view === 'routines' && html`
+          ${view === 'tasks'    && (loadedViews.tasks ? html`<${loadedViews.tasks} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Tareas...</div>`)}
+          ${view === 'week'     && (loadedViews.progress ? html`<${loadedViews.progress.WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Semana...</div>`)}
+          ${view === 'progress' && (loadedViews.progress ? html`<${loadedViews.progress.ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Progreso...</div>`)}
+          ${view === 'recipes'  && (loadedViews.recipes ? html`<${loadedViews.recipes} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Recetas...</div>`)}
+          ${view === 'study'    && (loadedViews.study ? html`<${loadedViews.study} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Estudio...</div>`)}
+          ${view === 'health'   && (loadedViews.health ? html`<${loadedViews.health} 
+            session=${session} 
+            todayMeds=${tracker.meds||{}} 
+            previousDayMeds=${previousSnapshot.tracker?.meds || {}} 
+            weekTracker=${wd.tracker||{}} 
+            healthWeekKey=${currentWk} 
+            bodyWeight=${wd.bodyWeight||''} 
+            onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} 
+            onSyncDailyMeds=${syncTodayMedsFromHealth} 
+            onOpenDay=${d => { const { dayIdx } = getWeekAndDayFromDateKey(d); setActiveDay(dayIdx); setView('today'); }} 
+          />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Salud...</div>`)}
+          ${view === 'books'    && (loadedViews.books ? html`<${loadedViews.books} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Libros...</div>`)}
+          ${view === 'notif'    && (loadedViews.notif ? html`<${loadedViews.notif} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Notificaciones...</div>`)}
+          ${view === 'routines' && (loadedViews.routines ? html`
             <div style="display:flex;flex-direction:column;gap:16px;">
-              <${RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines} />
-              <${RoutineManager} weekKey=${currentWk} weekData=${wd} routineData=${routineData} onMappingChange=${(dm) => upd(w => ({...w, dayMapping: dm}))} />
+              <${loadedViews.routines.RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines} />
+              <${loadedViews.routines.RoutineManager} weekKey=${currentWk} weekData=${wd} routineData=${routineData} onMappingChange=${(dm) => upd(w => ({...w, dayMapping: dm}))} />
             </div>
-          `}
+          ` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Rutinas...</div>`)}
         </main>
 
         <nav class="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(8,13,26,0.98);backdrop-filter:blur(20px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom, 0);">

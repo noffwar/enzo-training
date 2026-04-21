@@ -316,10 +316,17 @@ export const createAppComponents = ({
       offline: { color: '#64748B', label: 'Sin conexión', icon: BoundIHome }
     }[status] || { color: '#64748B', label: status, icon: BoundIHome };
 
+    const isPending = count > 0;
+    const displayColor = isPending && status === 'synced' ? '#F59E0B' : config.color;
+    const displayLabel = isPending && status === 'synced' ? `Pendiente (${count})` : config.label;
+
     return html`
-      <div onClick=${onClick} style=${`display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(15,23,41,0.6);border:1px solid ${config.color}33;cursor:pointer;transition:all 0.2s;`}>
-        <span style=${`width:6px;height:6px;border-radius:50%;background:${config.color};box-shadow:0 0 8px ${config.color};`}></span>
-        <span style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.04em;">${config.label}${count > 0 ? ` (${count})` : ''}</span>
+      <div onClick=${onClick} style=${`display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(15,23,41,0.6);border:1px solid ${displayColor}33;cursor:pointer;transition:all 0.2s;`}>
+        <div style=${`width:6px;height:6px;border-radius:50%;background:${displayColor};box-shadow:0 0 8px ${displayColor};`}></div>
+        <span style="font-size:10px;font-weight:800;color:#cbd5e1;text-transform:uppercase;letter-spacing:0.04em;">
+          ${displayLabel}
+        </span>
+        ${config.animate && html`<${BoundISync} s=${12} c="spin" style="color:#6366F1;margin-left:2px;"/>`}
       </div>
     `;
   };
@@ -620,7 +627,26 @@ export const createAppComponents = ({
     SmartCena,
     NutritionReviewCard,
     SyncStatusIndicator,
-    ConflictNotifier
+    ConflictNotifier,
+    FastingProgressBar: ({ current, total, startTime, endTime }) => {
+      const pct = Math.min((current / total) * 100, 100);
+      const isDone = current >= total;
+      const color = isDone ? '#10B981' : '#6366F1';
+      return html`
+        <div style="margin-top:12px;padding:12px;background:rgba(99,102,241,0.05);border-radius:8px;border:1px solid rgba(99,102,241,0.1);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Progreso de Ayuno</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${color};">${current.toFixed(1)}h / ${total}h</span>
+          </div>
+          <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${color};transition:width 0.5s ease;box-shadow:0 0 8px ${color}66;"></div>
+          </div>
+          <p style="margin:6px 0 0;font-size:10px;color:#475569;">
+            ${isDone ? '✅ Ayuno completado' : `⏳ Restan ${(total - current).toFixed(1)}h (${endTime})`}
+          </p>
+        </div>
+      `;
+    }
   };
 
 }; // End createAppComponents
