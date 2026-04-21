@@ -55,6 +55,22 @@ export const createApp = (deps) => {
     const [loadedViews, setLoadedViews] = useState({});
     const [viewLoading, setViewLoading] = useState(false);
 
+    // Error Boundary Component for Dynamic Views
+    const ViewErrorBoundary = ({ children }) => {
+      const [err, resetErr] = useErrorBoundary();
+      if (err) {
+        return html`
+          <div style="padding:40px 20px;text-align:center;background:rgba(239,68,68,0.05);border-radius:16px;border:1px solid rgba(239,68,68,0.2);margin:20px;">
+            <p style="color:#EF4444;font-size:40px;margin:0 0 10px;">⚠️</p>
+            <p style="color:#FCA5A5;font-size:16px;font-weight:700;margin:0 0 10px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.05em;text-transform:uppercase;">Error al cargar la vista</p>
+            <p style="color:#94A3B8;font-size:11px;font-family:'JetBrains Mono',monospace;word-break:break-all;">${String(err)}</p>
+            <button onClick=${resetErr} style="margin-top:20px;padding:8px 16px;border-radius:8px;border:none;background:#EF4444;color:#080D1A;font-weight:900;font-family:'Barlow Condensed',sans-serif;font-size:12px;cursor:pointer;letter-spacing:0.05em;text-transform:uppercase;">Reintentar</button>
+          </div>
+        `;
+      }
+      return children;
+    };
+
     // Dynamic Loader
     const ensureViewLoaded = useCallback(async (viewName) => {
       if(loadedViews[viewName] || viewName === 'today' || !viewLoaders[viewName]) return;
@@ -64,9 +80,7 @@ export const createApp = (deps) => {
         const factoryKey = `create${viewName.charAt(0).toUpperCase()}${viewName.slice(1)}${viewName==='progress'?'Views':'View'}`;
         
         let component;
-        if(viewName === 'routines') {
-          component = module.createGymPanel ? module.createGymPanel(deps) : null;
-        } else if(viewName === 'progress' || viewName === 'week') {
+        if(viewName === 'progress' || viewName === 'week') {
           component = module.createProgressViews ? module.createProgressViews(deps) : null;
         } else if(typeof module[factoryKey] === 'function') {
           component = module[factoryKey](deps);
@@ -967,30 +981,26 @@ export const createApp = (deps) => {
             </div>
           `}
 
-          ${view === 'tasks'    && (loadedViews.tasks ? html`<${loadedViews.tasks} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Tareas...</div>`)}
-          ${view === 'week'     && ((loadedViews.progress || loadedViews.week) ? html`<${(loadedViews.progress || loadedViews.week).WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Semana...</div>`)}
-          ${view === 'progress' && (loadedViews.progress ? html`<${loadedViews.progress.ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Progreso...</div>`)}
-          ${view === 'recipes'  && (loadedViews.recipes ? html`<${loadedViews.recipes} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Recetas...</div>`)}
-          ${view === 'study'    && (loadedViews.study ? html`<${loadedViews.study} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Estudio...</div>`)}
-          ${view === 'health'   && (loadedViews.health ? html`<${loadedViews.health} 
-            session=${session} 
-            todayMeds=${tracker.meds||{}} 
-            previousDayMeds=${previousSnapshot.tracker?.meds || {}} 
-            weekTracker=${wd.tracker||{}} 
-            healthWeekKey=${currentWk} 
-            bodyWeight=${wd.bodyWeight||''} 
-            onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} 
-            onSyncDailyMeds=${syncTodayMedsFromHealth} 
-            onOpenDay=${d => { const { dayIdx } = getWeekAndDayFromDateKey(d); setActiveDay(dayIdx); setView('today'); }} 
-          />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Salud...</div>`)}
-          ${view === 'books'    && (loadedViews.books ? html`<${loadedViews.books} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Libros...</div>`)}
-          ${view === 'notif'    && (loadedViews.notif ? html`<${loadedViews.notif} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Notificaciones...</div>`)}
-          ${view === 'routines' && (loadedViews.routines ? html`
-            <div style="display:flex;flex-direction:column;gap:16px;">
-              <${loadedViews.routines.RoutineEditor} routines=${routineData} onSave=${handleSaveRoutines} />
-              <${loadedViews.routines.RoutineManager} weekKey=${currentWk} weekData=${wd} routineData=${routineData} onMappingChange=${(dm) => upd(w => ({...w, dayMapping: dm}))} />
-            </div>
-          ` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Rutinas...</div>`)}
+          <${ViewErrorBoundary} key=${view}>
+            ${view === 'tasks'    && (loadedViews.tasks ? html`<${loadedViews.tasks} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Tareas...</div>`)}
+            ${view === 'week'     && ((loadedViews.progress || loadedViews.week) ? html`<${(loadedViews.progress || loadedViews.week).WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Semana...</div>`)}
+            ${view === 'progress' && (loadedViews.progress ? html`<${loadedViews.progress.ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Progreso...</div>`)}
+            ${view === 'recipes'  && (loadedViews.recipes ? html`<${loadedViews.recipes} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Recetas...</div>`)}
+            ${view === 'study'    && (loadedViews.study ? html`<${loadedViews.study} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Estudio...</div>`)}
+            ${view === 'health'   && (loadedViews.health ? html`<${loadedViews.health} 
+              session=${session} 
+              todayMeds=${tracker.meds||{}} 
+              previousDayMeds=${previousSnapshot.tracker?.meds || {}} 
+              weekTracker=${wd.tracker||{}} 
+              healthWeekKey=${currentWk} 
+              bodyWeight=${wd.bodyWeight||''} 
+              onBodyWeight=${v => upd(w => ({...w, bodyWeight: v}))} 
+              onSyncDailyMeds=${syncTodayMedsFromHealth} 
+              onOpenDay=${d => { const { dayIdx } = getWeekAndDayFromDateKey(d); setActiveDay(dayIdx); setView('today'); }} 
+            />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Salud...</div>`)}
+            ${view === 'books'    && (loadedViews.books ? html`<${loadedViews.books} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Libros...</div>`)}
+            ${view === 'notif'    && (loadedViews.notif ? html`<${loadedViews.notif} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Notificaciones...</div>`)}
+          <//>
         </main>
 
         <nav class="bottom-nav" style="position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(8,13,26,0.98);backdrop-filter:blur(20px);border-top:1px solid #1E2D45;padding-bottom:env(safe-area-inset-bottom, 0);">
@@ -1004,8 +1014,7 @@ export const createApp = (deps) => {
               {id:'health',   label:'SALUD',   icon:html`<${IBell} s=${18}/>`},
               {id:'books',    label:'LIBROS',  icon:html`<${IBook} s=${18}/>`},
               {id:'recipes',  label:'RECETAS', icon:html`<${IActivity} s=${18}/>`},
-              {id:'notif',    label:'ALERTAS', icon:html`<${IClock} s=${18}/>`},
-              {id:'routines', label:'RUTINAS', icon:html`<${IEdit} s=${18}/>`},
+              {id:'notif',    label:'ALERTAS', icon:html`<${IClock} s=${18}/>`}
             ].map(tab => {
               const active = view === tab.id;
               return html`
