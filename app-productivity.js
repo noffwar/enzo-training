@@ -1,3 +1,4 @@
+export const createTasksView = (deps) => createProductivityView(deps);
 export const createProductivityView = ({
   html,
   useState,

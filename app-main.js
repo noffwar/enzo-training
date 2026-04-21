@@ -62,20 +62,22 @@ export const createApp = (deps) => {
       try {
         const module = await viewLoaders[viewName]();
         const factoryKey = `create${viewName.charAt(0).toUpperCase()}${viewName.slice(1)}${viewName==='progress'?'Views':'View'}`;
-        // Exceptions for different naming patterns
+        
         let component;
         if(viewName === 'routines') {
-          component = module.createGymPanel(deps);
+          component = module.createGymPanel ? module.createGymPanel(deps) : null;
         } else if(viewName === 'progress' || viewName === 'week') {
-          component = module.createProgressViews(deps);
-        } else if(module[factoryKey]) {
+          component = module.createProgressViews ? module.createProgressViews(deps) : null;
+        } else if(typeof module[factoryKey] === 'function') {
           component = module[factoryKey](deps);
-        } else if(module.default) {
+        } else if(typeof module.default === 'function') {
           component = module.default(deps);
         }
         
         if(component) {
           setLoadedViews(prev => ({ ...prev, [viewName]: component }));
+        } else {
+          console.error(`[Lazy] No factory found for ${viewName} (key: ${factoryKey})`);
         }
       } catch(e) { console.error(`[Lazy] Failed to load ${viewName}:`, e); }
       finally { setViewLoading(false); }

@@ -1,3 +1,4 @@
+export const createWeekView = (deps) => createProgressViews(deps);
 export const createProgressViews = (deps) => {
   const {
     html, useState, useEffect, useMemo, getRC,
