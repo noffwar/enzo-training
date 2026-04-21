@@ -784,3 +784,18 @@ export const decrementRecipeStock = async (supabase, recipeId, qty = 1) => {
     await supabase.from('user_recipes').update({ stock_qty: newQty }).eq('id', recipeId);
   } catch(e) { console.warn('[Stock] error decrementing:', e.message); }
 };
+
+export const isHoliday2026 = (dateStr = '', holidays = {}) =>
+  dateStr.startsWith('2026-') && !!holidays[dateStr];
+
+export const getHolidayLabel = (dateStr = '', holidays = {}) =>
+  holidays[dateStr] || '';
+
+export const isSundayDate = (dateStr = '') => {
+  if (!dateStr) return false;
+  return new Date(`${dateStr}T12:00:00`).getDay() === 0;
+};
+
+export const isGymClosedDate = (dateStr = '', holidays = {}) =>
+  isSundayDate(dateStr) || isHoliday2026(dateStr, holidays);
+
