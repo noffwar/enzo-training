@@ -27,13 +27,16 @@
       };
       window.React = { 
         createElement: function() { return null; },
+        cloneElement: function(e) { return e; },
         createContext: function() { return { Provider: function() { return null; }, Consumer: function() { return null; } }; },
+        createRef: function() { return { current: null }; },
         Fragment: sym('react.fragment'),
         forwardRef: function(f) { return { $$typeof: FR, render: f }; },
         memo: function(c) { return { $$typeof: MM, type: c }; },
         isValidElement: function() { return true; },
-        Children: { map: (c, f) => (Array.isArray(c) ? c.length > 0 ? c.map(f) : [] : [c].map(f)), count: (c) => (Array.isArray(c) ? c.length : 1) },
-        Component: class {}, useState: () => [], useEffect: () => {}, useLayoutEffect: () => {}, useCallback: (f) => f, useMemo: (f) => f(), useRef: () => ({})
+        Children: { map: (c, f) => (Array.isArray(c) ? (c.length > 0 ? c.map(f) : []) : [c].map(f)), count: (c) => (Array.isArray(c) ? c.length : 1) },
+        Component: class {}, PureComponent: class {}, 
+        useState: () => [], useEffect: () => {}, useLayoutEffect: () => {}, useCallback: (f) => f, useMemo: (f) => f(), useRef: () => ({ current: null })
       };
       window.ReactDOM = { render: function() {} };
     })();
@@ -213,7 +216,13 @@
         Object.assign(viewDeps, components);
 
         // Shim React for Recharts compatibility
-        window.React = { createElement: h, Fragment, createContext, useState, useEffect, useCallback, useRef, useMemo };
+        window.React = { 
+          createElement: h, Fragment, createContext, 
+          useState, useEffect, useCallback, useRef, useMemo,
+          Component: class {}, PureComponent: class {},
+          cloneElement: (e) => e, createRef: () => ({ current: null }),
+          Children: { map: (c, f) => (Array.isArray(c) ? c.map(f) : [c].map(f)), count: (c) => (Array.isArray(c) ? c.length : 1) }
+        };
         window.ReactDOM = { render };
         
         window._loadRecharts = () => {
