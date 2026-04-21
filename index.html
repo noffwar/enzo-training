@@ -211,14 +211,21 @@
         const components = comp.createAppComponents(viewDeps);
         Object.assign(viewDeps, components);
 
-        // Finalize Recharts/React shim with live Preact refs
-        window.React.createElement = h;
-        window.React.useState = useState;
-        window.React.useEffect = useEffect;
-        window.React.useCallback = useCallback;
-        window.React.useRef = useRef;
-        window.React.useMemo = useMemo;
-        window.ReactDOM.render = render;
+        // Shim React for Recharts compatibility
+        window.React = { createElement: h, useState, useEffect, useCallback, useRef, useMemo };
+        window.ReactDOM = { render };
+        
+        window._loadRecharts = () => {
+          return Promise.all([
+            import('https://esm.sh/react@18.2.0?bundle'),
+            import('https://esm.sh/react-dom@18.2.0?bundle'),
+            import('https://esm.sh/recharts@2.12.0?external=react,react-dom')
+          ]).then(([React, ReactDOM, Recharts]) => {
+            // Merge with Preact shims but keep Recharts happy
+            window.Recharts = Recharts;
+            return Recharts;
+          });
+        };
 
         console.log('[App] Dependencies initialized:', viewDeps);
         console.log('[App] SUPA_URL:', cons.SUPA_URL);

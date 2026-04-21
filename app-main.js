@@ -45,6 +45,10 @@ export const createApp = (deps) => {
   const LoginView = createLoginView(deps);
 
   return function App() {
+    const [view, setView] = useState(() => {
+      const p = new URLSearchParams(window.location.search).get('view');
+      return (p && ['today','week','progress','tasks','recipes','notif','routines','study','health','books'].includes(p)) ? p : 'today';
+    });
     const [session, setSession] = useState(null);
     const [authLoading, setAuthLoading] = useState(true);
     const [loadedViews, setLoadedViews] = useState({});
@@ -83,10 +87,6 @@ export const createApp = (deps) => {
     const [outboxCount, setOutboxCount] = useState(0);
     const [syncLog, setSyncLog] = useState({ lastSync: null, lastError: null });
     const [syncStatus, setSyncStatus] = useState('synced'); // synced | syncing | conflict | offline
-    const [view, setView] = useState(() => {
-      const p = new URLSearchParams(window.location.search).get('view');
-      return (p && ['today','week','progress','tasks','recipes','notif','routines','study','health','books'].includes(p)) ? p : 'today';
-    });
     const [error] = useErrorBoundary();
     if (error) {
       return html`<div style="color:red;padding:20px;font-family:monospace;background:black;height:100vh;">RENDER CRASH: ${String(error)} ${error.stack}</div>`;
