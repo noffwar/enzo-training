@@ -1,4 +1,4 @@
-export const createTodayDashboard = ({
+﻿export const createTodayDashboard = ({
   html,
   useState,
   useEffect,
@@ -76,7 +76,7 @@ export const createTodayDashboard = ({
       return {
         label:'Tiempo favorable para salir',
         color:'#86EFAC',
-        detail:'No se ve un riesgo fuerte en las próximas horas.'
+        detail:'No se ve un riesgo fuerte en las pr├│ximas horas.'
       };
     }, [weather.data]);
 
@@ -308,13 +308,13 @@ export const createTodayDashboard = ({
         medsState: tracker?.meds || {},
         now: new Date()
       });
-      if(!v.roaccutanDone) return { label: 'Roaccutan pendiente', detail: v.viewDateKey === v.calendarTodayKey ? 'Mediodía' : `Sin marcar en ${v.viewDateKey}` };
+      if(!v.roaccutanDone) return { label: 'Roaccutan pendiente', detail: v.viewDateKey === v.calendarTodayKey ? 'Mediod├¡a' : `Sin marcar en ${v.viewDateKey}` };
       if(v.dinnerRelevant) {
         return v.dinnerDone 
-          ? { label: 'Tomas del día completas', detail: 'Registros realizados' }
+          ? { label: 'Tomas del d├¡a completas', detail: 'Registros realizados' }
           : { label: 'Meds de cena pendientes', detail: v.calendarTodayKey === v.dinnerLogicalKey ? 'Cena' : 'Cena para ayer' };
       }
-      return { label: v.dinnerDone ? 'Cena registrada para ese día' : 'Cena no corresponde ahora', detail: `Vista de ${v.viewDateKey}` };
+      return { label: v.dinnerDone ? 'Cena registrada para ese d├¡a' : 'Cena no corresponde ahora', detail: `Vista de ${v.viewDateKey}` };
     }, [tracker, selectedDateKey]);
 
     const weightHistory = useMemo(() => {
@@ -339,29 +339,29 @@ export const createTodayDashboard = ({
       
       if (hours < 11) {
         return {
-          title: "Foco de la Mañana",
-          text: water < 500 ? "Empezá con 500ml de agua para activar. ¿Ya tomaste el Roacutan?" : "Hidratación inicial OK. Si hoy toca gym, asegurate de tener la comida pre-entreno lista.",
-          icon: "☀️", color: "#FCD34D"
+          title: "Foco de la Ma├▒ana",
+          text: water < 500 ? "Empez├í con 500ml de agua para activar. ┬┐Ya tomaste el Roacutan?" : "Hidrataci├│n inicial OK. Si hoy toca gym, asegurate de tener la comida pre-entreno lista.",
+          icon: "ÔÿÇ´©Å", color: "#FCD34D"
         };
       }
       if (hours >= 11 && hours < 16) {
         return {
           title: "Estado Nutricional",
-          text: totals.prot < 60 ? "Venís bajo en proteína. Priorizá una fuente sólida en el almuerzo." : "Proteína en buen camino. Mantené el ritmo de agua.",
-          icon: "🥩", color: "#10B981"
+          text: totals.prot < 60 ? "Ven├¡s bajo en prote├¡na. Prioriz├í una fuente s├│lida en el almuerzo." : "Prote├¡na en buen camino. Manten├® el ritmo de agua.",
+          icon: "­ƒÑ®", color: "#10B981"
         };
       }
       if (hours >= 16 && hours < 21) {
         return {
-          title: "Cierre del Día",
-          text: totals.cals > TARGETS.kcal * 0.8 ? "Casi llegás al objetivo calórico. La cena debería ser liviana y alta en micro-nutrientes." : "¿Falta entrenar? Si ya lo hiciste, asegurate de cargar los macros de la merienda.",
-          icon: "🌙", color: "#6366F1"
+          title: "Cierre del D├¡a",
+          text: totals.cals > TARGETS.kcal * 0.8 ? "Casi lleg├ís al objetivo cal├│rico. La cena deber├¡a ser liviana y alta en micro-nutrientes." : "┬┐Falta entrenar? Si ya lo hiciste, asegurate de cargar los macros de la merienda.",
+          icon: "­ƒîÖ", color: "#6366F1"
         };
       }
       return {
-        title: "Preparación Mañana",
-        text: "Día casi terminado. Registrá el sueño y prepará la ropa del gym para mañana. ¡Gran trabajo!",
-        icon: "✨", color: "#A5B4FC"
+        title: "Preparaci├│n Ma├▒ana",
+        text: "D├¡a casi terminado. Registr├í el sue├▒o y prepar├í la ropa del gym para ma├▒ana. ┬íGran trabajo!",
+        icon: "Ô£¿", color: "#A5B4FC"
       };
     }, [loading, tracker, TARGETS]);
 
@@ -383,13 +383,13 @@ export const createTodayDashboard = ({
             }
           </style>
         `}
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div>
-            <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;letter-spacing:0.04em;color:white;text-transform:uppercase;">Tablero Principal</h2>
-            <p style="margin:2px 0 0;font-size:13px;color:#94A3B8;">Lo importante del día, en un vistazo.</p>
+            <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;font-weight:700;">Tablero principal</p>
+            <p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">Lo importante del d├¡a, sin salir del Diario.</p>
           </div>
-          <button onClick=${onOpenTasks} class="tap-effect"
-            style="padding:10px 14px;border-radius:12px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.1);color:#A5B4FC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">
+          <button onClick=${onOpenTasks}
+            style="padding:8px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
             VER TAREAS
           </button>
         </div>
@@ -406,8 +406,7 @@ export const createTodayDashboard = ({
         ${fastingProgress && html`<${FastingProgressBar} ...${fastingProgress} />`}
 
         ${comparison && html`
-          <div style="padding:16px;border-radius:20px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;gap:12px;position:relative;">
-            <div style="position:absolute;inset:0;background:radial-gradient(circle at top right, rgba(99,102,241,0.05), transparent 70%);border-radius:20px;pointer-events:none;"></div>
+          <div style="padding:12px;border-radius:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;gap:12px;">
             ${['prot', 'kcal', 'water'].map(k => {
               const item = comparison[k];
               const isPos = item.diff > 0;
@@ -416,24 +415,23 @@ export const createTodayDashboard = ({
                             (isPos ? '#38BDF8' : '#94A3B8');
               return html`
                 <div style="flex:1;text-align:center;">
-                  <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;font-family:'Barlow Condensed',sans-serif;font-weight:700;">${item.label}</p>
-                  <p style=${`margin:4px 0 0;font-size:18px;font-weight:800;color:${color};font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;`}>
+                  <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">${item.label}</p>
+                  <p style=${`margin:4px 0 0;font-size:13px;font-weight:700;color:${color};`}>
                     ${isPos ? '+' : ''}${Math.round(item.diff)}${k==='water'?'ml':'g'}
                   </p>
-                  <p style="margin:2px 0 0;font-size:10px;color:#475569;font-weight:600;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;">vs ayer</p>
+                  <p style="margin:2px 0 0;font-size:9px;color:#475569;">vs ayer</p>
                 </div>
               `;
             })}
           </div>
         `}
 
-        <div style="padding:14px;border-radius:16px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;">
+        <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;display:flex;justify-content:space-between;align-items:center;">
           <div>
-            <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;font-family:'Barlow Condensed',sans-serif;font-weight:700;">Acciones rápidas</p>
-            <p style="margin:2px 0 0;font-size:15px;color:#E2E8F0;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;">Copiar comidas de ayer</p>
+            <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Acciones r├ípidas</p>
+            <p style="margin:4px 0 0;font-size:13px;color:#E2E8F0;font-weight:700;">Copiar comidas de ayer</p>
           </div>
-          <button onClick=${onCloneMeal} class="tap-effect"
-            style="padding:8px 16px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.08);color:#86EFAC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">COPIAR</button>
+          <button onClick=${onCloneMeal} style="padding:6px 12px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">COPIAR</button>
         </div>
 
         ${chartsReady && weightHistory.length > 1 && html`
@@ -467,7 +465,7 @@ export const createTodayDashboard = ({
             onClick=${onOpenBooks}
             title="Libro actual"
             value=${summary.book?.title || 'Sin libro'}
-            detail=${`Pág ${pn(summary.book?.current_page)} / ${pn(summary.book?.total_pages)} - ${summary.bookPct}%`}
+            detail=${`P├íg ${pn(summary.book?.current_page)} / ${pn(summary.book?.total_pages)} - ${summary.bookPct}%`}
             border="rgba(245,158,11,0.25)"
             background="rgba(245,158,11,0.08)"
             accent="#FCD34D"
@@ -492,35 +490,54 @@ export const createTodayDashboard = ({
           />
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr;gap:8px;">
-          <div style="text-align:left;padding:16px;border-radius:18px;border:1px solid rgba(56,189,248,0.1);background:rgba(56,189,248,0.02);position:relative;overflow:hidden;">
-            <div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle at center, rgba(56,189,248,0.1), transparent 70%);pointer-events:none;"></div>
-            <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#7DD3FC;font-weight:800;font-family:'Barlow Condensed',sans-serif;">Tiempo San Rafael</p>
-            <div style="display:flex;align-items:baseline;gap:8px;">
-              <span style="font-size:24px;font-weight:800;color:white;font-family:'Barlow Condensed',sans-serif;">${weather.loading ? '...' : (weather.data?.temp_current || '--')}°</span>
-              <span style="font-size:13px;color:#94A3B8;">${weather.loading ? 'Cargando...' : weather.data ? `máx ${weather.data.temp_next24_max}° / mín ${weather.data.temp_next24_min}°` : 'Sin datos'}</span>
-            </div>
-            <p style="margin:6px 0 0;font-size:12px;color:#cbd5e1;line-height:1.4;">
-              ${weather.data
-                ? `Humedad ${weather.data.humidity_min}-${weather.data.humidity_max}% · Ráfagas ${weather.data.wind_gusts} km/h · UV ${weather.data.uv_max}`
-                : (weather.error || 'Sin datos meteorológicos')}
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+          <div style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(56,189,248,0.25);background:rgba(56,189,248,0.08);">
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#7DD3FC;font-weight:700;">Tiempo San Rafael</p>
+            <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">
+              ${weather.loading ? 'Cargando...' : weather.data ? `${weather.data.temp_current}┬░ ahora ┬À prox 24h ${weather.data.temp_next24_max}/${weather.data.temp_next24_min}┬░` : 'Sin datos'}
             </p>
-            <p style="margin:8px 0 0;font-size:12px;color:${weatherGymAdvice.color};font-weight:800;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:0.02em;">${weatherGymAdvice.label}</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">
+              ${weather.data
+                ? `Noche ${weather.data.temp_tonight_min}┬░ ┬À H ${weather.data.humidity_min}-${weather.data.humidity_max}% ┬À lluvia ${weather.data.rain_probability}% ┬À rafagas ${weather.data.wind_gusts} km/h ┬À UV ${weather.data.uv_max}`
+                : (weather.error || 'Sin datos meteorologicos')}
+            </p>
+            ${weather.data && html`
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                <span style=${`padding:4px 7px;border-radius:999px;border:1px solid rgba(30,41,59,0.8);background:${weather.data.storm_risk_today === 'alto' ? 'rgba(239,68,68,0.14)' : weather.data.storm_risk_today === 'medio' ? 'rgba(245,158,11,0.14)' : 'rgba(16,185,129,0.12)'};color:${weather.data.storm_risk_today === 'alto' ? '#FCA5A5' : weather.data.storm_risk_today === 'medio' ? '#FBBF24' : '#86EFAC'};font-size:10px;font-weight:700;text-transform:uppercase;`}>
+                  Hoy tormenta: ${weather.data.storm_risk_today}
+                </span>
+                <span style=${`padding:4px 7px;border-radius:999px;border:1px solid rgba(30,41,59,0.8);background:${weather.data.storm_risk_next24 === 'alto' ? 'rgba(239,68,68,0.14)' : weather.data.storm_risk_next24 === 'medio' ? 'rgba(245,158,11,0.14)' : 'rgba(16,185,129,0.12)'};color:${weather.data.storm_risk_next24 === 'alto' ? '#FCA5A5' : weather.data.storm_risk_next24 === 'medio' ? '#FBBF24' : '#86EFAC'};font-size:10px;font-weight:700;text-transform:uppercase;`}>
+                  Prox 24h: ${weather.data.storm_risk_next24}
+                </span>
+              </div>
+            `}
+            <p style="margin:6px 0 0;font-size:11px;color:${weatherGymAdvice.color};font-weight:700;">${weatherGymAdvice.label}</p>
+            ${weatherGymAdvice.detail && html`<p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${weatherGymAdvice.detail}</p>`}
+            <p style="margin:6px 0 0;font-size:10px;color:#64748b;">Fuente: Open-Meteo para tiempo horario/24h + SMN para alertas.</p>
+            ${weather.data && html`
+              <p style="margin:6px 0 0;font-size:11px;color:${weather.data.zonda || weather.data.hail_risk || weather.data.lightning_risk ? '#FCA5A5' : '#86EFAC'};">
+                ${[
+                  weather.data.storm_probable_today ? 'tormentas probables hoy' : null,
+                  weather.data.storm_probable_next24 ? 'inestabilidad proximas 24h' : null,
+                  weather.data.zonda ? 'Zonda' : null,
+                  weather.data.hail_risk ? 'granizo' : null,
+                  weather.data.lightning_risk ? 'rayos' : null
+                ].filter(Boolean).join(' ┬À ') || 'Sin alertas fuertes detectadas'}
+              </p>
+            `}
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-            <button onClick=${onOpenHealth} class="tap-effect" style="text-align:left;padding:14px;border-radius:16px;border:1px solid rgba(16,185,129,0.15);background:rgba(16,185,129,0.05);cursor:pointer;">
-              <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#86EFAC;font-weight:800;font-family:'Barlow Condensed',sans-serif;">Próxima Meds</p>
-              <p style="margin:0;font-size:15px;font-weight:800;color:white;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;">${loading ? '...' : medDashboardStatus.label}</p>
-              <p style="margin:2px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (medDashboardStatus.detail || 'Sin detalles')}</p>
-            </button>
+          <button onClick=${onOpenHealth} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(16,185,129,0.25);background:rgba(16,185,129,0.08);cursor:pointer;">
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#86EFAC;font-weight:700;">Pr├│xima medicaci├│n</p>
+            <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : medDashboardStatus.label}</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (medDashboardStatus.detail || 'Sin detalles')}</p>
+          </button>
 
-            <button onClick=${onOpenTasks} class="tap-effect" style="text-align:left;padding:14px;border-radius:16px;border:1px solid rgba(99,102,241,0.15);background:rgba(99,102,241,0.05);cursor:pointer;">
-              <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#A5B4FC;font-weight:800;font-family:'Barlow Condensed',sans-serif;">Vencimiento</p>
-              <p style="margin:0;font-size:15px;font-weight:800;color:white;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${loading ? '...' : (summary.nextTask?.title || 'Nada urgente')}</p>
-              <p style="margin:2px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (summary.nextTask?.due_at ? formatTaskDate(summary.nextTask.due_at) : 'Sin tareas')}</p>
-            </button>
-          </div>
+          <button onClick=${onOpenTasks} style="text-align:left;padding:10px 12px;border-radius:10px;border:1px solid rgba(99,102,241,0.25);background:rgba(99,102,241,0.08);cursor:pointer;">
+            <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#A5B4FC;font-weight:700;">Pr├│ximo vencimiento</p>
+            <p style="margin:0;font-size:14px;font-weight:700;color:#E2E8F0;">${loading ? 'Cargando...' : (summary.nextTask?.title || 'Nada urgente')}</p>
+            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${loading ? '' : (summary.nextTask?.due_at ? formatTaskDate(summary.nextTask.due_at) : 'Sin tareas cerca')}</p>
+          </button>
         </div>
 
         ${summary.backupDue && html`
@@ -531,22 +548,21 @@ export const createTodayDashboard = ({
           </button>
         `}
 
-        <div style="padding:16px;border-radius:20px;background:rgba(10,15,30,0.6);border:1px solid rgba(255,255,255,0.08);position:relative;overflow:hidden;">
-          <div style="position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent);"></div>
-          <p style="margin:0;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;font-family:'Barlow Condensed',sans-serif;font-weight:800;">Siguiente foco</p>
-          <p style="margin:6px 0 0;font-size:16px;color:white;font-weight:800;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.02em;">
+        <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
+          <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.08em;">Siguiente foco</p>
+          <p style="margin:6px 0 0;font-size:13px;color:#E2E8F0;font-weight:700;">
             ${loading ? 'Cargando...' : (summary.nextTask?.title || 'Nada urgente. Buen momento para ordenar ideas.')}
           </p>
           ${!loading && summary.nextTask?.due_at && html`
-            <p style="margin:4px 0 0;font-size:12px;color:#94A3B8;font-family:'JetBrains Mono',monospace;">
+            <p style="margin:4px 0 0;font-size:11px;color:#94A3B8;font-family:'JetBrains Mono',monospace;">
               ${formatTaskDate(summary.nextTask.due_at)}
             </p>
           `}
           ${!loading && summary.nextTask && html`
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
-              <button onClick=${()=>quickUpdateTask(summary.nextTask,'done')} class="tap-effect" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.08);color:#86EFAC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">HECHA</button>
-              <button onClick=${()=>quickUpdateTask(summary.nextTask,'archived')} class="tap-effect" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(148,163,184,0.3);background:rgba(148,163,184,0.08);color:#CBD5E1;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">ARCHIVAR</button>
-              <button onClick=${onOpenTasks} class="tap-effect" style="padding:8px 14px;border-radius:10px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.1);color:#A5B4FC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.06em;">ABRIR</button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+              <button onClick=${()=>quickUpdateTask(summary.nextTask,'done')} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(16,185,129,0.35);background:rgba(16,185,129,0.12);color:#86EFAC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">HECHA</button>
+              <button onClick=${()=>quickUpdateTask(summary.nextTask,'archived')} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">ARCHIVAR</button>
+              <button onClick=${onOpenTasks} style="padding:6px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">ABRIR</button>
             </div>
           `}
         </div>
