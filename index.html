@@ -32,8 +32,12 @@
         createContext: function() { return { Provider: function() { return null; }, Consumer: function() { return null; } }; },
         createRef: function() { return { current: null }; },
         Fragment: sym('react.fragment'),
-        forwardRef: function(f) { return { $$typeof: FR, render: f }; },
-        memo: function(c) { return { $$typeof: MM, type: c }; },
+        forwardRef: function(renderFn) { 
+          const fn = function(props) { return renderFn(props, props?.ref || null); };
+          fn.$$typeof = FR;
+          return fn;
+        },
+        memo: function(c) { return c; },
         isValidElement: function() { return true; },
         Children: { map: (c, f) => (Array.isArray(c) ? (c.length > 0 ? c.map(f) : []) : [c].map(f)), count: (c) => (Array.isArray(c) ? c.length : 1) },
         Component: class {}, PureComponent: class {}, 
@@ -265,21 +269,12 @@
           useState, useEffect, useCallback, useRef, useMemo,
           Component: class {}, PureComponent: class {},
           cloneElement: (e) => e, createRef: () => ({ current: null }),
+          forwardRef: (renderFn) => function(props) { return renderFn(props, props?.ref || null); },
+          memo: (c) => c,
           Children: { map: (c, f) => (Array.isArray(c) ? c.map(f) : [c].map(f)), count: (c) => (Array.isArray(c) ? c.length : 1) }
         };
         window.ReactDOM = { render };
-        
-        window._loadRecharts = () => {
-          return Promise.all([
-            import('https://esm.sh/react@18.2.0?bundle'),
-            import('https://esm.sh/react-dom@18.2.0?bundle'),
-            import('https://esm.sh/recharts@2.12.0?external=react,react-dom')
-          ]).then(([React, ReactDOM, Recharts]) => {
-            // Merge with Preact shims but keep Recharts happy
-            window.Recharts = Recharts;
-            return Recharts;
-          });
-        };
+
 
         console.log('[App] Dependencies initialized:', viewDeps);
         console.log('[App] SUPA_URL:', cons.SUPA_URL);
