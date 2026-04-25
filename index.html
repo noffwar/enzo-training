@@ -227,16 +227,16 @@
     import { createClient } from 'https://esm.sh/@supabase/supabase-js';
 
     // Core & Base components (static)
-    import * as core from './app-core.js?v=20260425.1700';
-    import * as gym from './app-gym.js?v=20260425.1700';
-    import * as comp from './app-components.js?v=20260425.1700';
-    import * as utils from './app-utils.js?v=20260425.1700';
-    import * as cons from './app-constants.js?v=20260425.1700';
-    import { createLoginView } from './app-login.js?v=20260425.1700';
-    import { createTodayDashboard } from './app-dashboard.js?v=20260425.1700';
-    import { createHabitsPanel } from './app-habits.js?v=20260425.1700';
-    import { createTimerView } from './app-timer.js?v=20260425.1700';
-    import { createApp } from './app-main.js?v=20260425.1700';
+    import * as core from './app-core.js?v=20260425.1705';
+    import * as gym from './app-gym.js?v=20260425.1705';
+    import * as comp from './app-components.js?v=20260425.1705';
+    import * as utils from './app-utils.js?v=20260425.1705';
+    import * as cons from './app-constants.js?v=20260425.1705';
+    import { createLoginView } from './app-login.js?v=20260425.1705';
+    import { createTodayDashboard } from './app-dashboard.js?v=20260425.1705';
+    import { createHabitsPanel } from './app-habits.js?v=20260425.1705';
+    import { createTimerView } from './app-timer.js?v=20260425.1705';
+    import { createApp } from './app-main.js?v=20260425.1705';
 
     (async () => {
       try {
@@ -244,17 +244,17 @@
         window.supabase = supabase;
 
         const viewLoaders = {
-          productivity: () => import('./app-productivity.js?v=20260425.1700'),
-          health: () => import('./app-health.js?v=20260425.1700'),
-          recipes: () => import('./app-recipes.js?v=20260425.1700'),
-          study: () => import('./app-study.js?v=20260425.1700'),
-          books: () => import('./app-books.js?v=20260425.1700'),
-          progress: () => import('./app-progress.js?v=20260425.1700'),
-          week: () => import('./app-progress.js?v=20260425.1700'),
-          tasks: () => import('./app-productivity.js?v=20260425.1700'),
-          timer: () => import('./app-timer.js?v=20260425.1700'),
-          notif: () => import('./app-notifs.js?v=20260425.1700'),
-          routines: () => import('./app-gym.js?v=20260425.1700')
+          productivity: () => import('./app-productivity.js?v=20260425.1705'),
+          health: () => import('./app-health.js?v=20260425.1705'),
+          recipes: () => import('./app-recipes.js?v=20260425.1705'),
+          study: () => import('./app-study.js?v=20260425.1705'),
+          books: () => import('./app-books.js?v=20260425.1705'),
+          progress: () => import('./app-progress.js?v=20260425.1705'),
+          week: () => import('./app-progress.js?v=20260425.1705'),
+          tasks: () => import('./app-productivity.js?v=20260425.1705'),
+          timer: () => import('./app-timer.js?v=20260425.1705'),
+          notif: () => import('./app-notifs.js?v=20260425.1705'),
+          routines: () => import('./app-gym.js?v=20260425.1705')
         };
 
         const viewDeps = {
