@@ -21,7 +21,7 @@ export const createApp = (deps) => {
     isValidDateValue, isDateKey, isWeekKey, isBeforeStart, stripRoutineMeta,
     // Constants
     TARGETS, HOME_FOODS, TRAINING_PLAN_VERSION, TRAINING_PLAN_EFFECTIVE_WEEK, TRAINING_PLAN_START, START_WEEK,
-    MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, BOOK_DEFAULT, DAY_KEYS, DAYS, trainingPlanRoutines, HOLIDAYS_2026,
+    MEDS_STOCK_DEFAULT, MEDS_STOCK_KEY, READING_PROGRESS_KEY, BOOK_DEFAULT, DAY_KEYS, DAYS, trainingPlanRoutines, HOLIDAYS_2026,
     HEALTH_HISTORY_FILTERS, getHealthEntryMeta,
     // Components
     IChevD, ICheck, IPlay, IPause, IReset, ICal, ISync, IHome, IBar, ITarget, IBook, IBell, IEdit, IList, IDumb, IActivity, IClock, IChevL, IChevR,
@@ -44,6 +44,7 @@ export const createApp = (deps) => {
   const TodayDashboard = createTodayDashboard(deps);
   const LoginView = createLoginView(deps);
   const { HabitsPanel, getYesterdayFast, getRelativeDaySnapshot } = createHabitsPanel(deps);
+  const FloatingTimer = createTimerView(deps);
 
   return function App() {
     const [view, setView] = useState(() => {
@@ -511,7 +512,37 @@ export const createApp = (deps) => {
       };
     });
 
-
+    const updateYesterdayFastDuration = () => {
+      const pSnapshot = getRelativeDaySnapshot(allWeeks, currentWk, activeDay, -1);
+      if(!pSnapshot || !pSnapshot.tracker || !pSnapshot.tracker.fastStartTime) return;
+      
+      const [sH, sM] = pSnapshot.tracker.fastStartTime.split(':').map(Number);
+      if(isNaN(sH)) return;
+      
+      const yesterdayDate = new Date(pSnapshot.dateKey + 'T12:00:00');
+      yesterdayDate.setHours(sH, sM, 0, 0);
+      
+      const now = new Date();
+      if(now < yesterdayDate) return;
+      
+      const diffMs = now.getTime() - yesterdayDate.getTime();
+      const diffHours = (diffMs / 3600000).toFixed(1).replace('.', ',');
+      
+      const { weekKey, dayIdx } = getWeekAndDayFromDateKey(pSnapshot.dateKey);
+      
+      let dayToSave = null;
+      setAllWeeks(prev => {
+        const wk = prev[weekKey] || newWeek(weekKey);
+        const day = wk.tracker[dayIdx] || newDay();
+        dayToSave = { ...day, fastHours: diffHours, _updatedAt: new Date().toISOString(), _dirty: true };
+        return { ...prev, [weekKey]: { ...wk, tracker: { ...wk.tracker, [dayIdx]: dayToSave } } };
+      });
+      
+      if (dayToSave) {
+        lsDaySave(pSnapshot.dateKey, dayToSave);
+        saveDayRemote(supabase, pSnapshot.dateKey, dayToSave, session, dayToSave._revision).catch(() => {});
+      }
+    };
     const updateMeal = (mealIdx, field, value) => upd(w => {
       const day = w.tracker[activeDay] || newDay();
       const meals = [...(day.meals || newDay().meals)];
@@ -552,20 +583,52 @@ export const createApp = (deps) => {
       if(prevItem) restoreRemovedItemStock(prevItem);
     };
 
-    const handleSetComplete = (ei, si, restSecs) => upd(w => {
-      const s = [...(w.sessions[activeDay] || [])];
-      if(!s[ei]) return w;
-      const sets = [...s[ei].sets];
-      const was = sets[si].completed;
-      sets[si] = { ...sets[si], completed: !was };
-      s[ei] = { ...s[ei], sets };
-      if(!was && restSecs > 0) { 
+    const handleSetComplete = (ei, si, restSecs) => {
+      const wd = allWeeks[currentWk] || newWeek(currentWk);
+      const session = wd.sessions?.[activeDay] || [];
+      const was = session[ei]?.sets?.[si]?.completed;
+
+      upd(w => {
+        const s = [...(w.sessions[activeDay] || [])];
+        if(!s[ei]) return w;
+        const sets = [...s[ei].sets];
+        sets[si] = { ...sets[si], completed: !was };
+        s[ei] = { ...s[ei], sets };
+        // Force tracker modification to ensure robust saving
+        const td = w.tracker[activeDay] || newDay();
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...td, _updatedAt: new Date().toISOString() } }, sessions: { ...w.sessions, [activeDay]: s } };
+      });
+
+      if (!was && restSecs > 0) {
         setTimerLeft(restSecs); 
         setTimerActive(true); 
         localStorage.setItem('enzo_timer_end', (Date.now() + restSecs * 1000).toString());
       }
-      return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
-    });
+    };
+
+    const handleSaveSession = async () => {
+      const wkData = allWeeks[currentWk];
+      if(!wkData) return;
+      
+      // 1. Update local state to mark as dirty and trigger haptics
+      upd(w => {
+        const td = w.tracker[activeDay] || newDay();
+        return { ...w, tracker: { ...w.tracker, [activeDay]: { ...td, _updatedAt: new Date().toISOString(), _dirty: true } } };
+      });
+      window.haptic?.('success');
+
+      // 2. Explicitly trigger remote sync for immediate feedback
+      const dKey = getDayDate(currentWk, parseInt(activeDay));
+      try {
+        setSyncStatus('syncing');
+        await saveDayRemote(supabase, dKey, wkData.tracker?.[activeDay], wkData.sessions?.[activeDay], wkData.tracker?.[activeDay]?._revision||null);
+        setSyncStatus('synced');
+      } catch(e) {
+        console.error('[App] Save Session Error:', e);
+        setSyncStatus('conflict');
+      }
+    };
+
 
     const handleSetInput = (ei, si, field, val) => upd(w => {
       const s = [...(w.sessions[activeDay] || [])];
@@ -573,7 +636,8 @@ export const createApp = (deps) => {
       const sets = [...s[ei].sets];
       sets[si] = { ...sets[si], [field]: val };
       s[ei] = { ...s[ei], sets };
-      return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
+      const td = w.tracker[activeDay] || newDay();
+      return { ...w, tracker: { ...w.tracker, [activeDay]: { ...td, _updatedAt: new Date().toISOString() } }, sessions: { ...w.sessions, [activeDay]: s } };
     });
 
     const handleCompleteSession = () => upd(w => {
@@ -585,7 +649,8 @@ export const createApp = (deps) => {
 
     const handleResetSessionChecks = () => upd(w => {
       const s = [...(w.sessions[activeDay] || [])].map(ex => ({ ...ex, sets: ex.sets.map(st => ({ ...st, completed: false })) }));
-      return { ...w, sessions: { ...w.sessions, [activeDay]: s } };
+      const td = w.tracker[activeDay] || newDay();
+      return { ...w, tracker: { ...w.tracker, [activeDay]: { ...td, _updatedAt: new Date().toISOString() } }, sessions: { ...w.sessions, [activeDay]: s } };
     });
 
     const handleRoutineChange = (value) => {
@@ -929,6 +994,8 @@ export const createApp = (deps) => {
                 onAddItem=${addMealItem} 
                 onRemoveItem=${removeMealItem} 
                 onReplaceItem=${replaceMealItem}
+                onUpdateYesterdayFast=${updateYesterdayFastDuration}
+                dinnerMeds=${(activeDateKey === localDateKey(new Date()) && getDinnerLogicalDateKey(new Date()) !== activeDateKey) ? previousSnapshot.tracker?.meds : tracker.meds}
               />
               
               <!-- 4. Macros Restantes -->
@@ -940,7 +1007,7 @@ export const createApp = (deps) => {
                 ].map(({label,val,color})=>html`
                   <div>
                     <p style="margin:0;font-size:9px;text-transform:uppercase;color:#64748b;">${label}</p>
-                    <p style="margin:0;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${color};">${val}</p>
+                    <p style="margin:0;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;">${val}</p>
                   </div>
                 `)}
               </div>
@@ -976,6 +1043,7 @@ export const createApp = (deps) => {
                 onApplyOverload=${handleApplyOverload} 
                 onCompleteSession=${handleCompleteSession} 
                 onResetSessionChecks=${handleResetSessionChecks} 
+                onSaveSession=${handleSaveSession}
                 allWeeks=${allWeeks}
               />
             </div>
@@ -998,7 +1066,7 @@ export const createApp = (deps) => {
               onSyncDailyMeds=${syncTodayMedsFromHealth} 
               onOpenDay=${d => { const { dayIdx } = getWeekAndDayFromDateKey(d); setActiveDay(dayIdx); setView('today'); }} 
             />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Salud...</div>`)}
-            ${view === 'books'    && (loadedViews.books ? html`<${loadedViews.books} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Libros...</div>`)}
+            ${view === 'books' && (loadedViews.books ? html`<${loadedViews.books} session=${session} READING_PROGRESS_KEY=${READING_PROGRESS_KEY} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Libros...</div>`)}
             ${view === 'notif'    && (loadedViews.notif ? html`<${loadedViews.notif} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Notificaciones...</div>`)}
           <//>
         </main>

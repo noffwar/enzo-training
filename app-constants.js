@@ -8,24 +8,24 @@ export const ROUTINES_STORAGE_KEY = 'enzo_routines_v1';
 export const DAY_KEYS = ['1', '2', '3', '4', '5', '6', '0'];
 
 export const HOLIDAYS_2026 = {
-  "2026-01-01": "Ano Nuevo",
+  "2026-01-01": "Año Nuevo",
   "2026-02-16": "Carnaval",
   "2026-02-17": "Carnaval",
-  "2026-03-23": "Feriado turistico",
-  "2026-03-24": "Dia de la Memoria",
-  "2026-04-02": "Dia del Veterano y de los Caidos en Malvinas",
+  "2026-03-23": "Feriado turístico",
+  "2026-03-24": "Día de la Memoria",
+  "2026-04-02": "Día del Veterano y de los Caídos en Malvinas",
   "2026-04-03": "Viernes Santo",
-  "2026-05-01": "Dia del Trabajador",
-  "2026-05-25": "Revolucion de Mayo",
-  "2026-06-15": "Paso a la Inmortalidad del General Guemes",
+  "2026-05-01": "Día del Trabajador",
+  "2026-05-25": "Revolución de Mayo",
+  "2026-06-15": "Paso a la Inmortalidad del General Güemes",
   "2026-06-22": "Paso a la Inmortalidad del General Belgrano",
-  "2026-07-09": "Dia de la Independencia",
-  "2026-07-10": "Feriado turistico",
-  "2026-08-17": "Paso a la Inmortalidad del General San Martin",
+  "2026-07-09": "Día de la Independencia",
+  "2026-07-10": "Feriado turístico",
+  "2026-08-17": "Paso a la Inmortalidad del General San Martín",
   "2026-10-12": "Respeto a la Diversidad Cultural",
-  "2026-11-23": "Dia de la Soberania Nacional",
-  "2026-12-07": "Feriado turistico",
-  "2026-12-08": "Inmaculada Concepcion de Maria",
+  "2026-11-23": "Día de la Soberanía Nacional",
+  "2026-12-07": "Feriado turístico",
+  "2026-12-08": "Inmaculada Concepción de María",
   "2026-12-25": "Navidad"
 };
 
@@ -171,7 +171,7 @@ export const categoryMeta = (value) => CATEGORY_OPTIONS.find((item) => item.valu
 export const NOTE_KIND_OPTIONS = [
   { value: 'idea', label: 'Idea', color: '#F59E0B' },
   { value: 'pregunta', label: 'Pregunta', color: '#38BDF8' },
-  { value: 'reflexion', label: 'Reflexion', color: '#A78BFA' },
+  { value: 'reflexion', label: 'Reflexión', color: '#A78BFA' },
   { value: 'duda', label: 'Duda', color: '#EF4444' }
 ];
 
@@ -207,15 +207,15 @@ export const RECURRENCE_OPTIONS = [
 export const recurrenceLabel = (value) => RECURRENCE_OPTIONS.find((item) => item.value === value)?.label || 'No repetir';
 
 export const STUDY_SUBJECT_SEEDS = [
-  { subject: 'Analisis Matematico I', topics: [
-    { name: 'Funciones y limites', done: false },
+  { subject: 'Análisis Matemático I', topics: [
+    { name: 'Funciones y límites', done: false },
     { name: 'Continuidad', done: false },
     { name: 'Derivadas', done: false },
     { name: 'Aplicaciones de la derivada', done: false },
     { name: 'Integrales indefinidas', done: false },
     { name: 'Integrales definidas', done: false }
   ] },
-  { subject: 'Algebra Lineal', topics: [
+  { subject: 'Álgebra Lineal', topics: [
     { name: 'Matrices', done: false },
     { name: 'Determinantes', done: false },
     { name: 'Sistemas de ecuaciones', done: false },
@@ -223,18 +223,18 @@ export const STUDY_SUBJECT_SEEDS = [
     { name: 'Espacios vectoriales', done: false },
     { name: 'Transformaciones lineales', done: false }
   ] },
-  { subject: 'Integracion I', topics: [
-    { name: 'Introduccion', done: false },
-    { name: 'Metodos basicos', done: false },
+  { subject: 'Integración I', topics: [
+    { name: 'Introducción', done: false },
+    { name: 'Métodos básicos', done: false },
     { name: 'Cambio de variable', done: false },
     { name: 'Integracion por partes', done: false },
     { name: 'Fracciones parciales', done: false },
     { name: 'Aplicaciones', done: false }
   ] },
-  { subject: 'Fisica I', topics: [
-    { name: 'Cinematica', done: false },
-    { name: 'Dinamica', done: false },
-    { name: 'Trabajo y energia', done: false },
+  { subject: 'Física I', topics: [
+    { name: 'Cinemática', done: false },
+    { name: 'Dinámica', done: false },
+    { name: 'Trabajo y energía', done: false },
     { name: 'Cantidad de movimiento', done: false },
     { name: 'Rotacion', done: false },
     { name: 'Oscilaciones', done: false }
@@ -247,19 +247,19 @@ export const STUDY_SUBJECT_SEEDS = [
     { name: 'Ensayos de dureza', done: false },
     { name: 'Corrosion', done: false }
   ] },
-  { subject: 'Economia', topics: [
-    { name: 'Conceptos basicos', done: false },
+  { subject: 'Economía', topics: [
+    { name: 'Conceptos básicos', done: false },
     { name: 'Costos', done: false },
     { name: 'Oferta y demanda', done: false },
     { name: 'Punto de equilibrio', done: false },
-    { name: 'Inflacion', done: false },
+    { name: 'Inflación', done: false },
     { name: 'Flujo de fondos', done: false }
   ] }
 ];
 
 export const BOOK_DEFAULT = {
   title: 'El Duelo',
-  author: 'Gabriel Rolon',
+  author: 'Gabriel Rolón',
   current_page: 122,
   total_pages: 450
 };
@@ -272,6 +272,7 @@ export const SERIES_DEFAULT = {
 };
 
 export const MEDS_STOCK_KEY = 'enzo_meds_stock_v1';
+export const READING_PROGRESS_KEY = 'enzo_reading_progress_v1';
 
 export const MEDS_STOCK_DEFAULT = {
   roaccutan: 10,
@@ -303,7 +304,7 @@ export const HEALTH_ENTRY_META = {
     color: '#86EFAC',
     bg: 'rgba(16,185,129,0.12)',
     border: 'rgba(16,185,129,0.35)',
-    describe: () => 'Toma mediodia: -1 Roaccutan'
+    describe: () => 'Toma mediodía: -1 Roaccutan'
   },
   dinner_combo_take: {
     badge: 'TOMA',
@@ -322,11 +323,11 @@ export const HEALTH_ENTRY_META = {
       : `Combo noche ${entry.delta_combo > 0 ? '+' : ''}${entry.delta_combo}`}`
   },
   restock: {
-    badge: 'REPOSICION',
+    badge: 'REPOSICIÓN',
     color: '#FCD34D',
     bg: 'rgba(245,158,11,0.12)',
     border: 'rgba(245,158,11,0.35)',
-    describe: (entry) => `Reposicion: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} +${entry.delta}`
+    describe: (entry) => `Reposición: ${entry.field === 'roaccutan' ? 'Roaccutan' : 'Minoxidil/Finasteride'} +${entry.delta}`
   },
   manual_adjust: {
     badge: 'AJUSTE',

@@ -132,7 +132,7 @@ const WeekSummary = ({weekData, weekKey}) => {
                 <div style="background:rgba(10,15,30,0.6);border:1px solid #1E2D45;border-radius:10px;padding:10px;text-align:center;">
                   <p style="margin:0 0 2px;font-size:16px;">${icon}</p>
                   <p style="margin:0;font-size:10px;text-transform:uppercase;color:#64748b;">${label}</p>
-                  <p style="margin:0;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${color};">${value}${unit}</p>
+                  <p style="margin:0;font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;">${value}${unit}</p>
                 </div>
               `)}
             </div>

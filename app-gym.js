@@ -62,7 +62,7 @@ export const createGymPanel = (deps) => {
     `;
   };
   
-  const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload, onCompleteSession, onResetSessionChecks, allWeeks}) => {
+  const GymPanel = ({session, tracker:t, onSetComplete, onInput, onHabit, onApplyOverload, onCompleteSession, onResetSessionChecks, onSaveSession, allWeeks}) => {
     const [open,setOpen] = useState(true);
     if(!session||session.length===0) return html`
       <${SectionAccordion} icon=${html`<${IDumb} s=${20} c="text-green"/>`} title="Rutina Gimnasio" isOpen=${true} onToggle=${()=>{}}>
@@ -77,6 +77,7 @@ export const createGymPanel = (deps) => {
     const completedSets = safeSession.reduce((acc, ex) => acc + (Array.isArray(ex.sets) ? ex.sets.filter(s => s.completed).length : 0), 0);
     const completedExercises = safeSession.filter(ex => Array.isArray(ex.sets) && ex.sets.length > 0 && ex.sets.every(s => s.completed)).length;
     const progressPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0;
+    const canComplete = totalSets > 0;
 
     const overloadCandidates = safeSession.filter(ex =>
       Array.isArray(ex.sets) && ex.sets.some(s => s.completed && parseInt(s.reps) > parseInt(s.idealReps||s.reps))
@@ -123,15 +124,11 @@ export const createGymPanel = (deps) => {
           <div style="height:6px;border-radius:999px;background:#0F1729;border:1px solid #1E2D45;overflow:hidden;">
             <div style=${`width:${progressPct}%;height:100%;background:linear-gradient(90deg,#10B981,#6366F1);transition:width 0.4s ease;`}></div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;">
-            <button onClick=${()=>{ window.haptic('success'); onCompleteSession && onCompleteSession(); }}
-              style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.12);color:#10B981;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;">
-              COMPLETAR SESIÓN
-            </button>
-            <button onClick=${()=>onResetSessionChecks&&onResetSessionChecks()}
-              style="padding:10px 16px;border-radius:10px;border:1px solid rgba(239,68,68,0.25);background:rgba(239,68,68,0.08);color:#EF4444;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;">
-              REINICIAR
-            </button>
+          
+          <div style="display:flex;gap:8px;margin-top:16px;">
+            <button onClick=${onSaveSession} style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;" class="tap-effect">GUARDAR</button>
+            <button onClick=${onResetSessionChecks} style="flex:1;padding:12px;border-radius:10px;border:1px solid #1E2D45;background:transparent;color:#94A3B8;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;" class="tap-effect">REINICIAR</button>
+            <button onClick=${() => onCompleteSession()} disabled=${!canComplete} style=${`flex:2;padding:12px;border-radius:10px;border:none;background:${canComplete?'#10B981':'#334155'};color:${canComplete?'#041018':'#64748B'};font-size:14px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:${canComplete?'pointer':'not-allowed'};letter-spacing:0.05em;transition:background 0.3s;`} class="tap-effect">COMPLETAR SESIÓN</button>
           </div>
         </div>
 
@@ -164,12 +161,12 @@ export const createGymPanel = (deps) => {
                   ${(Array.isArray(ex.sets) ? ex.sets : []).map((set,si) => html`
                     <tr style=${`background:${set.completed?'rgba(16,185,129,0.06)':'transparent'};border-bottom:1px solid rgba(30,45,69,0.2);`}>
                       <td style="text-align:center;font-size:11px;font-family:'JetBrains Mono',monospace;color:#475569;">${si+1}</td>
-                      <td><input class="inp-xs" style="width:100%;max-width:44px;background:#0F1729;border:1px solid #1E2D45;border-radius:6px;height:24px;" value=${set.reps} onInput=${e=>onInput(ei,si,'reps',e.target.value)}/></td>
-                      <td><input class="inp-xs" style="width:100%;max-width:54px;background:#0F1729;border:1px solid #1E2D45;border-radius:6px;height:24px;" value=${set.weight} onInput=${e=>onInput(ei,si,'weight',e.target.value)}/></td>
+                      <td><input class="inp-xs" style="width:100%;max-width:44px;background:#0F1729;border:1px solid #1E2D45;border-radius:6px;height:24px;color:#E2E8F0;text-align:center;" value=${set.reps} onInput=${e=>onInput(ei,si,'reps',e.target.value)}/></td>
+                      <td><input class="inp-xs" style="width:100%;max-width:54px;background:#0F1729;border:1px solid #1E2D45;border-radius:6px;height:24px;color:#E2E8F0;text-align:center;" value=${set.weight} onInput=${e=>onInput(ei,si,'weight',e.target.value)}/></td>
                       <td><span class=${`tag-rir ${String(set.rir).includes('Fallo')?'fallo':''}`} style="font-size:10px;font-family:'JetBrains Mono',monospace;">${set.rir}</span></td>
                       <td><span style="font-size:10px;color:#64748b;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${set.restStr}</span></td>
                       <td style="text-align:center;padding:2px;">
-                        <button onClick=${()=>{ window.haptic(set.completed ? 'light' : 'medium'); onSetComplete(ei,si,set.restSecs); }}
+                        <button onClick=${()=>{ window.haptic?.(set.completed ? 'light' : 'medium'); onSetComplete(ei,si,set.restSecs); }}
                           style=${`width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;${set.completed?'background:#10B981;border:none;box-shadow:0 0 10px rgba(16,185,129,0.4);':'background:#162035;border:1px solid #1E2D45;color:#64748b;'}`}>
                           <${ICheck} s=${14} c=${set.completed?'#080D1A':'rgba(148,163,184,0.35)'}/>
                         </button>
@@ -222,6 +219,16 @@ export const createGymPanel = (deps) => {
           value=${t.gymNotes||''}
           onInput=${e=>onHabit('gymNotes',e.target.value)}
           style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:10px;padding:12px;font-size:13px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:80px;margin-top:4px;"></textarea>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button onClick=${onSaveSession}
+            style="flex:1;padding:12px;border-radius:12px;border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.12);color:#7DD3FC;font-size:13px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;text-transform:uppercase;">
+            GUARDAR MANUAL
+          </button>
+          <button onClick=${onCompleteSession}
+            style="flex:2;padding:12px;border-radius:12px;border:none;background:#10B981;color:#080D1A;font-size:13px;font-weight:900;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;text-transform:uppercase;">
+            COMPLETAR SESIÓN
+          </button>
+        </div>
       <//>
     `;
   };

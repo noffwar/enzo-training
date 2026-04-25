@@ -73,7 +73,9 @@ export const createHealthView = ({
         inventory: true,
         takes: true,
         weekly: false,
-        history: false
+        history: false,
+        checks: true,
+        consistency: true
       });
       const todayMedsState = todayMeds || {};
       const previousMedsState = previousDayMeds || {};
@@ -791,8 +793,8 @@ export const createHealthView = ({
           <${SectionAccordion}
             icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#10B981;display:inline-block;"></span>`}
             title="Consistencia Checks"
-            isOpen=${false}
-            onToggle=${() => {}}
+            isOpen=${healthSectionOpen.checks}
+            onToggle=${()=>setHealthSectionOpen(prev => ({ ...prev, checks: !prev.checks }))}
           >
           <div style="padding:10px;border-radius:8px;background:rgba(8,13,26,0.45);border:1px solid #1E2D45;">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;">

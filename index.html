@@ -202,11 +202,13 @@
       }
     };
     window.haptic = (type = 'light') => {
-      if(!("vibrate" in navigator)) return;
-      if(type === 'light') navigator.vibrate(10);
-      else if(type === 'medium') navigator.vibrate(20);
-      else if(type === 'heavy') navigator.vibrate([30, 20, 30]);
-      else if(type === 'success') navigator.vibrate([10, 30, 10, 30]);
+      try {
+        if(!("vibrate" in navigator)) return;
+        if(type === 'light') navigator.vibrate(10);
+        else if(type === 'medium') navigator.vibrate(20);
+        else if(type === 'heavy') navigator.vibrate([30, 20, 30]);
+        else if(type === 'success') navigator.vibrate([10, 30, 10, 30]);
+      } catch (e) { console.warn('Haptic error:', e); }
     };
 
     window.onerror = function(msg, src, line, col, err) {
@@ -225,15 +227,16 @@
     import { createClient } from 'https://esm.sh/@supabase/supabase-js';
 
     // Core & Base components (static)
-    import * as core from './app-core.js?v=20260421.1818';
-    import * as gym from './app-gym.js?v=20260421.1818';
-    import * as comp from './app-components.js?v=20260421.1818';
-    import * as utils from './app-utils.js?v=20260421.1818';
-    import * as cons from './app-constants.js?v=20260421.1818';
-    import { createLoginView } from './app-login.js?v=20260421.1818';
-    import { createTodayDashboard } from './app-dashboard.js?v=20260421.1818';
-    import { createHabitsPanel } from './app-habits.js?v=20260421.1818';
-    import { createApp } from './app-main.js?v=20260421.1818';
+    import * as core from './app-core.js?v=20260425.1700';
+    import * as gym from './app-gym.js?v=20260425.1700';
+    import * as comp from './app-components.js?v=20260425.1700';
+    import * as utils from './app-utils.js?v=20260425.1700';
+    import * as cons from './app-constants.js?v=20260425.1700';
+    import { createLoginView } from './app-login.js?v=20260425.1700';
+    import { createTodayDashboard } from './app-dashboard.js?v=20260425.1700';
+    import { createHabitsPanel } from './app-habits.js?v=20260425.1700';
+    import { createTimerView } from './app-timer.js?v=20260425.1700';
+    import { createApp } from './app-main.js?v=20260425.1700';
 
     (async () => {
       try {
@@ -241,23 +244,23 @@
         window.supabase = supabase;
 
         const viewLoaders = {
-          productivity: () => import('./app-productivity.js?v=20260421.1818'),
-          health: () => import('./app-health.js?v=20260421.1818'),
-          recipes: () => import('./app-recipes.js?v=20260421.1818'),
-          study: () => import('./app-study.js?v=20260421.1818'),
-          books: () => import('./app-books.js?v=20260421.1818'),
-          progress: () => import('./app-progress.js?v=20260421.1818'),
-          week: () => import('./app-progress.js?v=20260421.1818'),
-          tasks: () => import('./app-productivity.js?v=20260421.1818'),
-          timer: () => import('./app-timer.js?v=20260421.1818'),
-          notif: () => import('./app-notifs.js?v=20260421.1818'),
-          routines: () => import('./app-gym.js?v=20260421.1818')
+          productivity: () => import('./app-productivity.js?v=20260425.1700'),
+          health: () => import('./app-health.js?v=20260425.1700'),
+          recipes: () => import('./app-recipes.js?v=20260425.1700'),
+          study: () => import('./app-study.js?v=20260425.1700'),
+          books: () => import('./app-books.js?v=20260425.1700'),
+          progress: () => import('./app-progress.js?v=20260425.1700'),
+          week: () => import('./app-progress.js?v=20260425.1700'),
+          tasks: () => import('./app-productivity.js?v=20260425.1700'),
+          timer: () => import('./app-timer.js?v=20260425.1700'),
+          notif: () => import('./app-notifs.js?v=20260425.1700'),
+          routines: () => import('./app-gym.js?v=20260425.1700')
         };
 
         const viewDeps = {
           h, render, useState, useEffect, useCallback, useRef, useMemo, html,
           supabase, ...core, ...gym, ...comp, ...utils, ...cons,
-          createLoginView, createTodayDashboard, createHabitsPanel,
+          createLoginView, createTodayDashboard, createHabitsPanel, createTimerView,
           viewLoaders
         };
         const components = comp.createAppComponents(viewDeps);

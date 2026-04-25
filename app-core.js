@@ -156,10 +156,10 @@ export const getMedicationStatusForView = ({ selectedDateKey = '', medsState = {
     dinnerLabel: dinnerDone
       ? (dinnerRelevant
         ? (calendarTodayKey === dinnerLogicalKey ? 'Hecha hoy' : 'Hecha para ayer')
-        : 'No corresponde')
+        : 'Hecha')
       : (dinnerRelevant
         ? (calendarTodayKey === dinnerLogicalKey ? 'Pendiente' : 'Pendiente de ayer')
-        : 'No corresponde')
+        : 'Pendiente (Pasado)')
   };
 };
 

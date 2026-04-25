@@ -7,6 +7,10 @@ export const createBooksView = ({
   BOOK_DEFAULT,
   SERIES_DEFAULT,
   OCIO_NOTE_FILTER_OPTIONS,
+  MEDS_STOCK_DEFAULT,
+  MEDS_STOCK_KEY,
+  READING_PROGRESS_KEY,
+  pn,
   fetchJsonWithTimeout,
   Card,
   SectionAccordion,
@@ -119,76 +123,6 @@ export const createBooksView = ({
               setTimeout(() => setNotice(''), 2500);
               return 0;
             }
-            return prev - 1;
-          });
-        }, 1000);
-        return () => clearInterval(id);
-      }, [pomodoroActive]);
-
-      const saveBook = async (nextBook) => {
-        setSaving(true);
-        setError('');
-        try {
-          const totalPages = Math.max(1, parseInt(nextBook.total_pages || 1, 10) || 1);
-          const currentPage = Math.min(totalPages, Math.max(0, parseInt(nextBook.current_page || 0, 10) || 0));
-          const payload = {
-            ...nextBook,
-            current_page: currentPage,
-            total_pages: totalPages
-          };
-          const { error } = await supabase
-            .from('app_inventory')
-            .upsert({
-              key: 'reading_progress',
-              data: payload,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'key' });
-          if(error) throw error;
-          setBook(payload);
-          setNotice('Progreso de lectura guardado.');
-          setTimeout(() => setNotice(''), 2500);
-        } catch(e) {
-          setError(e.message || 'No se pudo guardar el progreso del libro.');
-        } finally {
-          setSaving(false);
-        }
-      };
-
-      const saveSeries = async (nextSeries) => {
-        setSaving(true);
-        setError('');
-        try {
-          const totalEpisodes = Math.max(1, parseInt(nextSeries.episodes_total || 1, 10) || 1);
-          const currentSeason = Math.max(1, parseInt(nextSeries.season || 1, 10) || 1);
-          const currentEpisode = Math.min(totalEpisodes, Math.max(1, parseInt(nextSeries.episode || 1, 10) || 1));
-          const payload = {
-            ...nextSeries,
-            season: currentSeason,
-            episode: currentEpisode,
-            episodes_total: totalEpisodes
-          };
-          const { error } = await supabase
-            .from('app_inventory')
-            .upsert({
-              key: 'watching_progress',
-              data: payload,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'key' });
-          if(error) throw error;
-          setSeries(payload);
-          setNotice('Progreso de serie guardado.');
-          setTimeout(() => setNotice(''), 2500);
-        } catch(e) {
-          setError(e.message || 'No se pudo guardar el progreso de la serie.');
-        } finally {
-          setSaving(false);
-        }
-      };
-
-      const addBookNote = async () => {
-        const text = String(noteDraft || '').trim();
-        if(!text) return;
-        setError('');
         try {
           const payload = {
             book_title: book.title || BOOK_DEFAULT.title,

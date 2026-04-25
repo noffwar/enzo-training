@@ -7,8 +7,6 @@ export const createTodayDashboard = ({
   supabase,
   BOOK_DEFAULT,
   MEDS_STOCK_DEFAULT,
-  MEDS_STOCK_KEY,
-  READING_PROGRESS_KEY,
   pn,
   metaGet,
   safeLocalSet,
@@ -118,35 +116,56 @@ export const createTodayDashboard = ({
           }
         } catch(_) { setFastingProgress(null); }
 
-        const [taskRes, noteRes, invRes, studyRes, recipeRes] = await Promise.all([
-          supabase.from('tasks').select('id,title,due_at,priority,status,category,details,subtasks,recurrence,auto_email_reminder,email_reminder_sent_at').eq('user_id', session.user.id).order('due_at', { ascending: true, nullsFirst: false }).catch(() => ({ data: [] })),
-          supabase.from('notes').select('id,kind,content,created_at').eq('user_id', session.user.id).order('created_at', { ascending: false }).catch(() => ({ data: [] })),
-          supabase.from('app_inventory').select('key,data').in('key', ['meds_stock', 'reading_progress', 'sweets_sauces_stock']).catch(() => ({ data: [] })),
-          supabase.from('study_plan').select('subject,topics').order('subject', { ascending: true }).catch(() => ({ data: [] })),
-          supabase.from('user_recipes').select('recipe_name,stock_qty,low_stock_threshold').catch(() => ({ data: [] }))
+        const [
+          { data: taskRows, error: taskErr },
+          { data: noteRows, error: noteErr },
+          { data: invRows, error: invErr },
+          { data: studyRows, error: studyErr },
+          { data: recipeRows, error: recipeErr }
+        ] = await Promise.all([
+          supabase.from('tasks')
+            .select('id,title,due_at,priority,status,category,details,subtasks,recurrence,auto_email_reminder,email_reminder_sent_at')
+            .eq('user_id', session.user.id)
+            .order('due_at', { ascending: true, nullsFirst: false }),
+          supabase.from('notes')
+            .select('id,kind,content,created_at')
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false }),
+          supabase.from('app_inventory')
+            .select('key,data')
+            .in('key', ['meds_stock', 'reading_progress', 'sweets_sauces_stock']),
+          supabase.from('study_plan')
+            .select('subject,topics')
+            .order('subject', { ascending: true }),
+          supabase.from('user_recipes')
+            .select('recipe_name,stock_qty,low_stock_threshold')
         ]);
+        if(taskErr) throw taskErr;
+        if(noteErr) throw noteErr;
+        if(invErr) throw invErr;
+        if(studyErr) throw studyErr;
+        if(recipeErr) throw recipeErr;
 
-        const tasks = taskRes.data || [];
-        const notes = (noteRes.data || []).filter(n => n.kind !== 'converted');
-        const inventory = Object.fromEntries((invRes.data || []).map(row => [row.key, row.data || {}]));
-
+        const tasks = taskRows || [];
+        const notes = (noteRows || []).filter(n => n.kind !== 'converted');
+        const inventory = Object.fromEntries((invRows || []).map(row => [row.key, row.data || {}]));
         
-        // Fallbacks locales para robustez
+        // Fallbacks locales para robustez (especialmente modo bypass/dev)
         if (!inventory.meds_stock) {
           try {
-            const localMeds = JSON.parse(localStorage.getItem(MEDS_STOCK_KEY) || 'null');
+            const localMeds = JSON.parse(localStorage.getItem('enzo_meds_stock_v3') || 'null');
             if (localMeds) inventory.meds_stock = localMeds;
           } catch(_) {}
         }
         if (!inventory.reading_progress) {
           try {
-            const localBooks = JSON.parse(localStorage.getItem(READING_PROGRESS_KEY) || 'null');
+            const localBooks = JSON.parse(localStorage.getItem('enzo_reading_progress_v3') || 'null');
             if (localBooks) inventory.reading_progress = localBooks;
           } catch(_) {}
         }
 
-        const study = studyRes.data || [];
-        const recipes = recipeRes.data || [];
+        const study = studyRows || [];
+        const recipes = recipeRows || [];
         const now = new Date();
         const endOfToday = new Date(now); endOfToday.setHours(23,59,59,999);
         const pending = tasks.filter(t => t.status !== 'done');
@@ -203,7 +222,7 @@ export const createTodayDashboard = ({
       } finally {
         setLoading(false);
       }
-    }, [session.user.id, tracker]);
+    }, [session.user.id]);
 
     const quickUpdateTask = useCallback(async (task, status) => {
       if(!task?.id) return;
@@ -247,11 +266,7 @@ export const createTodayDashboard = ({
     useEffect(() => {
       const h = () => loadSummary();
       window.addEventListener('enzo-health-changed', h);
-      window.addEventListener('enzo-books-changed', h);
-      return () => {
-        window.removeEventListener('enzo-health-changed', h);
-        window.removeEventListener('enzo-books-changed', h);
-      };
+      return () => window.removeEventListener('enzo-health-changed', h);
     }, [loadSummary]);
 
     const loadWeather = useCallback(async () => {
@@ -299,7 +314,7 @@ export const createTodayDashboard = ({
           ? { label: 'Tomas del día completas', detail: 'Registros realizados' }
           : { label: 'Meds de cena pendientes', detail: v.calendarTodayKey === v.dinnerLogicalKey ? 'Cena' : 'Cena para ayer' };
       }
-      return { label: v.dinnerDone ? 'Cena registrada para ese día' : 'No registrado en este dia', detail: `Vista de ${v.viewDateKey}` };
+      return { label: v.dinnerDone ? 'Cena registrada para ese día' : 'Cena no corresponde ahora', detail: `Vista de ${v.viewDateKey}` };
     }, [tracker, selectedDateKey]);
 
     const weightHistory = useMemo(() => {
@@ -333,7 +348,7 @@ export const createTodayDashboard = ({
         return {
           title: "Estado Nutricional",
           text: totals.prot < 60 ? "Venís bajo en proteína. Priorizá una fuente sólida en el almuerzo." : "Proteína en buen camino. Mantené el ritmo de agua.",
-          icon: "🍗", color: "#10B981"
+          icon: "🥩", color: "#10B981"
         };
       }
       if (hours >= 16 && hours < 21) {
@@ -349,7 +364,6 @@ export const createTodayDashboard = ({
         icon: "✨", color: "#A5B4FC"
       };
     }, [loading, tracker, TARGETS]);
-
 
     return html`
       <div class="glass-card stagger-in" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
@@ -487,7 +501,6 @@ export const createTodayDashboard = ({
                 ? `Noche ${weather.data.temp_tonight_min}° · H ${weather.data.humidity_min}-${weather.data.humidity_max}% · lluvia ${weather.data.rain_probability}% · rafagas ${weather.data.wind_gusts} km/h · UV ${weather.data.uv_max}`
                 : (weather.error || 'Sin datos meteorologicos')}
             </p>
-
             ${weather.data && html`
               <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
                 <span style=${`padding:4px 7px;border-radius:999px;border:1px solid rgba(30,41,59,0.8);background:${weather.data.storm_risk_today === 'alto' ? 'rgba(239,68,68,0.14)' : weather.data.storm_risk_today === 'medio' ? 'rgba(245,158,11,0.14)' : 'rgba(16,185,129,0.12)'};color:${weather.data.storm_risk_today === 'alto' ? '#FCA5A5' : weather.data.storm_risk_today === 'medio' ? '#FBBF24' : '#86EFAC'};font-size:10px;font-weight:700;text-transform:uppercase;`}>
@@ -501,7 +514,6 @@ export const createTodayDashboard = ({
             <p style="margin:6px 0 0;font-size:11px;color:${weatherGymAdvice.color};font-weight:700;">${weatherGymAdvice.label}</p>
             ${weatherGymAdvice.detail && html`<p style="margin:4px 0 0;font-size:11px;color:#94A3B8;">${weatherGymAdvice.detail}</p>`}
             <p style="margin:6px 0 0;font-size:10px;color:#64748b;">Fuente: Open-Meteo para tiempo horario/24h + SMN para alertas.</p>
-
             ${weather.data && html`
               <p style="margin:6px 0 0;font-size:11px;color:${weather.data.zonda || weather.data.hail_risk || weather.data.lightning_risk ? '#FCA5A5' : '#86EFAC'};">
                 ${[

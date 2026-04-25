@@ -286,7 +286,7 @@ export const createHabitsPanel = (deps) => {
 
   // --- HabitsPanel Component ---
 
-  const HabitsPanel = ({tracker:t, selectedDateKey, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem, onReplaceItem}) => {
+  const HabitsPanel = ({tracker:t, selectedDateKey, yesterdayFastMsg, onChange, onMed, onMeal, onAddItem, onRemoveItem, onReplaceItem, onUpdateYesterdayFast, dinnerMeds}) => {
     const [open, setOpen] = useState(true);
     const [aiLoading, setAiLoading] = useState([false,false,false]);
     const [aiError, setAiError] = useState(['','','']);
@@ -512,16 +512,22 @@ export const createHabitsPanel = (deps) => {
       finally { setRecipeSaving(prev => { const n=[...prev]; n[mealIdx]=false; return n; }); }
     };
 
-    const medStatus = getMedicationStatusForView({ selectedDateKey, medsState: t.meds || {}, now: new Date() });
+    const dinnerMedsState = dinnerMeds || t.meds || {};
+    const medStatus = getMedicationStatusForView({ 
+      selectedDateKey, 
+      medsState: { ...t.meds, finasteride: dinnerMedsState.finasteride, minoxidil: dinnerMedsState.minoxidil }, 
+      now: new Date() 
+    });
 
     return html`
       <${SectionAccordion} icon=${html`<${IActivity} s=${20} c="text-green"/>`} title="Parámetros Diarios" isOpen=${open} onToggle=${()=>setOpen(!open)}>
         <div style="display:flex;flex-direction:column;gap:16px;">
           ${yesterdayFastMsg && html`
-            <div class="glass-card" style="padding:10px 12px;background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.2);margin-bottom:4px;">
+            <div class="glass-card" style="padding:10px 12px;background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.2);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">
               <p style="margin:0;font-size:12px;color:#A5B4FC;font-weight:700;display:flex;align-items:center;gap:6px;">
                 <${IClock} s=${14}/> ${yesterdayFastMsg}
               </p>
+              <button onClick=${onUpdateYesterdayFast} style="padding:4px 8px;background:#6366F1;color:white;border:none;border-radius:6px;font-size:10px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">FINALIZAR</button>
             </div>
           `}
 
@@ -574,8 +580,8 @@ export const createHabitsPanel = (deps) => {
               <div class="glass-card" style=${`padding:10px;border-color:${medStatus.dinnerRelevant?'rgba(99,102,241,0.3)':'#1E2D45'};background:rgba(10,15,30,0.5);opacity:${medStatus.dinnerRelevant?1:0.5};`}>
                 <p style="margin:0 0 6px;font-size:10px;color:#64748b;text-transform:uppercase;">Cena Combo</p>
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                  <input type="checkbox" checked=${!!t.meds?.finasteride} onChange=${e=>{ onMed('finasteride',e.target.checked); onMed('minoxidil',e.target.checked); }}/>
-                  <span style=${`font-size:13px;font-weight:700;color:${t.meds?.finasteride?'#A5B4FC':'#94A3B8'};`}>${medStatus.dinnerLabel}</span>
+                  <input type="checkbox" checked=${!!dinnerMedsState?.finasteride} onChange=${e=>{ onMed('finasteride',e.target.checked); onMed('minoxidil',e.target.checked); }}/>
+                  <span style=${`font-size:13px;font-weight:700;color:${dinnerMedsState?.finasteride?'#A5B4FC':'#94A3B8'};`}>${medStatus.dinnerLabel}</span>
                 </label>
               </div>
             </div>

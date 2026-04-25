@@ -637,8 +637,7 @@ export const createRecipesView = ({
                 </div>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Stock actual: cuanto te queda en casa ahora mismo. Unidad stock: en que lo medis para descontar, por ejemplo g, porcion o unidad.</p>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Si esta opcion esta apagada, el item sirve para macros y reconocimiento, pero no mueve stock. Ideal para cumpleaños, comidas afuera o cosas que no compras para tu casa.</p>
-                <p style="margin:0;font-size:11px;color:#94A3B8;">Si esta opcion esta apagada, el item sirve para macros y reconocimiento, pero no mueve stock. Ideal para cumpleanos, comidas afuera o cosas que no compras para tu casa.</p>
-                <p style="margin:0;font-size:11px;color:#94A3B8;">Ademas, el descuento automatico de stock queda pensado para ingredientes simples como huevo, pollo, arvejas o lentejas. Las recetas compuestas no descuentan stock automatico.</p>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Además, el descuento automático de stock queda pensado para ingredientes simples como huevo, pollo, arvejas o lentejas. Las recetas compuestas no descuentan stock automático.</p>
                 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
                   <input class="inp" value=${form.cals} onInput=${e=>setForm(prev => ({ ...prev, cals:e.target.value }))} placeholder="Kcal" />
                   <input class="inp" value=${form.prot} onInput=${e=>setForm(prev => ({ ...prev, prot:e.target.value }))} placeholder="P" />
@@ -647,8 +646,7 @@ export const createRecipesView = ({
                 </div>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Macros: los valores conocidos para esa cantidad base.</p>
                 <textarea value=${form.ingredients} onInput=${e=>setForm(prev => ({ ...prev, ingredients:e.target.value }))} placeholder="Ingredientes, una linea por item. Formato: cantidad | nombre" style="width:100%;background:#0F1729;border:1px solid #1E2D45;border-radius:8px;padding:10px;font-size:12px;color:#cbd5e1;font-family:'Barlow',sans-serif;resize:vertical;min-height:88px;"></textarea>
-                <p style="margin:0;font-size:11px;color:#94A3B8;">Ingredientes: util si es una receta compuesta. Si es un ingrediente simple, lo podes dejar vacio.</p>
-                <p style="margin:0;font-size:11px;color:#94A3B8;">Ingredientes: util si es una receta compuesta. Si es un ingrediente simple, lo podes dejar vacio.</p>
+                <p style="margin:0;font-size:11px;color:#94A3B8;">Ingredientes: útil si es una receta compuesta. Si es un ingrediente simple, lo podés dejar vacío.</p>
                 <p style="margin:0;font-size:11px;color:#94A3B8;">Nota: aclaraciones tuyas, por ejemplo marca, cocido/crudo o donde lo compras.</p>
                 ${editingId && html`
                   <div style="padding:10px;border-radius:10px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);display:flex;flex-direction:column;gap:8px;">

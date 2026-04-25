@@ -276,7 +276,7 @@ export const createAppComponents = ({
     <div style="padding:12px 8px;border-radius:14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;flex-direction:column;align-items:center;transition:transform 0.2s;position:relative;overflow:hidden;" class="tap-effect">
       <div style=${`position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg, transparent, ${color}, transparent);opacity:0.5;`}></div>
       <p style="margin:0;font-size:10px;color:#64748b;text-transform:uppercase;font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.05em;">${label}</p>
-      <p style=${`margin:4px 0 0;font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:${color};line-height:1;`}>${value}</p>
+      <p style=${`margin:4px 0 0;font-size:22px;font-weight:800;font-family:'Barlow Condensed',sans-serif;color:white;line-height:1;`}>${value}</p>
     </div>
   `;
 
@@ -401,7 +401,7 @@ export const createAppComponents = ({
       <div style="margin-top:12px;padding:12px;background:rgba(16,185,129,0.05);border-radius:8px;border:1px solid rgba(16,185,129,0.1);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
           <span style="font-size:11px;font-weight:700;color:#94A3B8;text-transform:uppercase;">Progreso Proteico</span>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${color};">${fn(current)} / ${goal}g</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:white;">${fn(current)} / ${goal}g</span>
         </div>
         <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
           <div style="width:${pct}%;height:100%;background:${color};transition:width 0.5s ease;box-shadow:0 0 8px ${color}66;"></div>
@@ -428,7 +428,7 @@ export const createAppComponents = ({
           <div style="flex:1;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
               <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#64748b;">💧 Hidratación</span>
-              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:${color};">${(val/1000).toFixed(1)}L / 3.5L</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:white;">${(val/1000).toFixed(1)}L / 3.5L</span>
             </div>
             <div style="width:100%;height:6px;background:#1E2D45;border-radius:3px;overflow:hidden;">
               <div style="width:${pct}%;height:100%;background:${color};border-radius:3px;transition:width 0.3s;"></div>

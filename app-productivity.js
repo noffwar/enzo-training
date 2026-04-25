@@ -759,7 +759,7 @@ export const createProductivityView = ({
               ].map(item => html`
                 <div style="padding:10px;border-radius:10px;background:rgba(10,15,30,0.45);border:1px solid #1E2D45;">
                   <p style="margin:0;font-size:9px;color:#64748b;text-transform:uppercase;">${item.label}</p>
-                  <p style=${`margin:4px 0 0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${item.color};`}>${item.val}</p>
+                  <p style=${`margin:4px 0 0;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;`}>${item.val}</p>
                 </div>
               `)}
             </div>
@@ -860,6 +860,7 @@ export const createProductivityView = ({
                 ${[
                   ['Hoy', groupedPending.today],
                   ['Manana', groupedPending.tomorrow],
+                  ['Esta semana', groupedPending.week],
                   ['Mas adelante', groupedPending.later],
                   ['Sin fecha', groupedPending.someday]
                 ].filter(([,items]) => items.length > 0).map(([label, items]) => html`
