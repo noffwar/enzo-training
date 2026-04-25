@@ -118,12 +118,14 @@ export const createTodayDashboard = ({
           }
         } catch(_) { setFastingProgress(null); }
 
+        const safeSupabase = (query) => Promise.resolve(query).catch(e => ({ data: [], error: e }));
+
         const [taskRes, noteRes, invRes, studyRes, recipeRes] = await Promise.all([
-          supabase.from('tasks').select('id,title,due_at,priority,status,category,details,subtasks,recurrence,auto_email_reminder,email_reminder_sent_at').eq('user_id', session.user.id).order('due_at', { ascending: true, nullsFirst: false }).catch(() => ({ data: [] })),
-          supabase.from('notes').select('id,kind,content,created_at').eq('user_id', session.user.id).order('created_at', { ascending: false }).catch(() => ({ data: [] })),
-          supabase.from('app_inventory').select('key,data').in('key', ['meds_stock', 'reading_progress', 'sweets_sauces_stock']).catch(() => ({ data: [] })),
-          supabase.from('study_plan').select('subject,topics').order('subject', { ascending: true }).catch(() => ({ data: [] })),
-          supabase.from('user_recipes').select('recipe_name,stock_qty,low_stock_threshold').catch(() => ({ data: [] }))
+          safeSupabase(supabase.from('tasks').select('id,title,due_at,priority,status,category,details,subtasks,recurrence,auto_email_reminder,email_reminder_sent_at').eq('user_id', session.user.id).order('due_at', { ascending: true, nullsFirst: false })),
+          safeSupabase(supabase.from('notes').select('id,kind,content,created_at').eq('user_id', session.user.id).order('created_at', { ascending: false })),
+          safeSupabase(supabase.from('app_inventory').select('key,data').in('key', ['meds_stock', 'reading_progress', 'sweets_sauces_stock'])),
+          safeSupabase(supabase.from('study_plan').select('subject,topics').order('subject', { ascending: true })),
+          safeSupabase(supabase.from('user_recipes').select('recipe_name,stock_qty,low_stock_threshold'))
         ]);
 
         const tasks = taskRes.data || [];
@@ -190,12 +192,15 @@ export const createTodayDashboard = ({
           backupDue,
           backupLabel
         });
-      } catch(_) {
+      } catch(err) {
+        console.error("Dashboard Summary Error:", err);
         setSummary({
           pending:0, dueToday:0, notes:0, high:0, nextTask:null,
           studyPending:0, studyDone:0, studySubjects:0,
-          book:null, bookPct:0,
-          meds:null, medsLow:false,
+          book: BOOK_DEFAULT,
+          bookPct: Math.max(0, Math.min(100, Math.round((pn(BOOK_DEFAULT.current_page) / Math.max(1, pn(BOOK_DEFAULT.total_pages))) * 100) || 0)),
+          meds: MEDS_STOCK_DEFAULT,
+          medsLow:false,
           pantryLow:0,
           backupDue:false,
           backupLabel:''
