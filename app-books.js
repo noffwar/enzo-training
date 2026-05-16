@@ -41,7 +41,7 @@ export const createBooksView = ({
     </div>
   `;
 
-  return function BooksView({session}) {
+  return function BooksView({ session, timer, onToggleTimer, onResetTimer }) {
       const [book, setBook] = useState(BOOK_DEFAULT);
       const [series, setSeries] = useState(SERIES_DEFAULT);
       const [notes, setNotes] = useState([]);
@@ -68,8 +68,20 @@ export const createBooksView = ({
       const [seriesChatLoading, setSeriesChatLoading] = useState(false);
       const [summaryLoading, setSummaryLoading] = useState(false);
       const [notesSummaryLoading, setNotesSummaryLoading] = useState(false);
-      const [pomodoroActive, setPomodoroActive] = useState(false);
-      const [pomodoroLeft, setPomodoroLeft] = useState(25 * 60);
+      
+      const { active: pomodoroActive, left: pomodoroLeft } = timer || { active: false, left: 25 * 60 };
+
+      const togglePomodoro = () => {
+        window.haptic?.('medium');
+        onToggleTimer();
+      };
+
+      const resetPomodoro = () => {
+        window.haptic?.('light');
+        onResetTimer();
+      };
+
+      const fmtTime = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
       const loadBooks = useCallback(async () => {
         setLoading(true);
@@ -109,22 +121,7 @@ export const createBooksView = ({
         };
       }, [loadBooks]);
 
-      useEffect(() => {
-        if(!pomodoroActive) return;
-        const id = setInterval(() => {
-          setPomodoroLeft(prev => {
-            if(prev <= 1) {
-              clearInterval(id);
-              setPomodoroActive(false);
-              setNotice('Pomodoro de lectura terminado.');
-              setTimeout(() => setNotice(''), 2500);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        return () => clearInterval(id);
-      }, [pomodoroActive]);
+
 
       const saveBook = async (nextBook) => {
         setSaving(true);
@@ -679,10 +676,10 @@ export const createBooksView = ({
                     <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:${pomodoroActive?'#F59E0B':'#E2E8F0'};">${fmtPomodoro}</span>
                   </div>
                   <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button onClick=${()=>setPomodoroActive(v=>!v)} style="padding:8px 12px;border-radius:8px;border:none;background:${pomodoroActive?'#EF4444':'#F59E0B'};color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                    <button onClick=${togglePomodoro} style="padding:8px 12px;border-radius:8px;border:none;background:${pomodoroActive?'#EF4444':'#F59E0B'};color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                       ${pomodoroActive ? 'PAUSAR' : 'INICIAR 25 MIN'}
                     </button>
-                    <button onClick=${()=>{ setPomodoroActive(false); setPomodoroLeft(25*60); }} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
+                    <button onClick=${resetPomodoro} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
                       REINICIAR
                     </button>
                   </div>

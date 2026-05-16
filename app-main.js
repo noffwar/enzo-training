@@ -129,6 +129,8 @@ export const createApp = (deps) => {
     const [syncLoadMsg, setSyncLoadMsg] = useState('');
     const [timerLeft, setTimerLeft] = useState(0);
     const [timerActive, setTimerActive] = useState(false);
+    const [studyTimer, setStudyTimer] = useState({ left: 25 * 60, active: false });
+    const [booksTimer, setBooksTimer] = useState({ left: 25 * 60, active: false });
     const [moduleAlerts, setModuleAlerts] = useState({ study:0, health:false, books:false, recipes:0, notif:false });
     const timerRef = useRef(null);
     const audioRef = useRef(null); // Will initialize with a short beep if needed
@@ -153,18 +155,25 @@ export const createApp = (deps) => {
     };
 
     useEffect(() => {
-      const savedEnd = localStorage.getItem('enzo_timer_end');
-      if(savedEnd) {
-        const remaining = Math.round((parseInt(savedEnd) - Date.now()) / 1000);
-        if(remaining > 0) {
-          setTimerLeft(remaining);
-          setTimerActive(true);
-        } else {
-          localStorage.removeItem('enzo_timer_end');
+      const timers = [
+        { key: 'enzo_timer_end', setL: setTimerLeft, setA: setTimerActive },
+        { key: 'enzo_study_timer_end', setL: (l) => setStudyTimer(p => ({ ...p, left: l })), setA: (a) => setStudyTimer(p => ({ ...p, active: a })) },
+        { key: 'enzo_books_timer_end', setL: (l) => setBooksTimer(p => ({ ...p, left: l })), setA: (a) => setBooksTimer(p => ({ ...p, active: a })) }
+      ];
+
+      timers.forEach(({ key, setL, setA }) => {
+        const savedEnd = localStorage.getItem(key);
+        if(savedEnd) {
+          const remaining = Math.round((parseInt(savedEnd) - Date.now()) / 1000);
+          if(remaining > 0) {
+            setL(remaining);
+            setA(true);
+          } else {
+            localStorage.removeItem(key);
+          }
         }
-      }
+      });
       
-      // Request Notification Permission
       if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
       }
@@ -323,22 +332,18 @@ export const createApp = (deps) => {
     
     // Timer Countdown Logic
     useEffect(() => {
-      if(!timerActive || timerLeft <= 0) {
+      const anyActive = timerActive || studyTimer.active || booksTimer.active;
+      
+      if(!anyActive) {
         if(workerRef.current) {
           workerRef.current.terminate();
           workerRef.current = null;
         }
         releaseWakeLock();
-        
-        if (timerLeft <= 0) localStorage.removeItem('enzo_timer_end');
         return;
       }
 
       requestWakeLock();
-
-      if(!localStorage.getItem('enzo_timer_end')) {
-        localStorage.setItem('enzo_timer_end', (Date.now() + timerLeft * 1000).toString());
-      }
 
       if(!workerRef.current) {
         const workerCode = `
@@ -354,35 +359,49 @@ export const createApp = (deps) => {
         const blob = new Blob([workerCode], {type: 'application/javascript'});
         workerRef.current = new Worker(URL.createObjectURL(blob));
         workerRef.current.onmessage = () => {
-          const savedEnd = localStorage.getItem('enzo_timer_end');
-          if(!savedEnd) {
-            setTimerActive(false);
-            setTimerLeft(0);
-            return;
-          }
-          const remaining = Math.round((parseInt(savedEnd) - Date.now()) / 1000);
-          
-          if(remaining <= 0) {
-            setTimerActive(false);
-            setTimerLeft(0);
-            localStorage.removeItem('enzo_timer_end');
-            
+          const now = Date.now();
+          const notify = (title, body) => {
             if ("Notification" in window && Notification.permission === "granted") {
-              new Notification("¡Tiempo de descanso terminado!", {
-                body: "Es hora de tu siguiente serie.",
-                icon: "/icon-192.png",
-                silent: false
-              });
+              new Notification(title, { body, icon: "/icon-192.png" });
             }
-            if ("vibrate" in navigator) {
-              navigator.vibrate([300, 100, 300]);
-            }
+            if ("vibrate" in navigator) navigator.vibrate([300, 100, 300]);
             const beep = new Audio('data:audio/wav;base64,UklGRl9vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19v');
             beep.volume = 0.2;
             beep.play().catch(() => {});
-          } else {
-            setTimerLeft(remaining);
-          }
+          };
+
+          // Gym Timer
+          const gymEnd = localStorage.getItem('enzo_timer_end');
+          if(gymEnd) {
+            const rem = Math.round((parseInt(gymEnd) - now) / 1000);
+            if(rem <= 0) {
+              setTimerActive(false); setTimerLeft(0);
+              localStorage.removeItem('enzo_timer_end');
+              notify("¡Tiempo de descanso terminado!", "Es hora de tu siguiente serie.");
+            } else { setTimerLeft(rem); }
+          } else if(timerActive) { setTimerActive(false); setTimerLeft(0); }
+
+          // Study Timer
+          const studyEnd = localStorage.getItem('enzo_study_timer_end');
+          if(studyEnd) {
+            const rem = Math.round((parseInt(studyEnd) - now) / 1000);
+            if(rem <= 0) {
+              setStudyTimer({ left: 25 * 60, active: false });
+              localStorage.removeItem('enzo_study_timer_end');
+              notify("¡Tiempo de estudio completado!", "Buen trabajo. Tómate un descanso.");
+            } else { setStudyTimer(prev => ({ ...prev, left: rem })); }
+          } else if(studyTimer.active) { setStudyTimer(prev => ({ ...prev, active: false })); }
+
+          // Books Timer
+          const booksEnd = localStorage.getItem('enzo_books_timer_end');
+          if(booksEnd) {
+            const rem = Math.round((parseInt(booksEnd) - now) / 1000);
+            if(rem <= 0) {
+              setBooksTimer({ left: 25 * 60, active: false });
+              localStorage.removeItem('enzo_books_timer_end');
+              notify("¡Pomodoro de lectura terminado!", "Buen progreso. Tómate un respiro.");
+            } else { setBooksTimer(prev => ({ ...prev, left: rem })); }
+          } else if(booksTimer.active) { setBooksTimer(prev => ({ ...prev, active: false })); }
         };
         workerRef.current.postMessage('start');
       }
@@ -394,7 +413,7 @@ export const createApp = (deps) => {
         }
         releaseWakeLock();
       };
-    }, [timerActive]);
+    }, [timerActive, studyTimer.active, booksTimer.active]);
 
     const normalizeRecipeKeyApp = (text='') => {
       const s = String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
@@ -1121,7 +1140,25 @@ export const createApp = (deps) => {
             ${view === 'week'     && ((loadedViews.progress || loadedViews.week) ? html`<${(loadedViews.progress || loadedViews.week).WeekSummary} weekData=${allWeeks[currentWk]} weekKey=${currentWk} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Semana...</div>`)}
             ${view === 'progress' && (loadedViews.progress ? html`<${loadedViews.progress.ProgressView} session=${session} allWeeks=${allWeeks} chartsReady=${chartsReady} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Progreso...</div>`)}
             ${view === 'recipes'  && (loadedViews.recipes ? html`<${loadedViews.recipes} session=${session} onRecipeUpdated=${recalculateMealsUsingRecipe} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Recetas...</div>`)}
-            ${view === 'study'    && (loadedViews.study ? html`<${loadedViews.study} session=${session} onSyncStudyAlerts=${refreshModuleAlerts} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Estudio...</div>`)}
+            ${view === 'study'    && (loadedViews.study ? html`<${loadedViews.study} 
+              session=${session} 
+              timer=${studyTimer}
+              onToggleTimer=${() => {
+                if(studyTimer.active) {
+                  setStudyTimer(p => ({ ...p, active: false }));
+                  localStorage.removeItem('enzo_study_timer_end');
+                } else {
+                  const duration = studyTimer.left * 1000;
+                  localStorage.setItem('enzo_study_timer_end', (Date.now() + duration).toString());
+                  setStudyTimer(p => ({ ...p, active: true }));
+                }
+              }}
+              onResetTimer={() => {
+                setStudyTimer({ left: 25 * 60, active: false });
+                localStorage.removeItem('enzo_study_timer_end');
+              }}
+              onSyncStudyAlerts=${refreshModuleAlerts} 
+            />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Estudio...</div>`)}
             ${view === 'health'   && (loadedViews.health ? html`<${loadedViews.health} 
               session=${session} 
               todayMeds=${tracker.meds||{}} 
@@ -1133,7 +1170,25 @@ export const createApp = (deps) => {
               onSyncDailyMeds=${syncTodayMedsFromHealth} 
               onOpenDay=${d => { const { dayIdx } = getWeekAndDayFromDateKey(d); setActiveDay(dayIdx); setView('today'); }} 
             />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Salud...</div>`)}
-            ${view === 'books' && (loadedViews.books ? html`<${loadedViews.books} session=${session} READING_PROGRESS_KEY=${READING_PROGRESS_KEY} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Libros...</div>`)}
+            ${view === 'books' && (loadedViews.books ? html`<${loadedViews.books} 
+              session=${session} 
+              READING_PROGRESS_KEY=${READING_PROGRESS_KEY} 
+              timer=${booksTimer}
+              onToggleTimer=${() => {
+                if(booksTimer.active) {
+                  setBooksTimer(p => ({ ...p, active: false }));
+                  localStorage.removeItem('enzo_books_timer_end');
+                } else {
+                  const duration = booksTimer.left * 1000;
+                  localStorage.setItem('enzo_books_timer_end', (Date.now() + duration).toString());
+                  setBooksTimer(p => ({ ...p, active: true }));
+                }
+              }}
+              onResetTimer={() => {
+                setBooksTimer({ left: 25 * 60, active: false });
+                localStorage.removeItem('enzo_books_timer_end');
+              }}
+            />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Libros...</div>`)}
             ${view === 'notif'    && (loadedViews.notif ? html`<${loadedViews.notif} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Notificaciones...</div>`)}
           <//>
         </main>

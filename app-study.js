@@ -4,7 +4,7 @@ export const createStudyView = (deps) => {
     STUDY_SUBJECT_SEEDS = [], Card, ISync, IChevD
   } = deps;
 
-  return function StudyView({ session }) {
+  return function StudyView({ session, timer, onToggleTimer, onResetTimer }) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -12,44 +12,19 @@ export const createStudyView = (deps) => {
     const [expanded, setExpanded] = useState({});
     const [drafts, setDrafts] = useState({});
     const [savingMap, setSavingMap] = useState({});
-    const [focusActive, setFocusActive] = useState(false);
-    const [focusLeft, setFocusLeft] = useState(25 * 60);
-    const focusTimerRef = useRef(null);
+    
+    const { active: focusActive, left: focusLeft } = timer || { active: false, left: 25 * 60 };
 
     const setSaving = (subject, val) => setSavingMap(prev => ({ ...prev, [subject]: val }));
 
-    useEffect(() => {
-      if (focusActive && focusLeft > 0) {
-        focusTimerRef.current = setInterval(() => {
-          setFocusLeft(prev => {
-            if (prev <= 1) {
-              clearInterval(focusTimerRef.current);
-              setFocusActive(false);
-              window.haptic?.('success');
-              if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("¡Tiempo de estudio completado!", { body: "Buen trabajo. Tomate un descanso." });
-              }
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-      } else {
-        if (focusTimerRef.current) clearInterval(focusTimerRef.current);
-      }
-      return () => { if (focusTimerRef.current) clearInterval(focusTimerRef.current); };
-    }, [focusActive]);
-
     const toggleFocus = () => {
       window.haptic?.('medium');
-      if (!focusActive && focusLeft === 0) setFocusLeft(25 * 60);
-      setFocusActive(!focusActive);
+      onToggleTimer();
     };
 
     const resetFocus = () => {
       window.haptic?.('light');
-      setFocusActive(false);
-      setFocusLeft(25 * 60);
+      onResetTimer();
     };
 
     const fmtTime = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
