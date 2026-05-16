@@ -438,6 +438,7 @@ export const createApp = (deps) => {
               notify("¡Pomodoro de lectura terminado!", "Buen progreso. Tómate un respiro.");
             } else { setBooksTimer(prev => ({ ...prev, left: rem })); }
           } else if(booksTimerRef.current.active) { setBooksTimer(prev => ({ ...prev, active: false })); }
+          // console.log('[TimerTick]', now);
         };
         workerRef.current.postMessage('start');
       }
