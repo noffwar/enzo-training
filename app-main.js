@@ -138,6 +138,13 @@ export const createApp = (deps) => {
     // Timer Persistence Recovery
     const workerRef = useRef(null);
     const wakeLockRef = useRef(null);
+    
+    const timerActiveRef = useRef(timerActive);
+    const studyTimerRef = useRef(studyTimer);
+    const booksTimerRef = useRef(booksTimer);
+    useEffect(() => { timerActiveRef.current = timerActive; }, [timerActive]);
+    useEffect(() => { studyTimerRef.current = studyTimer; }, [studyTimer]);
+    useEffect(() => { booksTimerRef.current = booksTimer; }, [booksTimer]);
 
     const requestWakeLock = async () => {
       try {
@@ -408,8 +415,8 @@ export const createApp = (deps) => {
               localStorage.removeItem('enzo_timer_end');
               notify("¡Tiempo de descanso terminado!", "Es hora de tu siguiente serie.");
             } else { setTimerLeft(rem); }
-          } else if(timerActive) { setTimerActive(false); setTimerLeft(0); }
-
+          } else if(timerActiveRef.current) { setTimerActive(false); setTimerLeft(0); }
+    
           // Study Timer
           const studyEnd = localStorage.getItem('enzo_study_timer_end');
           if(studyEnd) {
@@ -419,8 +426,8 @@ export const createApp = (deps) => {
               localStorage.removeItem('enzo_study_timer_end');
               notify("¡Tiempo de estudio completado!", "Buen trabajo. Tómate un descanso.");
             } else { setStudyTimer(prev => ({ ...prev, left: rem })); }
-          } else if(studyTimer.active) { setStudyTimer(prev => ({ ...prev, active: false })); }
-
+          } else if(studyTimerRef.current.active) { setStudyTimer(prev => ({ ...prev, active: false })); }
+    
           // Books Timer
           const booksEnd = localStorage.getItem('enzo_books_timer_end');
           if(booksEnd) {
@@ -430,7 +437,7 @@ export const createApp = (deps) => {
               localStorage.removeItem('enzo_books_timer_end');
               notify("¡Pomodoro de lectura terminado!", "Buen progreso. Tómate un respiro.");
             } else { setBooksTimer(prev => ({ ...prev, left: rem })); }
-          } else if(booksTimer.active) { setBooksTimer(prev => ({ ...prev, active: false })); }
+          } else if(booksTimerRef.current.active) { setBooksTimer(prev => ({ ...prev, active: false })); }
         };
         workerRef.current.postMessage('start');
       }

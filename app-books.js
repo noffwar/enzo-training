@@ -560,6 +560,19 @@ export const createBooksView = ({
               <p style="margin:0;color:#94A3B8;font-size:12px;">Cargando libro...</p>
             ` : html`
               <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="padding:12px;border-radius:12px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);display:flex;align-items:center;justify-content:space-between;gap:16px;">
+                  <div style="flex:1;">
+                    <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;font-weight:800;">Pomodoro Lectura</p>
+                    <p style="margin:4px 0 0;font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;color:white;line-height:1;">${fmtPomodoro}</p>
+                  </div>
+                  <div style="display:flex;gap:8px;">
+                    <button onClick=${togglePomodoro} style=${`padding:8px 16px;border-radius:8px;border:none;background:${pomodoroActive ? '#EF4444' : '#F59E0B'};color:#080D1A;font-weight:900;font-family:'Barlow Condensed',sans-serif;font-size:12px;cursor:pointer;letter-spacing:0.05em;text-transform:uppercase;min-width:80px;`}>
+                      ${pomodoroActive ? 'PAUSAR' : 'INICIAR'}
+                    </button>
+                    <button onClick=${resetPomodoro} style="padding:8px 10px;border-radius:8px;border:1px solid #1E2D45;background:transparent;color:#94A3B8;font-size:11px;font-weight:700;cursor:pointer;">⟲</button>
+                  </div>
+                </div>
+
                 <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
                     <input class="inp" value=${book.title || ''} onInput=${e=>setBook(prev => ({ ...prev, title:e.target.value }))} placeholder="Titulo" />
@@ -670,20 +683,6 @@ export const createBooksView = ({
                 </div>
                 <//>
 
-                <div style="padding:12px;border-radius:10px;background:rgba(15,23,41,0.75);border:1px solid #1E2D45;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
-                    <p style="margin:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#F59E0B;">Pomodoro lectura</p>
-                    <span style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:${pomodoroActive?'#F59E0B':'#E2E8F0'};">${fmtPomodoro}</span>
-                  </div>
-                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button onClick=${togglePomodoro} style="padding:8px 12px;border-radius:8px;border:none;background:${pomodoroActive?'#EF4444':'#F59E0B'};color:#041018;font-size:12px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                      ${pomodoroActive ? 'PAUSAR' : 'INICIAR 25 MIN'}
-                    </button>
-                    <button onClick=${resetPomodoro} style="padding:8px 12px;border-radius:8px;border:1px solid rgba(148,163,184,0.35);background:rgba(148,163,184,0.12);color:#CBD5E1;font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">
-                      REINICIAR
-                    </button>
-                  </div>
-                </div>
 
                 <${SectionAccordion}
                   icon=${html`<span style="width:10px;height:10px;border-radius:999px;background:#6366F1;display:inline-block;"></span>`}
