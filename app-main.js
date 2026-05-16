@@ -171,16 +171,15 @@ export const createApp = (deps) => {
     }, []);
 
     useEffect(() => {
-      if(localStorage.getItem('migrated_extra_set_v1') !== 'true') {
-        localStorage.setItem('migrated_extra_set_v1', 'true');
+      if(localStorage.getItem('fixed_sets_v2') !== 'true') {
+        localStorage.setItem('fixed_sets_v2', 'true');
         setRoutineData(prev => {
           const next = JSON.parse(JSON.stringify(prev));
           Object.values(next).forEach(routine => {
             if(!routine.exercises) return;
             routine.exercises.forEach(ex => {
-              if(Array.isArray(ex.sets) && ex.sets.length > 0) {
-                const lastSet = ex.sets[ex.sets.length - 1];
-                ex.sets.push({ ...lastSet, completed: false });
+              if(Array.isArray(ex.sets) && ex.sets.length > 3) {
+                ex.sets = ex.sets.slice(0, 3);
               }
             });
           });
