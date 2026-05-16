@@ -624,6 +624,26 @@ export const createAppComponents = ({
           ${renderNutrients(review.today?.nutrients)}
         </div>
       `}
+      ${(() => {
+        const meds = currentTracker?.meds || {};
+        const isRoaccutan = meds.roaccutan || meds.roacuttan;
+        const meals = currentTracker?.meals || [];
+        const fatTotal = dayTotals(meals).fat || 0;
+        const calTotal = dayTotals(meals).cals || 0;
+        
+        if (isRoaccutan && (fatTotal > 20 || calTotal > 600)) {
+          return html`
+            <div style="padding:10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);display:flex;align-items:center;gap:10px;">
+              <span style="font-size:16px;">💊</span>
+              <div>
+                <p style="margin:0;font-size:11px;font-weight:700;color:#86EFAC;text-transform:uppercase;">Recordatorio Roacuttan</p>
+                <p style="margin:2px 0 0;font-size:10px;color:#94A3B8;">Detectada comida con grasa (${Math.round(fatTotal)}g). Momento ideal para la dosis.</p>
+              </div>
+            </div>
+          `;
+        }
+        return null;
+      })()}
       ${review.error && html`<p style="margin:0;font-size:11px;color:#FCA5A5;">${review.error}</p>`}
     </div>
   `;

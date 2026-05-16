@@ -355,9 +355,9 @@ export const createTodayDashboard = ({
 
 
     return html`
-      <div class="glass-card stagger-in" style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+      <div class="glass-card stagger-in" style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;">
         ${dailyInsight && html`
-          <div style="padding:12px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;gap:12px;align-items:center;margin-bottom:4px;animation: glow-pulse 4s infinite;">
+          <div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);display:flex;gap:12px;align-items:center;margin-bottom:0;animation: glow-pulse 4s infinite;">
             <div style="font-size:24px;">${dailyInsight.icon}</div>
             <div style="flex:1;">
               <p style=${`margin:0;font-size:10px;font-weight:800;text-transform:uppercase;color:${dailyInsight.color};letter-spacing:0.05em;`}>${dailyInsight.title}</p>
@@ -375,7 +375,7 @@ export const createTodayDashboard = ({
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div>
             <p style="margin:0;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#6366F1;font-weight:700;">Tablero principal</p>
-            <p style="margin:4px 0 0;font-size:12px;color:#94A3B8;">Lo importante del día, sin salir del Diario.</p>
+            <p style="margin:2px 0 0;font-size:12px;color:#94A3B8;">Lo importante del día, sin salir del Diario.</p>
           </div>
           <button onClick=${onOpenTasks}
             style="padding:8px 10px;border-radius:8px;border:1px solid rgba(99,102,241,0.35);background:rgba(99,102,241,0.12);color:#A5B4FC;font-size:11px;font-weight:800;font-family:'Barlow Condensed',sans-serif;cursor:pointer;letter-spacing:0.05em;">

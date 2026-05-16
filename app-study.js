@@ -16,8 +16,47 @@ export const createStudyView = ({
       const [expanded, setExpanded] = useState({});
       const [drafts, setDrafts] = useState({});
       const [savingMap, setSavingMap] = useState({});
+      const [focusActive, setFocusActive] = useState(false);
+      const [focusLeft, setFocusLeft] = useState(25 * 60);
+      const focusTimerRef = useRef(null);
 
       const setSaving = (subject, val) => setSavingMap(prev => ({ ...prev, [subject]: val }));
+
+      useEffect(() => {
+        if(focusActive && focusLeft > 0) {
+          focusTimerRef.current = setInterval(() => {
+            setFocusLeft(prev => {
+              if(prev <= 1) {
+                clearInterval(focusTimerRef.current);
+                setFocusActive(false);
+                window.haptic?.('success');
+                if("Notification" in window && Notification.permission === "granted") {
+                  new Notification("¡Tiempo de estudio completado!", { body: "Buen trabajo. Tomate un descanso." });
+                }
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        } else {
+          if(focusTimerRef.current) clearInterval(focusTimerRef.current);
+        }
+        return () => { if(focusTimerRef.current) clearInterval(focusTimerRef.current); };
+      }, [focusActive]);
+
+      const toggleFocus = () => {
+        window.haptic?.('medium');
+        if(!focusActive && focusLeft === 0) setFocusLeft(25 * 60);
+        setFocusActive(!focusActive);
+      };
+
+      const resetFocus = () => {
+        window.haptic?.('light');
+        setFocusActive(false);
+        setFocusLeft(25 * 60);
+      };
+
+      const fmtTime = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
       const loadStudy = useCallback(async () => {
         setLoading(true);
@@ -93,6 +132,7 @@ export const createStudyView = ({
       };
 
       const toggleTopic = async (row, idx) => {
+        window.haptic?.('light');
         const current = Array.isArray(row.topics) ? row.topics : [];
         const nextTopics = current.map((topic, i) => i === idx ? { ...topic, done: !topic.done } : topic);
         setRows(prev => prev.map(r => r.id === row.id ? { ...r, topics: nextTopics } : r));
@@ -102,6 +142,7 @@ export const createStudyView = ({
       const addTopic = async (row) => {
         const draft = String(drafts[row.subject] || '').trim();
         if(!draft) return;
+        window.haptic?.('light');
         const current = Array.isArray(row.topics) ? row.topics : [];
         const nextTopics = [...current, { name: draft, done: false }];
         setRows(prev => prev.map(r => r.id === row.id ? { ...r, topics: nextTopics } : r));
@@ -154,6 +195,20 @@ export const createStudyView = ({
               <button class="btn-icon" style="background:#162035;border:1px solid #1E2D45;" onClick=${loadStudy}>
                 <${ISync} s=${16}/>
               </button>
+            </div>
+
+            <!-- MODO FOCUS (Pomodoro) -->
+            <div style="padding:12px;border-radius:12px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+               <div style="flex:1;">
+                  <p style="margin:0;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#10B981;font-weight:800;">Modo Focus (Pomodoro)</p>
+                  <p style="margin:4px 0 0;font-size:24px;font-weight:900;font-family:'JetBrains Mono',monospace;color:white;line-height:1;">${fmtTime(focusLeft)}</p>
+               </div>
+               <div style="display:flex;gap:8px;">
+                  <button onClick=${toggleFocus} style=${`padding:8px 16px;border-radius:8px;border:none;background:${focusActive?'#EF4444':'#10B981'};color:#080D1A;font-weight:900;font-family:'Barlow Condensed',sans-serif;font-size:12px;cursor:pointer;letter-spacing:0.05em;text-transform:uppercase;min-width:80px;`}>
+                     ${focusActive ? 'PAUSAR' : 'ENFOCAR'}
+                  </button>
+                  <button onClick=${resetFocus} style="padding:8px 10px;border-radius:8px;border:1px solid #1E2D45;background:transparent;color:#94A3B8;font-size:11px;font-weight:700;cursor:pointer;">⟲</button>
+               </div>
             </div>
             ${notice && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);color:#86EFAC;font-size:12px;">${notice}</div>`}
             ${error && html`<div style="margin-bottom:10px;padding:8px 10px;border-radius:8px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#FCA5A5;font-size:12px;">${error}</div>`}

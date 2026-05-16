@@ -134,6 +134,24 @@ export const createApp = (deps) => {
     const audioRef = useRef(null); // Will initialize with a short beep if needed
 
     // Timer Persistence Recovery
+    const workerRef = useRef(null);
+    const wakeLockRef = useRef(null);
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator && !wakeLockRef.current) {
+          wakeLockRef.current = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) { }
+    };
+
+    const releaseWakeLock = () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(()=>{});
+        wakeLockRef.current = null;
+      }
+    };
+
     useEffect(() => {
       const savedEnd = localStorage.getItem('enzo_timer_end');
       if(savedEnd) {
@@ -151,6 +169,36 @@ export const createApp = (deps) => {
         Notification.requestPermission();
       }
     }, []);
+
+    useEffect(() => {
+      if(localStorage.getItem('migrated_extra_set_v1') !== 'true') {
+        localStorage.setItem('migrated_extra_set_v1', 'true');
+        setRoutineData(prev => {
+          const next = JSON.parse(JSON.stringify(prev));
+          Object.values(next).forEach(routine => {
+            if(!routine.exercises) return;
+            routine.exercises.forEach(ex => {
+              if(Array.isArray(ex.sets) && ex.sets.length > 0) {
+                const lastSet = ex.sets[ex.sets.length - 1];
+                ex.sets.push({ ...lastSet, completed: false });
+              }
+            });
+          });
+          Object.entries(next).forEach(([id, data]) => lsRoutineSave(id, { ...data, _updatedAt: new Date().toISOString() }));
+          return next;
+        });
+      }
+    }, []);
+
+    useEffect(() => {
+      const handleVisChange = () => {
+        if (document.visibilityState === 'visible' && timerActive) {
+          requestWakeLock();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisChange);
+      return () => document.removeEventListener('visibilitychange', handleVisChange);
+    }, [timerActive]);
     const bootstrapAppliedRef = useRef(false);
     const saveTimerRef = useRef(null);
     const prevTrackerRef = useRef(null);
@@ -277,56 +325,76 @@ export const createApp = (deps) => {
     // Timer Countdown Logic
     useEffect(() => {
       if(!timerActive || timerLeft <= 0) {
-        if(timerRef.current) clearInterval(timerRef.current);
-        if(timerLeft <= 0) localStorage.removeItem('enzo_timer_end');
+        if(workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
+        }
+        releaseWakeLock();
+        
+        if (timerLeft <= 0) localStorage.removeItem('enzo_timer_end');
         return;
       }
 
-      // Ensure we have an end time in storage for persistence
+      requestWakeLock();
+
       if(!localStorage.getItem('enzo_timer_end')) {
         localStorage.setItem('enzo_timer_end', (Date.now() + timerLeft * 1000).toString());
       }
 
-      timerRef.current = setInterval(() => {
-        const savedEnd = localStorage.getItem('enzo_timer_end');
-        if(!savedEnd) {
-          setTimerActive(false);
-          setTimerLeft(0);
-          return;
-        }
-
-        const remaining = Math.round((parseInt(savedEnd) - Date.now()) / 1000);
-        
-        if(remaining <= 0) {
-          clearInterval(timerRef.current);
-          setTimerActive(false);
-          setTimerLeft(0);
-          localStorage.removeItem('enzo_timer_end');
-
-          // Notify User
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("¡Tiempo de descanso terminado!", {
-              body: "Es hora de tu siguiente serie.",
-              icon: "/icon-192.png",
-              silent: false // Browser might play its own sound which usually ducks music briefly instead of pausing
-            });
+      if(!workerRef.current) {
+        const workerCode = `
+          let interval;
+          self.onmessage = function(e) {
+            if(e.data === 'start') {
+              interval = setInterval(() => self.postMessage('tick'), 1000);
+            } else if(e.data === 'stop') {
+              clearInterval(interval);
+            }
+          };
+        `;
+        const blob = new Blob([workerCode], {type: 'application/javascript'});
+        workerRef.current = new Worker(URL.createObjectURL(blob));
+        workerRef.current.onmessage = () => {
+          const savedEnd = localStorage.getItem('enzo_timer_end');
+          if(!savedEnd) {
+            setTimerActive(false);
+            setTimerLeft(0);
+            return;
           }
+          const remaining = Math.round((parseInt(savedEnd) - Date.now()) / 1000);
           
-          if ("vibrate" in navigator) {
-            navigator.vibrate([300, 100, 300]);
+          if(remaining <= 0) {
+            setTimerActive(false);
+            setTimerLeft(0);
+            localStorage.removeItem('enzo_timer_end');
+            
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification("¡Tiempo de descanso terminado!", {
+                body: "Es hora de tu siguiente serie.",
+                icon: "/icon-192.png",
+                silent: false
+              });
+            }
+            if ("vibrate" in navigator) {
+              navigator.vibrate([300, 100, 300]);
+            }
+            const beep = new Audio('data:audio/wav;base64,UklGRl9vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19v');
+            beep.volume = 0.2;
+            beep.play().catch(() => {});
+          } else {
+            setTimerLeft(remaining);
           }
+        };
+        workerRef.current.postMessage('start');
+      }
 
-          // Optional subtle beep that shouldn't pause music on most modern browsers
-          const beep = new Audio('data:audio/wav;base64,UklGRl9vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19vT19v');
-          beep.volume = 0.2;
-          beep.play().catch(() => {});
-
-        } else {
-          setTimerLeft(remaining);
+      return () => {
+        if(workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
         }
-      }, 1000);
-
-      return () => { if(timerRef.current) clearInterval(timerRef.current); };
+        releaseWakeLock();
+      };
     }, [timerActive]);
 
     const normalizeRecipeKeyApp = (text='') => {
@@ -879,8 +947,8 @@ export const createApp = (deps) => {
     return html`
       <div style="min-height:100vh;background:#080D1A;display:flex;flex-direction:column;font-family:'Barlow',sans-serif;">
         <header style="position:sticky;top:0;z-index:20;background:rgba(8,13,26,0.97);backdrop-filter:blur(20px);border-bottom:1px solid #1E2D45;padding-top:env(safe-area-inset-top, 0);">
-          <div style="max-width:640px;margin:0 auto;padding:16px 16px 12px 16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div style="max-width:640px;margin:0 auto;padding:16px 16px 8px 16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <div style="display:flex;align-items:center;gap:12px;">
                 <div style="width:40px;height:40px;background:linear-gradient(135deg,#10B981,#6366F1);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 15px rgba(16,185,129,0.3);">
                   <${IDumb} s=${24} c="#080D1A"/>
@@ -898,7 +966,7 @@ export const createApp = (deps) => {
             ${syncStatus === 'conflict' && html`<${ConflictNotifier} onResolve=${() => deps.flushOutbox(supabase, stripRoutineMeta)} />`}
 
             ${view === 'today' && html`
-              <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;flex-direction:column;gap:8px;">
                 <!-- Semana y Split Control -->
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
                   <div style="display:flex;align-items:center;background:rgba(22,32,53,0.4);border:1px solid #1E2D45;border-radius:12px;padding:2px 6px;">
@@ -950,11 +1018,11 @@ export const createApp = (deps) => {
           </div>
         </header>
 
-        <main key=${view} class="fade-up" style="max-width:640px;margin:0 auto;padding:16px 16px calc(88px + env(safe-area-inset-bottom, 12px));width:100%;">
+        <main key=${view} class="fade-up" style="max-width:640px;margin:0 auto;padding:10px 16px calc(88px + env(safe-area-inset-bottom, 12px));width:100%;">
           ${view === 'today' && html`
-            <div style="display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;flex-direction:column;gap:10px;">
               <!-- 1. Split Name & Selector -->
-              <div class="glass-card" style="padding:12px;display:flex;justify-content:space-between;align-items:center;background:rgba(10,15,30,0.4);">
+              <div class="glass-card" style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;background:rgba(10,15,30,0.4);">
                 <div style="flex:1;">
                   <h2 style="margin:0;font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:white;">
                     ${routineInfo?.fullName || `DÍA ${activeDay}: Descanso`}

@@ -154,6 +154,7 @@ export const createProductivityView = ({
         setSaving('task');
         setError('');
         try {
+          window.haptic?.('light');
           const { data, error } = await supabase.from('tasks').insert({
             user_id: session.user.id,
             title: taskTitle.trim(),
@@ -186,6 +187,7 @@ export const createProductivityView = ({
         setSaving('note');
         setError('');
         try {
+          window.haptic?.('light');
           const { data, error } = await supabase.from('notes').insert({
             user_id: session.user.id,
             note_title: noteTitle.trim() || null,
@@ -210,6 +212,8 @@ export const createProductivityView = ({
 
       const updateTaskStatus = async (task, status) => {
         try {
+          if(status === 'done') window.haptic?.('success');
+          else window.haptic?.('medium');
           const basePatch = {
             status,
             email_reminder_sent_at: status === 'pending' ? null : task.email_reminder_sent_at || null,
