@@ -324,6 +324,35 @@ export const createApp = (deps) => {
       } catch(_) {}
     }, []);
 
+    const toggleStudyTimer = () => {
+      if(studyTimer.active) {
+        setStudyTimer(p => ({ ...p, active: false }));
+        localStorage.removeItem('enzo_study_timer_end');
+      } else {
+        const duration = studyTimer.left * 1000;
+        localStorage.setItem('enzo_study_timer_end', (Date.now() + duration).toString());
+        setStudyTimer(p => ({ ...p, active: true }));
+      }
+    };
+    const resetStudyTimer = () => {
+      setStudyTimer({ left: 25 * 60, active: false });
+      localStorage.removeItem('enzo_study_timer_end');
+    };
+    const toggleBooksTimer = () => {
+      if(booksTimer.active) {
+        setBooksTimer(p => ({ ...p, active: false }));
+        localStorage.removeItem('enzo_books_timer_end');
+      } else {
+        const duration = booksTimer.left * 1000;
+        localStorage.setItem('enzo_books_timer_end', (Date.now() + duration).toString());
+        setBooksTimer(p => ({ ...p, active: true }));
+      }
+    };
+    const resetBooksTimer = () => {
+      setBooksTimer({ left: 25 * 60, active: false });
+      localStorage.removeItem('enzo_books_timer_end');
+    };
+
     useEffect(() => {
       refreshModuleAlerts();
       const h = setInterval(refreshModuleAlerts, 60000 * 5); // cada 5 min
@@ -1143,20 +1172,8 @@ export const createApp = (deps) => {
             ${view === 'study'    && (loadedViews.study ? html`<${loadedViews.study} 
               session=${session} 
               timer=${studyTimer}
-              onToggleTimer=${() => {
-                if(studyTimer.active) {
-                  setStudyTimer(p => ({ ...p, active: false }));
-                  localStorage.removeItem('enzo_study_timer_end');
-                } else {
-                  const duration = studyTimer.left * 1000;
-                  localStorage.setItem('enzo_study_timer_end', (Date.now() + duration).toString());
-                  setStudyTimer(p => ({ ...p, active: true }));
-                }
-              }}
-              onResetTimer={() => {
-                setStudyTimer({ left: 25 * 60, active: false });
-                localStorage.removeItem('enzo_study_timer_end');
-              }}
+              onToggleTimer=${toggleStudyTimer}
+              onResetTimer=${resetStudyTimer}
               onSyncStudyAlerts=${refreshModuleAlerts} 
             />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Estudio...</div>`)}
             ${view === 'health'   && (loadedViews.health ? html`<${loadedViews.health} 
@@ -1174,20 +1191,8 @@ export const createApp = (deps) => {
               session=${session} 
               READING_PROGRESS_KEY=${READING_PROGRESS_KEY} 
               timer=${booksTimer}
-              onToggleTimer=${() => {
-                if(booksTimer.active) {
-                  setBooksTimer(p => ({ ...p, active: false }));
-                  localStorage.removeItem('enzo_books_timer_end');
-                } else {
-                  const duration = booksTimer.left * 1000;
-                  localStorage.setItem('enzo_books_timer_end', (Date.now() + duration).toString());
-                  setBooksTimer(p => ({ ...p, active: true }));
-                }
-              }}
-              onResetTimer={() => {
-                setBooksTimer({ left: 25 * 60, active: false });
-                localStorage.removeItem('enzo_books_timer_end');
-              }}
+              onToggleTimer=${toggleBooksTimer}
+              onResetTimer=${resetBooksTimer}
             />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Libros...</div>`)}
             ${view === 'notif'    && (loadedViews.notif ? html`<${loadedViews.notif} session=${session} />` : html`<div style="color:#64748b;text-align:center;padding:40px;">Cargando Notificaciones...</div>`)}
           <//>
